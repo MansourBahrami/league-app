@@ -1,0 +1,173 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* === Colors from UI.html design tokens === */
+  --color-surface-bright: #f8f9ff;
+  --color-inverse-primary: #c0c1ff;
+  --color-on-secondary-fixed: #002113;
+  --color-tertiary-fixed-dim: #ffb95f;
+  --color-surface-container-highest: #d3e4fe;
+  --color-surface: #f8f9ff;
+  --color-on-primary: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-outline: #767586;
+  --color-on-primary-fixed-variant: #2f2ebe;
+  --color-primary: #4648d4;
+  --color-primary-fixed-dim: #c0c1ff;
+  --color-secondary-fixed: #6ffbbe;
+  --color-primary-fixed: #e1e0ff;
+  --color-surface-container-low: #eff4ff;
+  --color-primary-container: #6063ee;
+  --color-background: #f8f9ff;
+  --color-on-secondary-fixed-variant: #005236;
+  --color-inverse-on-surface: #eaf1ff;
+  --color-on-tertiary-fixed: #2a1700;
+  --color-outline-variant: #c7c4d7;
+  --color-on-primary-fixed: #07006c;
+  --color-tertiary-fixed: #ffddb8;
+  --color-on-secondary: #ffffff;
+  --color-on-primary-container: #fffbff;
+  --color-on-tertiary: #ffffff;
+  --color-surface-tint: #494bd6;
+  --color-error: #ba1a1a;
+  --color-on-tertiary-container: #fffbff;
+  --color-on-surface: #0b1c30;
+  --color-on-error-container: #93000a;
+  --color-surface-variant: #d3e4fe;
+  --color-on-secondary-container: #00714d;
+  --color-secondary-fixed-dim: #4edea3;
+  --color-tertiary: #825100;
+  --color-surface-dim: #cbdbf5;
+  --color-on-surface-variant: #464554;
+  --color-secondary: #006c49;
+  --color-on-background: #0b1c30;
+  --color-inverse-surface: #213145;
+  --color-surface-container-high: #dce9ff;
+  --color-on-error: #ffffff;
+  --color-tertiary-container: #a36700;
+  --color-surface-container: #e5eeff;
+  --color-secondary-container: #6cf8bb;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-tertiary-fixed-variant: #653e00;
+
+  /* === Border Radius === */
+  --radius: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+  --radius-full: 9999px;
+
+  /* === Font Family === */
+  --font-sans: "Vazirmatn", sans-serif;
+
+  /* === Font Sizes === */
+  --text-headline-md: 20px;
+  --text-headline-md--line-height: 30px;
+  --text-headline-xl: 32px;
+  --text-headline-xl--line-height: 48px;
+  --text-headline-xl-mobile: 26px;
+  --text-headline-xl-mobile--line-height: 38px;
+  --text-headline-lg: 24px;
+  --text-headline-lg--line-height: 36px;
+  --text-label-md: 14px;
+  --text-label-md--line-height: 20px;
+  --text-body-lg: 18px;
+  --text-body-lg--line-height: 28px;
+  --text-body-md: 16px;
+  --text-body-md--line-height: 24px;
+}
+
+/* === Base === */
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  font-family: "Vazirmatn", sans-serif;
+  background-color: #f8f9ff;
+  color: #0b1c30;
+  min-height: 100dvh;
+  direction: rtl;
+}
+
+/* === Glassmorphism === */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 20px 30px rgba(70, 72, 212, 0.1);
+}
+
+/* === Gamified Button === */
+.gamified-btn {
+  border-bottom: 4px solid #2f2ebe;
+  transition: all 0.1s ease;
+  cursor: pointer;
+}
+.gamified-btn:active {
+  border-bottom-width: 0px;
+  transform: translateY(4px);
+  margin-top: 4px;
+}
+
+/* === Progress Glow === */
+.progress-glow {
+  box-shadow: 0 0 10px rgba(70, 72, 212, 0.6);
+}
+
+/* === Leaderboard scanline === */
+@keyframes scanline { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.animate-scan { animation: scanline 3s linear infinite; }
+
+.focus-mask {
+  mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
+}
+
+/* === Scrollbar hide === */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* === Feed slide-in animation === */
+@keyframes slideInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.feed-item-enter { animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* === Streak flame pulse === */
+@keyframes flamePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
+.streak-flame { animation: flamePulse 1.6s ease-in-out infinite; }
+
+/* === Floating reward (+1 XP) === */
+@keyframes rewardFloat {
+  0% { opacity: 0; transform: translateY(8px) scale(0.8); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  80% { opacity: 1; transform: translateY(-28px) scale(1); }
+  100% { opacity: 0; transform: translateY(-44px) scale(0.9); }
+}
+.reward-float { animation: rewardFloat 2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* === Pop-in (celebration badges, medals) === */
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.5); }
+  60% { opacity: 1; transform: scale(1.12); }
+  100% { opacity: 1; transform: scale(1); }
+}
+.pop-in { animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+
+/* === Timer running frame: animated dashed border === */
+@keyframes frameMarch { to { background-position: 200% 0, -200% 0, 0 -200%, 0 200%; } }
+.timer-frame-running {
+  background-image:
+    linear-gradient(90deg, var(--color-primary) 50%, transparent 0),
+    linear-gradient(90deg, var(--color-primary) 50%, transparent 0),
+    linear-gradient(0deg, var(--color-primary) 50%, transparent 0),
+    linear-gradient(0deg, var(--color-primary) 50%, transparent 0);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size: 16px 2px, 16px 2px, 2px 16px, 2px 16px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  animation: frameMarch 12s linear infinite;
+}
+
+/* === Confetti === */
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translateY(-10px) rotateZ(0deg); }
+  100% { opacity: 0; transform: translateY(220px) rotateZ(360deg); }
+}
+.confetti-piece { position: absolute; width: 8px; height: 14px; border-radius: 2px; animation: confettiFall 1.6s ease-in forwards; }

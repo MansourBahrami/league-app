@@ -1,0 +1,8 @@
+{
+  "id": "league-app",
+  "platform": "nextjs",
+  "port": 3000,
+  "release": {
+    "command": "npx prisma migrate deploy"
+  }
+}

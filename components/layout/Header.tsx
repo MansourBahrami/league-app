@@ -1,0 +1,75 @@
+"use client";
+
+import Link from "next/link";
+
+interface User {
+  name: string | null;
+  xp: number;
+  coins: number;
+  level: string;
+  stars: number;
+  avatarUrl: string | null;
+}
+
+interface HeaderProps {
+  user: User;
+  xp: number;
+  coins: number;
+}
+
+const LEVEL_LABELS: Record<string, string> = {
+  "تازه‌نفس": "تازه نفس",
+  "ثابت‌قدم": "ثابت قدم",
+  "پیشرو": "پیشرو",
+  "سرآمد": "سرآمد",
+  "الگو": "الگو",
+};
+
+export default function Header({ user, xp, coins }: HeaderProps) {
+  return (
+    <header className="fixed top-0 right-0 w-full z-50 flex flex-row-reverse justify-between items-center px-5 py-2 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_20px_30px_rgba(70,72,212,0.1)] md:max-w-[600px] md:left-1/2 md:-translate-x-1/2">
+      {/* Leading: Avatar + level */}
+      <Link href="/profile" className="flex items-center gap-3 flex-row-reverse cursor-pointer hover:scale-105 transition-transform">
+        <div className="relative">
+          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 p-0.5">
+            {user.avatarUrl ? (
+              <img src={user.avatarUrl} className="w-full h-full object-cover rounded-full" alt="Avatar" />
+            ) : (
+              <div className="w-full h-full rounded-full bg-primary-fixed flex items-center justify-center">
+                <span className="text-[18px] font-bold text-primary">
+                  {user.name ? user.name[0] : "؟"}
+                </span>
+              </div>
+            )}
+          </div>
+          {/* Stars */}
+          <div className="absolute -bottom-2 -left-2 bg-white rounded-full border border-tertiary-fixed-dim px-1.5 py-0.5 shadow-sm flex items-center gap-0.5">
+            {Array.from({ length: user.stars }).map((_, i) => (
+              <span key={i} className="material-symbols-outlined text-[10px] text-tertiary-fixed-dim" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col items-end">
+          <span className="text-[20px] font-bold text-primary">
+            {user.name ?? "تمرکز"}
+          </span>
+          <span className="text-[12px] font-semibold text-on-surface-variant">
+            {LEVEL_LABELS[user.level] ?? user.level}
+          </span>
+        </div>
+      </Link>
+
+      {/* Trailing: XP & Coins */}
+      <div className="flex items-center gap-2" dir="ltr">
+        <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer">
+          <span className="material-symbols-outlined text-[16px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+          <span className="text-[14px] font-bold text-primary">{xp.toLocaleString("fa-IR")}</span>
+        </div>
+        <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer">
+          <span className="material-symbols-outlined text-[16px] text-tertiary-fixed-dim" style={{ fontVariationSettings: "'FILL' 1" }}>generating_tokens</span>
+          <span className="text-[14px] font-bold text-tertiary">{coins.toLocaleString("fa-IR")}</span>
+        </div>
+      </div>
+    </header>
+  );
+}

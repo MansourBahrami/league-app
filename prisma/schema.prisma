@@ -1,0 +1,264 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  // شماره کلید اصلی هویت است ولی ممکن است در ثبت‌نام از تلگرام/بله موقتاً null باشد
+  // و در lead capture (بعد از روز اول) گرفته شود.
+  phone           String?   @unique
+  telegramId      String?   @unique // شناسه تلگرام (لینک‌شده به همین حساب)
+  baleId          String?   @unique // شناسه بله
+  name            String?
+  grade           String?
+  field           String?
+  avatarUrl       String?
+  xp              Int       @default(0)
+  coins           Int       @default(0)
+  level           String    @default("تازه‌نفس")
+  stars           Int       @default(1)
+  onboardingDay        Int       @default(0)
+  onboardingStepMinutes Int      @default(0) // دقایق مطالعه انباشته‌شده برای روز جاری آنبوردینگ
+  nextStudyTarget      DateTime?
+  isLeadComplete       Boolean   @default(false)
+  hasSeenIntro         Boolean   @default(false)
+  pastAvgStudyHours    Float?
+  day1GoalMinutes      Int?      // هدف روز اول؛ هنگام پاسخ به پرسش میانگین snapshot می‌شود (قانون ساعت ۱۷/۲۱)
+  streak               Int       @default(0)  // زنجیره روزهای متوالی مطالعه
+  lastStudyDate        DateTime? // آخرین روزی (00:00) که جلسه‌ای ثبت شده — مبنای streak
+  referralCode         String?   @unique // کد دعوت دوستان
+  role                 String    @default("user") // user | admin
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  sessions     StudySession[]
+  userMissions UserMission[]
+  userMedals   UserMedal[]
+  activityLogs ActivityLog[]
+  videoProg    VideoProgress[]
+  unlocksMade     ProfileUnlock[] @relation("UnlocksMade")
+  unlocksReceived ProfileUnlock[] @relation("UnlocksReceived")
+  friendsInitiated Friendship[] @relation("FriendshipsInitiated")
+  friendsReceived  Friendship[] @relation("FriendshipsReceived")
+  pushSubscriptions PushSubscription[]
+  tournamentEntries TournamentParticipant[]
+  // آخرین رتبه هفتگی شناخته‌شده (برای نوتیف «فلانی ازت جلو زد»)
+  lastWeeklyRank   Int?
+
+  @@index([xp])
+  @@index([level])
+}
+
+// باز کردن مشاهده لاگ مطالعه یک کاربر دیگر با پرداخت سکه (تا ۱ روز)
+model ProfileUnlock {
+  id           String   @id @default(cuid())
+  viewerId     String
+  targetUserId String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  viewer User @relation("UnlocksMade", fields: [viewerId], references: [id], onDelete: Cascade)
+  target User @relation("UnlocksReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([viewerId, targetUserId])
+  @@index([viewerId])
+}
+
+model StudySession {
+  id          String    @id @default(cuid())
+  userId      String
+  startTime   DateTime
+  endTime     DateTime?
+  durationMin Int       @default(0)
+  plannedMin  Int       @default(0) // مدت انتخابی تایمر (۳۰/۶۰/۹۰/۱۲۰) — سقف پاداش
+  tickCount   Int       @default(0) // تعداد پاداش‌های ۱۵دقیقه‌ای پرداخت‌شده (ضد تقلب)
+  pausedSec   Int       @default(0) // مجموع ثانیه‌های pause شده (سمت سرور)
+  pausedAt    DateTime? // اگر الان pause است، از کی
+  xpEarned    Int       @default(0)
+  coinsEarned Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startTime])
+}
+
+model Mission {
+  id          String  @id @default(cuid())
+  targetHours Int
+  minAvgHours Float
+  entryCost   Int
+  xpReward    Int
+  medalId     String?
+  description String?
+  isActive    Boolean @default(true)
+
+  medal        Medal?        @relation(fields: [medalId], references: [id])
+  userMissions UserMission[]
+}
+
+model UserMission {
+  id          String    @id @default(cuid())
+  userId      String
+  missionId   String
+  purchasedAt DateTime  @default(now())
+  activatesAt DateTime  // ماموریت از روز بعد فعال می‌شود
+  expiresAt   DateTime  // activatesAt + ۷ روز
+  completedAt DateTime?
+  status      String    @default("pending") // pending | active | completed | failed
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission Mission @relation(fields: [missionId], references: [id])
+
+  @@index([userId, status])
+}
+
+model Medal {
+  id          String  @id @default(cuid())
+  name        String
+  targetHours Int     @unique
+  iconUrl     String?
+
+  missions   Mission[]
+  userMedals UserMedal[]
+}
+
+model UserMedal {
+  id       String   @id @default(cuid())
+  userId   String
+  medalId  String
+  earnedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medal Medal @relation(fields: [medalId], references: [id])
+
+  @@index([userId])
+}
+
+model Video {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  day          Int      @default(0) // روز آنبوردینگ (۱ به بالا؛ طول مسیر = بیشترین day فعال)
+  durationMin  Int
+  hlsUrl       String
+  thumbnailUrl String?
+  grades       String[] @default([]) // پایه‌های هدف؛ خالی = همه پایه‌ها
+  ctaLabel     String?  // متن دکمه CTA زیر ویدیو (مثلاً «درخواست مشاوره رایگان»)
+  ctaUrl       String?  // لینک دکمه CTA
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  progresses VideoProgress[]
+
+  @@index([day])
+}
+
+model VideoProgress {
+  id             String   @id @default(cuid())
+  userId         String
+  videoId        String
+  watchedSeconds Int      @default(0)
+  totalSeconds   Int      @default(0)
+  completed      Boolean  @default(false)
+  rewardGiven    Boolean  @default(false)
+  unlockedAt     DateTime? // زمان باز شدن ویدیو (مبنای جایزه ۲× تماشای سریع در ۲۴ ساعت)
+  updatedAt      DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  video Video @relation(fields: [videoId], references: [id])
+
+  @@unique([userId, videoId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt(sort: Desc)])
+  @@index([userId])
+}
+
+model OtpToken {
+  phone     String   @id
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// دوستی دوطرفه (یک رکورد برای هر جفت؛ کوئری با OR روی دو ستون)
+model Friendship {
+  id        String   @id @default(cuid())
+  userId    String   // دعوت‌کننده
+  friendId  String   // دعوت‌شده
+  createdAt DateTime @default(now())
+
+  user   User @relation("FriendshipsInitiated", fields: [userId], references: [id], onDelete: Cascade)
+  friend User @relation("FriendshipsReceived", fields: [friendId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, friendId])
+  @@index([friendId])
+}
+
+// اشتراک Web Push مرورگر (یک کاربر می‌تواند چند دستگاه داشته باشد)
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// تورنومنت‌های ویژه‌ی ادمین: رقابت بازه‌دار با اتاق و لیدربورد جداگانه.
+// لیدربورد هفتگی اصلی دست‌نخورده می‌ماند؛ این رقابت موازی است.
+model Tournament {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  startAt     DateTime
+  endAt       DateTime
+  entryCost   Int      @default(0)  // هزینه ورود (سکه)
+  prizeXp     Int      @default(0)  // جایزه XP نفر اول
+  prizeCoins  Int      @default(0)  // جایزه سکه نفر اول
+  // محدودیت سطح (خالی = همه سطوح می‌توانند شرکت کنند)
+  levels      String[] @default([])
+  isActive    Boolean  @default(true)
+  rewardsPaid Boolean  @default(false) // آیا جوایز پایان تورنومنت پرداخت شده
+  createdAt   DateTime @default(now())
+
+  participants TournamentParticipant[]
+
+  @@index([startAt])
+  @@index([endAt])
+}
+
+model TournamentParticipant {
+  id           String   @id @default(cuid())
+  tournamentId String
+  userId       String
+  joinedAt     DateTime @default(now())
+  // XP کسب‌شده در بازه‌ی تورنومنت (snapshot هنگام محاسبه؛ منبع: StudySession)
+  score        Int      @default(0)
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
+  @@index([tournamentId])
+}
