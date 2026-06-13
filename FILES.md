@@ -93,8 +93,12 @@
 | `lib/tournament-admin.ts` 🟢 | پارس/پاکسازی فرم تورنومنت (مشترک بین POST/PATCH ادمین). |
 | `lib/video-admin.ts` 🟢 | پارس/پاکسازی فرم ویدیو (پایه‌های چندگانه `grades[]`، CTA). |
 | `lib/push.ts` 🟡 | Web Push با VAPID (`sendPushToUser`). نیازمند کلیدهای VAPID در env. |
-| `lib/notifications.ts` 🟡 | نوتیف چندکاناله (Push + بله + تلگرام): یادآور مطالعه، خطر زنجیره، افت رتبه. توسط cron صدا زده می‌شود. |
-| `lib/jobs.ts` 🟢 | اجرای کارهای زمان‌بندی‌شده (`runScheduledJobs`): ماموریت‌ها، تسویهٔ تورنومنت، یادآورها. با پارامتر `tasks` فرکانس‌پذیر. |
+| `lib/notifications.ts` 🟢 | تشخیص افت رتبهٔ هفتگی (`detectRankDrops`) و شلیک رویداد `rank_drop`؛ ارسال توسط موتور قانون انجام می‌شود. |
+| `lib/notification-rules.ts` 🟢 | **کاتالوگ موتور قانون**: فیلدها/عملگرها/سگمنت‌ها/رویدادها + ارزیابی شرط (`userMatches`) + رندر متن (`renderTemplate`). خالص و قابل‌import در کلاینت. |
+| `lib/notification-engine.ts` 🟢 | **موتور ارسال**: غنی‌سازی کاربر، ایمنی (cooldown/quiet/maxPerDay)، کانال بله/Push، لاگ. `runScheduledRules` (cron)، `fireEvent` (hook رویدادی)، `runRuleManually` (تست). |
+| `lib/notification-admin.ts` 🟢 | پارس/اعتبارسنجی فرم قانون نوتیفیکیشن (مشترک بین POST/PATCH ادمین). |
+| `lib/notification-seed.ts` 🟢 | سه قانون پیش‌فرض (یادآور هدف، خطر زنجیره، افت رتبه)؛ idempotent بر اساس `name`. از `prisma/seed.ts` صدا زده می‌شود. |
+| `lib/jobs.ts` 🟢 | اجرای کارهای زمان‌بندی‌شده (`runScheduledJobs`): ماموریت‌ها، تسویهٔ تورنومنت، `notifRules` (موتور قانون)، `ranks` (افت رتبه). با پارامتر `tasks` فرکانس‌پذیر. |
 | `lib/socket.ts` ⚪️ | سرور Socket.io — **میراث**؛ فید زنده با SSE کار می‌کند (استفاده نمی‌شود). |
 
 ---

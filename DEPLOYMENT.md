@@ -182,10 +182,45 @@ curl -sI https://app.ayandetalayee.ir | head -1
 
 ---
 
-## ۹. کارهای باقی‌مانده در استقرار
+## ۹. زمان‌بند (cron) و موتور نوتیفیکیشن
+
+کارهای دوره‌ای (پردازش ماموریت، تسویه تورنومنت، قانون‌های نوتیفیکیشن) از طریق
+`POST /api/cron/run` اجرا می‌شوند که با `Authorization: Bearer $CRON_SECRET`
+محافظت شده است. روی سرور یک **crontab** این endpoint را صدا می‌زند.
+
+اپ پورت ۳۰۰۰ را روی هاست منتشر **نمی‌کند** (فقط Caddy روی ۸۰/۴۴۳)، پس cron
+اسکریپتِ `/app/league/run-cron.sh` را اجرا می‌کند که از داخل کانتینرِ اپ با
+`node fetch` به `localhost:3000` می‌زند (بدون مشکل گواهی/شبکه). `CRON_SECRET`
+از env خود کانتینر (`env_file: .env.production`) خوانده می‌شود.
+
+```bash
+# /app/league/run-cron.sh <tasks>
+docker compose exec -T app node -e "fetch('http://localhost:3000/api/cron/run?tasks=${TASKS}',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log)"
+```
+
+crontab نصب‌شده (`crontab -l`):
+
+```
+*/5 * * * * /app/league/run-cron.sh missions,tournaments,notifRules >> /var/log/league-cron.log 2>&1
+0   * * * * /app/league/run-cron.sh ranks                            >> /var/log/league-cron.log 2>&1
+```
+
+- `missions,tournaments,notifRules` (هر ۵ دقیقه): پردازش ماموریت‌ها + تسویه تورنومنت +
+  موتور قانون نوتیفیکیشن (تریگرهای `scheduled` و `relative`؛ پنجرهٔ ۱۵ دقیقه).
+- `ranks` (ساعتی): تشخیص افت رتبهٔ هفتگی و شلیک رویداد `rank_drop`.
+
+**نوتیفیکیشن‌های رویدادی** (پایان جلسه، نقطه‌عطف استریک، ارتقای سطح، کسب مدال) به cron
+نیاز ندارند؛ مستقیماً از کد اپ (`fireEvent` در `lib/streak.ts`، `lib/mission.ts`،
+`app/api/study/end`) شلیک می‌شوند. جزئیات معماری موتور قانون در `FILES.md`.
+
+> برای دیباگ: `tail -f /var/log/league-cron.log` روی سرور.
+
+---
+
+## ۱۰. کارهای باقی‌مانده در استقرار
 
 - [ ] تست واقعی ورود با پیامک OTP (مصرف اعتبار کاوه‌نگار).
 - [ ] تنظیم کلیدهای VAPID (`npx web-push generate-vapid-keys`) برای فعال‌سازی Web Push.
-- [ ] اتصال cron واقعی به `POST /api/cron/run` با `CRON_SECRET` (فرکانس‌های مختلف با `?tasks=`).
+- [x] اتصال cron واقعی به `POST /api/cron/run` با `CRON_SECRET` (بخش ۹).
 - [ ] (در صورت نیاز تلگرام) استقرار سرویس `bot/` روی یک سرور خارج از ایران به‌عنوان relay.
 - [ ] جابه‌جایی دامنهٔ نهایی به `Gcamp.ir` و به‌روزرسانی `NEXT_PUBLIC_APP_URL`/`APP_PUBLIC_URL` + build-arg + webhook بله.
