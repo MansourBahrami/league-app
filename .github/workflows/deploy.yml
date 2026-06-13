@@ -31,5 +31,5 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_APP_URL=http://62.60.198.110:3000
+            NEXT_PUBLIC_APP_URL=https://app.ayandetalayee.ir
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}

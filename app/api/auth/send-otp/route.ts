@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { redis } from "@/lib/redis";
+import { sendOtpSms } from "@/lib/sms";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
@@ -35,10 +36,19 @@ export async function POST(req: NextRequest) {
       create: { phone: normalized, code: otp, expiresAt: new Date(Date.now() + expirySeconds * 1000) },
     });
 
-    // در محیط production اینجا SMS ارسال می‌شود
+    // در محیط dev کد را مستقیم برمی‌گردانیم (بدون مصرف پیامک)
     if (process.env.NODE_ENV !== "production") {
       console.log(`OTP for ${normalized}: ${otp}`);
       return NextResponse.json({ message: "کد ارسال شد", _dev_otp: otp });
+    }
+
+    // در production کد واقعاً با پیامک کاوه‌نگار فرستاده می‌شود
+    const sent = await sendOtpSms(normalized, otp);
+    if (!sent) {
+      return NextResponse.json(
+        { error: "ارسال پیامک با مشکل مواجه شد، لطفاً کمی بعد دوباره تلاش کنید" },
+        { status: 502 }
+      );
     }
 
     return NextResponse.json({ message: "کد تأیید به شماره موبایل شما ارسال شد" });
