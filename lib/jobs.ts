@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { processUserMissions } from "@/lib/mission";
 import { settleEndedTournaments } from "@/lib/tournament";
-import { notifyStreakAtRisk, notifyStudyReminders } from "@/lib/notifications";
+import { detectRankDrops } from "@/lib/notifications";
+import { runScheduledRules } from "@/lib/notification-engine";
 
 /**
  * پردازش سراسری ماموریت‌ها برای همه کاربرانی که ماموریت در حال انجام یا در انتظار دارند:
@@ -28,25 +29,21 @@ export async function expireAndProcessMissions(): Promise<{ usersProcessed: numb
 /**
  * کارهای زمان‌بندی‌شده. با پارامتر `tasks` می‌توان زیرمجموعه‌ای را اجرا کرد تا
  * cronهای مختلف فرکانس متفاوت داشته باشند:
- *  - پیش‌فرض (هر چند دقیقه): ماموریت‌ها + تسویه تورنومنت + یادآور مطالعه (پنجره ۱۵ دقیقه).
- *  - `daily` (یک‌بار در روز، عصر): نوتیف خطر زنجیره.
- *  - `ranks` (مثلاً ساعتی): نوتیف افت رتبه‌ی هفتگی.
+ *  - پیش‌فرض (هر چند دقیقه): ماموریت‌ها + تسویه تورنومنت + موتور قانون نوتیفیکیشن
+ *    (تریگرهای scheduled/relative؛ پنجره‌ی ۱۵ دقیقه).
+ *  - `ranks` (مثلاً ساعتی): تشخیص افت رتبه‌ی هفتگی و شلیک رویداد rank_drop.
  */
-export type JobTask = "missions" | "tournaments" | "reminders" | "streakRisk" | "ranks";
+export type JobTask = "missions" | "tournaments" | "notifRules" | "ranks";
 
 export async function runScheduledJobs(
-  tasks: JobTask[] = ["missions", "tournaments", "reminders"]
+  tasks: JobTask[] = ["missions", "tournaments", "notifRules"]
 ): Promise<Record<string, unknown>> {
   const result: Record<string, unknown> = { ranAt: new Date().toISOString() };
 
   if (tasks.includes("missions")) result.missions = await expireAndProcessMissions();
   if (tasks.includes("tournaments")) result.tournaments = await settleEndedTournaments();
-  if (tasks.includes("reminders")) result.reminders = await notifyStudyReminders();
-  if (tasks.includes("streakRisk")) result.streakRisk = await notifyStreakAtRisk();
-  if (tasks.includes("ranks")) {
-    const { notifyRankDrops } = await import("@/lib/notifications");
-    result.ranks = await notifyRankDrops();
-  }
+  if (tasks.includes("notifRules")) result.notifRules = await runScheduledRules(15);
+  if (tasks.includes("ranks")) result.ranks = await detectRankDrops();
 
   return result;
 }

@@ -3,7 +3,7 @@ import { runScheduledJobs, type JobTask } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
 
-const ALL_TASKS: JobTask[] = ["missions", "tournaments", "reminders", "streakRisk", "ranks"];
+const ALL_TASKS: JobTask[] = ["missions", "tournaments", "notifRules", "ranks"];
 
 /**
  * نقطه‌ی فراخوانی کارهای زمان‌بندی‌شده.

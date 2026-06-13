@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { fireEvent } from "@/lib/notification-engine";
 
 /**
  * استریک = تعداد روزهای تقویمی متوالی که کاربر حداقل یک جلسه مطالعه داشته.
@@ -48,6 +49,8 @@ export async function applyStreak(
       data: { userId, type: "streak", metadata: { streak: milestone } },
     });
     broadcastActivity({ ...log, user: { name: user.name, avatarUrl: user.avatarUrl } });
+    // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به نقطه‌عطف استریک
+    await fireEvent("streak_milestone", userId, { streak: milestone });
   }
 
   return { streak: newStreak, milestone };

@@ -6,6 +6,7 @@ import { broadcastActivity } from "@/app/api/feed/stream/route";
 import { processUserMissions, recalcUserLevel } from "@/lib/mission";
 import { getOnboardingState, tryCompleteOnboardingDay } from "@/lib/onboarding";
 import { applyStreak } from "@/lib/streak";
+import { fireEvent } from "@/lib/notification-engine";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -83,6 +84,9 @@ export async function POST(req: NextRequest) {
     data: { userId: session.userId, type: "session_complete", metadata: { durationMin, xp, coins } },
   });
   broadcastActivity({ ...log, user: activityUser });
+
+  // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به پایان جلسه مطالعه
+  await fireEvent("session_complete", session.userId, { durationMin, xp, coins, streak: streakResult.streak });
 
   // تلاش برای تکمیل روز آنبوردینگ (دقیقه‌ها + ویدیو). ویدیوی روز را در صورت پر شدن دقیقه‌ها باز می‌کند.
   let dayCompleted = false;

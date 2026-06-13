@@ -2,6 +2,7 @@ import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { MISSION_TABLE } from "../lib/gamification";
+import { seedNotificationRules } from "../lib/notification-seed";
 
 const adapter = new PrismaPg(process.env.DATABASE_URL!);
 const prisma = new PrismaClient({ adapter });
@@ -59,6 +60,10 @@ async function main() {
     }
   }
   console.log("✅ Onboarding videos seeded");
+
+  // قانون‌های پیش‌فرض نوتیفیکیشن (یادآور هدف، خطر زنجیره، افت رتبه)
+  const rulesCreated = await seedNotificationRules(prisma as never);
+  console.log(`✅ Notification rules seeded (${rulesCreated} new)`);
 }
 
 main()

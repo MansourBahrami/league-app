@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { calcLevel, type MedalCount } from "@/lib/gamification";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { fireEvent } from "@/lib/notification-engine";
 
 /** شمارش مدال‌های کاربر بر اساس ساعت هدف */
 export async function getUserMedalCounts(userId: string): Promise<MedalCount[]> {
@@ -44,6 +45,8 @@ export async function recalcUserLevel(userId: string): Promise<{ level: string; 
       data: { userId, type: "level_up", metadata: { level, stars } },
     });
     broadcastActivity({ ...log, user: { name: user.name, avatarUrl: user.avatarUrl } });
+    // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به ارتقای سطح
+    await fireEvent("level_up", userId, { level, stars });
   }
 
   return { level, stars, leveledUp: isUpgrade };
@@ -65,6 +68,8 @@ async function awardMedal(userId: string, targetHours: number, userInfo: { name:
     data: { userId, type: "medal_earn", metadata: { targetHours } },
   });
   broadcastActivity({ ...log, user: userInfo });
+  // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به کسب مدال
+  await fireEvent("medal_earn", userId, { targetHours, medalName: medal.name });
 }
 
 /**

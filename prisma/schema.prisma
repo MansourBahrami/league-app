@@ -262,3 +262,55 @@ model TournamentParticipant {
   @@unique([tournamentId, userId])
   @@index([tournamentId])
 }
+
+// قانون نوتیفیکیشن قابل‌تعریف توسط ادمین (موتور قانون).
+// هر قانون: تریگر (چه‌وقت) + شرط‌ها (به‌چه‌کسی) + پیام (چه‌چیزی) + ایمنی (cooldown/quiet).
+model NotificationRule {
+  id            String   @id @default(cuid())
+  name          String
+  enabled       Boolean  @default(true)
+  // کانال‌های ارسال: ["bale","push"]
+  channels      String[] @default([])
+  // نوع تریگر: scheduled | relative | event
+  triggerType   String
+  // تنظیمات تریگر (بسته به نوع):
+  //   scheduled: { hour, minute, weekdays:[0..6] }
+  //   relative:  { beforeTargetMin }
+  //   event:     { event: "session_complete"|"streak_milestone"|"level_up"|"medal_earn"|"rank_drop" }
+  triggerConfig Json
+  // سگمنت آماده (اختیاری؛ میان‌بُر برای پر کردن شرط‌ها). مثلا "inactive" | "newbie" | ...
+  segment       String?
+  // شرط‌های سفارشی (AND): [{ field, op, value }]
+  conditions    Json     @default("[]")
+  // متن پیام (با متغیر {{name}} {{streak}} ...)
+  title         String
+  body          String
+  linkUrl       String?
+  // ایمنی
+  cooldownHours Int      @default(24) // فاصله مجاز تا ارسال دوباره همین قانون به همان کاربر
+  quietStart    Int?     // ساعت شروع سکوت (0-23)
+  quietEnd      Int?     // ساعت پایان سکوت
+  maxPerDay     Int?     // سقف نوتیف این قانون برای هر کاربر در روز
+  lastRunAt     DateTime?
+  sentCount     Int      @default(0) // شمارنده کل ارسال‌ها (برای گزارش)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  logs NotificationLog[]
+
+  @@index([enabled, triggerType])
+}
+
+// لاگ ارسال هر نوتیف (برای cooldown، سقف روزانه و گزارش).
+model NotificationLog {
+  id        String   @id @default(cuid())
+  ruleId    String
+  userId    String
+  channel   String
+  sentAt    DateTime @default(now())
+
+  rule NotificationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
+  @@index([ruleId, userId, sentAt])
+  @@index([userId, sentAt])
+}
