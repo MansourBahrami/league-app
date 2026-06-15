@@ -18,7 +18,7 @@ export default async function VideosPage() {
 
   const totalDays = await getOnboardingTotalDays();
 
-  // همه ویدیوهای مسیر متناسب با پایه (هم باز هم قفل) — قفل‌ها هم نمایش داده می‌شوند.
+  // همه ویدیوهای مسیر متناسب با پایه — همگی باز و قابل تماشا (بدون قفل).
   const videos = await prisma.video.findMany({
     where: { isActive: true, day: { gte: 1 }, ...gradeFilter(user.grade) },
     orderBy: { day: "asc" },
@@ -60,7 +60,7 @@ export default async function VideosPage() {
           videos.map((video) => {
             const prog = progressMap.get(video.id);
             const isCompleted = prog?.completed ?? false;
-            const isLocked = video.day > user.onboardingDay; // روزهای آینده قفل‌اند
+            const isLocked = false; // ویدیوها قفل نیستند — همه از ابتدا قابل تماشا
             const watchPct = prog && video.durationMin > 0
               ? Math.round((prog.watchedSeconds / (video.durationMin * 60)) * 100)
               : 0;

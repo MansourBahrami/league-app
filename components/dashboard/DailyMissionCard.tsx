@@ -5,7 +5,6 @@ import Link from "next/link";
 interface VideoStep {
   id: string;
   title: string;
-  unlocked: boolean;
   watched: boolean;
 }
 
@@ -174,7 +173,7 @@ export default function DailyMissionCard({
 
           {video.watched ? (
             <p className="text-[13px] font-semibold text-secondary text-right">ویدیوی امروز رو دیدی ✓</p>
-          ) : video.unlocked ? (
+          ) : (
             <Link
               href={`/videos/${video.id}`}
               className="gamified-btn w-full bg-primary text-on-primary text-[16px] font-bold py-3 rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-primary/20"
@@ -185,11 +184,6 @@ export default function DailyMissionCard({
               تماشا
               <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-full">سکه ۲×</span>
             </Link>
-          ) : (
-            <p className="text-[12px] text-on-surface-variant text-right flex items-center gap-1 justify-end">
-              <span className="material-symbols-outlined text-[14px]">lock</span>
-              بعد از تکمیل دقیقه‌های مطالعه باز می‌شود
-            </p>
           )}
         </div>
       )}

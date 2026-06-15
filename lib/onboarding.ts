@@ -10,8 +10,8 @@ import { getOnboardingDailyGoalMinutes } from "@/lib/gamification";
  *  - روز N وقتی کامل می‌شود که هم دقیقه‌های هدف پر شده باشد و هم ویدیوی روز N
  *    (متناسب با پایه) ≥۹۰٪ دیده شده باشد. اگر برای آن روز/پایه ویدیویی نباشد،
  *    دقیقه‌ها کافی است.
- *  - ویدیوی روز N با پر شدن دقیقه‌ها باز (`unlockedAt`) می‌شود؛ تماشای آن در ۲۴
- *    ساعت اول سکه دوبرابر می‌دهد.
+ *  - ویدیوی روز N از همان ابتدا باز است (بدون قفل)؛ `unlockedAt` صرفاً زمان در
+ *    دسترس قرار گرفتن آن است و تماشای ویدیو در ۲۴ ساعت اول سکه دوبرابر می‌دهد.
  *  - رقابت (تایمر/XP/لیدربورد) هیچ‌وقت پشت ویدیو قفل نمی‌شود.
  */
 
@@ -85,8 +85,16 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
         where: { userId_videoId: { userId, videoId: v.id } },
         select: { completed: true, unlockedAt: true },
       });
-      videoUnlocked = !!prog?.unlockedAt;
       videoWatched = prog?.completed ?? false;
+      videoUnlocked = true; // ویدیوی روز همیشه باز است (بدون قفل)
+      // شروع پنجره‌ی جایزه ۲× از لحظه‌ای که ویدیوی روز در دسترس قرار می‌گیرد
+      if (!prog?.unlockedAt) {
+        await prisma.videoProgress.upsert({
+          where: { userId_videoId: { userId, videoId: v.id } },
+          create: { userId, videoId: v.id, unlockedAt: new Date() },
+          update: { unlockedAt: new Date() },
+        });
+      }
     }
   }
 
@@ -113,16 +121,6 @@ export async function tryCompleteOnboardingDay(
 ): Promise<{ dayCompleted: boolean; state: OnboardingState | null }> {
   const state = await getOnboardingState(userId);
   if (!state || !state.inOnboarding) return { dayCompleted: false, state };
-
-  // باز کردن ویدیوی روز به محض پر شدن دقیقه‌ها (مبنای جایزه ۲× تماشای سریع)
-  if (state.minutesDone && state.video && !state.videoUnlocked) {
-    await prisma.videoProgress.upsert({
-      where: { userId_videoId: { userId, videoId: state.video.id } },
-      update: { unlockedAt: new Date() },
-      create: { userId, videoId: state.video.id, unlockedAt: new Date() },
-    });
-    state.videoUnlocked = true;
-  }
 
   if (state.minutesDone && state.videoWatched) {
     await prisma.user.update({

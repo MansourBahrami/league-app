@@ -105,7 +105,6 @@ export default async function DashboardPage() {
         video={inOnboarding && state?.video ? {
           id: state.video.id,
           title: state.video.title,
-          unlocked: state.videoUnlocked,
           watched: state.videoWatched,
         } : null}
       />
