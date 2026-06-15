@@ -29,9 +29,9 @@ export default function Header({ user, xp, coins }: HeaderProps) {
   return (
     <header className="fixed top-0 right-0 w-full z-50 flex flex-row-reverse justify-between items-center px-5 py-2 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_20px_30px_rgba(70,72,212,0.1)] md:max-w-[600px] md:left-1/2 md:-translate-x-1/2">
       {/* Leading: Avatar + level */}
-      <Link href="/profile" className="flex items-center gap-3 flex-row-reverse cursor-pointer hover:scale-105 transition-transform">
+      <Link href="/profile" className="flex items-center gap-2.5 flex-row-reverse cursor-pointer hover:scale-105 transition-transform">
         <div className="relative">
-          <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/20 p-0.5">
+          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20 p-0.5">
             {user.avatarUrl ? (
               <img src={user.avatarUrl} className="w-full h-full object-cover rounded-full" alt="Avatar" />
             ) : (
@@ -50,10 +50,10 @@ export default function Header({ user, xp, coins }: HeaderProps) {
           </div>
         </div>
         <div className="flex flex-col items-end">
-          <span className="text-[20px] font-bold text-primary">
+          <span className="text-[16px] font-bold text-primary leading-tight">
             {user.name ?? "تمرکز"}
           </span>
-          <span className="text-[12px] font-semibold text-on-surface-variant">
+          <span className="text-[11px] font-semibold text-on-surface-variant">
             {LEVEL_LABELS[user.level] ?? user.level}
           </span>
         </div>

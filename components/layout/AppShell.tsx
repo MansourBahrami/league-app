@@ -43,7 +43,7 @@ export default function AppShell({ user, children, showWelcome = false }: AppShe
 
       <Header user={user} xp={xp} coins={coins} />
 
-      <main className="w-full max-w-[600px] mt-24 mb-6 relative z-10">
+      <main className="w-full max-w-[600px] mt-20 mb-6 relative z-10">
         {children}
       </main>
 
