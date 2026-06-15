@@ -23,6 +23,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/videos" className="hover:text-[#6cf8bb] transition-colors">ویدیوها</Link>
           <Link href="/admin/tournaments" className="hover:text-[#6cf8bb] transition-colors">تورنومنت</Link>
           <Link href="/admin/notifications" className="hover:text-[#6cf8bb] transition-colors">نوتیفیکیشن</Link>
+          <Link href="/admin/analytics" className="hover:text-[#6cf8bb] transition-colors">A/B تست</Link>
           <Link href="/dashboard" className="text-[#c7c4d7] hover:text-white transition-colors flex items-center gap-1">
             <span className="material-symbols-outlined text-[16px]">exit_to_app</span>
             خروج

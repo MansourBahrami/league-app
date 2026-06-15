@@ -102,10 +102,14 @@ export default async function DashboardPage() {
         studiedMinutes={progressMinutes}
         goalMinutes={dailyGoalMinutes}
         isDay1={isDay1}
+        variant={state?.variant ?? "free"}
+        userCoins={state?.userCoins ?? 0}
         video={inOnboarding && state?.video ? {
           id: state.video.id,
           title: state.video.title,
           watched: state.videoWatched,
+          price: state.videoPrice,
+          purchased: state.videoPurchased,
         } : null}
       />
 

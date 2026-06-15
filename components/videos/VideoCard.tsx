@@ -13,9 +13,11 @@ interface Props {
   watchPct: number;
   isCompleted: boolean;
   isLocked?: boolean;
+  /** متن جایگزین برای حالت قفل (مثلاً راهنمای خرید در گروه paid) */
+  lockNote?: string;
 }
 
-export default function VideoCard({ video, watchPct, isCompleted, isLocked = false }: Props) {
+export default function VideoCard({ video, watchPct, isCompleted, isLocked = false, lockNote }: Props) {
   const badge = `روز ${video.day.toLocaleString("fa-IR")}`;
 
   const inner = (
@@ -44,7 +46,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
           {isLocked ? (
             <span className="text-[12px] text-outline flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">lock</span>
-              روز {video.day.toLocaleString("fa-IR")} — بعد از انجام ماموریت‌های اون روز باز میشه
+              {lockNote ?? `روز ${video.day.toLocaleString("fa-IR")} — بعد از انجام ماموریت‌های اون روز باز میشه`}
             </span>
           ) : (
             <div className="flex items-center gap-2 text-on-surface-variant text-[12px]">
@@ -66,7 +68,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
       <button
         type="button"
         className="text-right w-full"
-        onClick={() => alert(`این ویدیو روز ${video.day.toLocaleString("fa-IR")} مسیره. بعد از انجام ماموریت‌های اون روز باز میشه.`)}
+        onClick={() => alert(lockNote ?? `این ویدیو روز ${video.day.toLocaleString("fa-IR")} مسیره. بعد از انجام ماموریت‌های اون روز باز میشه.`)}
       >
         {inner}
       </button>

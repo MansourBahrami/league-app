@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import VideoCard from "@/components/videos/VideoCard";
 import { getOnboardingTotalDays, gradeFilter } from "@/lib/onboarding";
+import { getVideoPrice } from "@/lib/ab";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +13,11 @@ export default async function VideosPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { onboardingDay: true, grade: true },
+    select: { onboardingDay: true, grade: true, videoAccess: true },
   });
   if (!user) redirect("/login");
+
+  const isPaid = user.videoAccess === "paid";
 
   const totalDays = await getOnboardingTotalDays();
 
@@ -60,12 +63,27 @@ export default async function VideosPage() {
           videos.map((video) => {
             const prog = progressMap.get(video.id);
             const isCompleted = prog?.completed ?? false;
-            // روز جاری (onboardingDay+1) و روزهای گذشته باز؛ فقط روزهای آینده قفل
-            const isLocked = video.day > user.onboardingDay + 1;
+            const isFuture = video.day > user.onboardingDay + 1;
+            let isLocked: boolean;
+            let lockNote: string | undefined;
+            if (isPaid) {
+              const purchased = !!prog?.purchasedAt;
+              if (purchased) {
+                isLocked = false;
+              } else if (isFuture) {
+                isLocked = true; // روزهای آینده هنوز در دسترس نیستند
+              } else {
+                isLocked = true; // در دسترس ولی خریده‌نشده → از داشبورد بخر
+                lockNote = `برای تماشا، از داشبورد با ${getVideoPrice(video.day).toLocaleString("fa-IR")} سکه بخر`;
+              }
+            } else {
+              // گروه free: روز جاری و گذشته باز؛ فقط روزهای آینده قفل
+              isLocked = isFuture;
+            }
             const watchPct = prog && video.durationMin > 0
               ? Math.round((prog.watchedSeconds / (video.durationMin * 60)) * 100)
               : 0;
-            return <VideoCard key={video.id} video={video} watchPct={watchPct} isCompleted={isCompleted} isLocked={isLocked} />;
+            return <VideoCard key={video.id} video={video} watchPct={watchPct} isCompleted={isCompleted} isLocked={isLocked} lockNote={lockNote} />;
           })
         )}
       </div>

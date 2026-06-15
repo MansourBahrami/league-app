@@ -16,9 +16,17 @@ export default async function VideoPlayerPage({ params }: Props) {
   const video = await prisma.video.findUnique({ where: { id } });
   if (!video) notFound();
 
-  const progress = await prisma.videoProgress.findUnique({
-    where: { userId_videoId: { userId: session.userId, videoId: id } },
-  });
+  const [progress, viewer] = await Promise.all([
+    prisma.videoProgress.findUnique({
+      where: { userId_videoId: { userId: session.userId, videoId: id } },
+    }),
+    prisma.user.findUnique({ where: { id: session.userId }, select: { videoAccess: true } }),
+  ]);
+
+  // گروه paid: ویدیوهای مسیر فقط بعد از خرید قابل تماشا هستند (خرید از داشبورد)
+  if (viewer?.videoAccess === "paid" && video.day >= 1 && !progress?.purchasedAt) {
+    redirect("/dashboard");
+  }
 
   return (
     <div className="flex flex-col gap-6 px-5 pb-6">

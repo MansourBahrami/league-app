@@ -1,11 +1,17 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 interface VideoStep {
   id: string;
   title: string;
   watched: boolean;
+  /** قیمت ویدیو (سکه) — گروه paid */
+  price: number;
+  /** آیا خریده شده (گروه paid؛ برای free همیشه true) */
+  purchased: boolean;
 }
 
 interface Props {
@@ -20,6 +26,10 @@ interface Props {
   goalMinutes: number;
   isDay1?: boolean;
   video?: VideoStep | null;
+  /** گروه A/B دسترسی به ویدیو */
+  variant?: "free" | "paid";
+  /** موجودی سکه‌ی کاربر (برای گروه paid) */
+  userCoins?: number;
 }
 
 const ICONS = ["school", "menu_book", "timer", "trending_up", "bolt", "emoji_events"];
@@ -33,7 +43,26 @@ export default function DailyMissionCard({
   goalMinutes,
   isDay1 = false,
   video = null,
+  variant = "free",
+  userCoins = 0,
 }: Props) {
+  const router = useRouter();
+  const [buying, setBuying] = useState(false);
+  const [buyError, setBuyError] = useState("");
+
+  async function handleBuy() {
+    if (!video) return;
+    setBuying(true);
+    setBuyError("");
+    const res = await fetch(`/api/videos/${video.id}/buy`, { method: "POST" }).catch(() => null);
+    const data = await res?.json().catch(() => null);
+    if (res?.ok) {
+      router.refresh();
+    } else {
+      setBuyError(data?.error ?? "خطا در خرید");
+      setBuying(false);
+    }
+  }
   const remaining = Math.max(0, goalMinutes - studiedMinutes);
   const m = studiedMinutes % 60;
   const h = Math.floor(studiedMinutes / 60);
@@ -167,12 +196,35 @@ export default function DailyMissionCard({
               {video.watched ? "check_circle" : "play_circle"}
             </span>
             <p className="text-[15px] font-bold text-on-surface flex-1 text-right leading-snug">
-              ویدیوی «{video.title}» رو ببین!
+              {variant === "paid" && !video.purchased
+                ? `ویدیوی «${video.title}» رو بخر و ببین!`
+                : `ویدیوی «${video.title}» رو ببین!`}
             </p>
           </div>
 
           {video.watched ? (
             <p className="text-[13px] font-semibold text-secondary text-right">ویدیوی امروز رو دیدی ✓</p>
+          ) : variant === "paid" && !video.purchased ? (
+            // گروه paid: ابتدا باید با سکه خریده شود
+            <>
+              <button
+                type="button"
+                onClick={handleBuy}
+                disabled={buying || userCoins < video.price}
+                className="gamified-btn w-full bg-tertiary text-on-tertiary text-[16px] font-bold py-3 rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-tertiary/20 disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {buying ? "progress_activity" : "shopping_cart"}
+                </span>
+                {buying ? "در حال خرید..." : `خرید ویدیو با ${video.price.toLocaleString("fa-IR")} سکه`}
+              </button>
+              <p className="text-[12px] text-on-surface-variant mt-1.5 text-right">
+                {userCoins < video.price
+                  ? `${userCoins.toLocaleString("fa-IR")} سکه داری · ${(video.price - userCoins).toLocaleString("fa-IR")} سکه دیگه با درس خوندن جمع کن`
+                  : `${userCoins.toLocaleString("fa-IR")} سکه داری`}
+              </p>
+              {buyError && <p className="text-[12px] text-error mt-1 text-right">{buyError}</p>}
+            </>
           ) : (
             <Link
               href={`/videos/${video.id}`}

@@ -15,6 +15,21 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { watchedSeconds, totalSeconds } = await req.json();
   const completed = totalSeconds > 0 && watchedSeconds / totalSeconds >= 0.9;
 
+  // گروه paid: بدون خرید، پیشرفت/جایزه ثبت نمی‌شود (محافظ دوم؛ پلیر هم مسدود است)
+  const [viewer, video] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.userId }, select: { videoAccess: true } }),
+    prisma.video.findUnique({ where: { id }, select: { day: true } }),
+  ]);
+  if (viewer?.videoAccess === "paid" && (video?.day ?? 0) >= 1) {
+    const owned = await prisma.videoProgress.findUnique({
+      where: { userId_videoId: { userId: session.userId, videoId: id } },
+      select: { purchasedAt: true },
+    });
+    if (!owned?.purchasedAt) {
+      return NextResponse.json({ error: "ابتدا ویدیو را خریداری کنید", needsPurchase: true }, { status: 403 });
+    }
+  }
+
   const progress = await prisma.videoProgress.upsert({
     where: { userId_videoId: { userId: session.userId, videoId: id } },
     update: { watchedSeconds, totalSeconds, completed },
