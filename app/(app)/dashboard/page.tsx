@@ -3,9 +3,13 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { getLeaderboardMessage, effectiveStreak } from "@/lib/gamification";
 import { getOnboardingState } from "@/lib/onboarding";
+import { getWeeklyMissionState } from "@/lib/weekly-mission";
+import { processUserMissions } from "@/lib/mission";
 import { tehranDayStart } from "@/lib/date";
 import StudyTimer from "@/components/dashboard/StudyTimer";
 import DailyMissionCard from "@/components/dashboard/DailyMissionCard";
+import WeeklyMissionCard from "@/components/dashboard/WeeklyMissionCard";
+import StreakCard from "@/components/dashboard/StreakCard";
 import CloseCompetitors from "@/components/dashboard/CloseCompetitors";
 
 export const dynamic = "force-dynamic";
@@ -62,13 +66,23 @@ export default async function DashboardPage() {
   const streak = effectiveStreak(user?.streak ?? 0, user?.lastStudyDate ?? null);
 
   const dailyGoalMinutes = state?.goalMinutes ?? 120;
-  const progressMinutes = inOnboarding ? (state?.stepMinutes ?? 0) : todayMinutes;
+  const progressMinutes = state?.stepMinutes ?? 0;
   const progressPercent = Math.min(100, Math.round((progressMinutes / dailyGoalMinutes) * 100));
+
+  // بعد از آنبوردینگ: فعال‌سازی ماموریت‌های pending + وضعیت ماموریت هفتگی
+  let weeklyState = null;
+  if (!inOnboarding) {
+    await processUserMissions(session.userId);
+    weeklyState = await getWeeklyMissionState(session.userId);
+  }
 
   return (
     <div className="flex flex-col gap-3 px-4">
-      {/* Streak banner */}
-      {streak > 0 && (
+      {/* استریک بالای صفحه فقط بعد از آنبوردینگ (جایگزین باکس مسیر) */}
+      {!inOnboarding && <StreakCard streak={streak} studiedToday={todayMinutes > 0} />}
+
+      {/* Streak banner (فقط حین آنبوردینگ) */}
+      {inOnboarding && streak > 0 && (
         <section className="glass-card rounded-2xl p-3 flex items-center gap-2.5 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim">
           <span className="material-symbols-outlined text-tertiary text-[22px] streak-flame" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
           <div className="text-right flex-1">
@@ -93,25 +107,29 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {/* مسیر ۶ روزه + ماموریت امروز (ادغام‌شده) */}
-      <DailyMissionCard
-        inOnboarding={inOnboarding}
-        currentDay={user?.onboardingDay ?? 0}
-        totalDays={state?.totalDays ?? 6}
-        progress={progressPercent}
-        studiedMinutes={progressMinutes}
-        goalMinutes={dailyGoalMinutes}
-        isDay1={isDay1}
-        variant={state?.variant ?? "free"}
-        userCoins={state?.userCoins ?? 0}
-        video={inOnboarding && state?.video ? {
-          id: state.video.id,
-          title: state.video.title,
-          watched: state.videoWatched,
-          price: state.videoPrice,
-          purchased: state.videoPurchased,
-        } : null}
-      />
+      {/* آنبوردینگ: مسیر ۶ روزه + ماموریت روز | بعد از آن: ماموریت هفتگی (یا دعوت به انتخاب) */}
+      {inOnboarding ? (
+        <DailyMissionCard
+          inOnboarding={inOnboarding}
+          currentDay={user?.onboardingDay ?? 0}
+          totalDays={state?.totalDays ?? 6}
+          progress={progressPercent}
+          studiedMinutes={progressMinutes}
+          goalMinutes={dailyGoalMinutes}
+          isDay1={isDay1}
+          variant={state?.variant ?? "free"}
+          userCoins={state?.userCoins ?? 0}
+          video={state?.video ? {
+            id: state.video.id,
+            title: state.video.title,
+            watched: state.videoWatched,
+            price: state.videoPrice,
+            purchased: state.videoPurchased,
+          } : null}
+        />
+      ) : (
+        <WeeklyMissionCard state={weeklyState} />
+      )}
 
       {/* Study Timer */}
       <StudyTimer userId={session.userId} isLeadComplete={user?.isLeadComplete ?? false} />
