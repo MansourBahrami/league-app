@@ -109,6 +109,16 @@ export default async function ProfilePage() {
         </div>
       </section>
 
+      {/* بازار ماموریت‌ها */}
+      <a href="/missions" className="glass-card rounded-xl p-4 flex items-center gap-3 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
+        <span className="material-symbols-outlined text-tertiary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
+        <div className="text-right flex-1">
+          <p className="text-[15px] font-bold text-on-surface">بازار ماموریت‌ها</p>
+          <p className="text-[12px] text-on-surface-variant">ماموریت هفتگی انتخاب کن و جایزه بگیر</p>
+        </div>
+        <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
+      </a>
+
       {/* Notifications */}
       <NotificationToggle />
 

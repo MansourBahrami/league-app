@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: "center_focus_strong", label: "تمرکز" },
-  { href: "/missions", icon: "military_tech", label: "ماموریت‌ها" },
   { href: "/feed", icon: "bolt", label: "بورد زنده" },
   { href: "/leaderboard", icon: "leaderboard", label: "جدول‌برتر" },
   { href: "/profile", icon: "person", label: "پروفایل" },

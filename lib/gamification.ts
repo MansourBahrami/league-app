@@ -1,3 +1,5 @@
+import { tehranDayDiff } from "@/lib/date";
+
 /**
  * جدول سطوح کاربری.
  * `requiredMedals` ساختار OR-of-AND دارد (آرایه بیرونی = «یا»، درونی = «و»)؛
@@ -105,11 +107,7 @@ export function getOnboardingDailyGoalMinutes(
  */
 export function effectiveStreak(streak: number, lastStudyDate: Date | string | null): number {
   if (!lastStudyDate) return 0;
-  const last = new Date(lastStudyDate);
-  last.setHours(0, 0, 0, 0);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const diffDays = Math.round((today.getTime() - last.getTime()) / 86400000);
+  const diffDays = tehranDayDiff(new Date(), new Date(lastStudyDate));
   return diffDays <= 1 ? streak : 0;
 }
 

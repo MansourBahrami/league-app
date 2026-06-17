@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { getLeaderboardMessage, effectiveStreak } from "@/lib/gamification";
 import { getOnboardingState } from "@/lib/onboarding";
+import { tehranDayStart } from "@/lib/date";
 import StudyTimer from "@/components/dashboard/StudyTimer";
 import DailyMissionCard from "@/components/dashboard/DailyMissionCard";
 import CloseCompetitors from "@/components/dashboard/CloseCompetitors";
@@ -14,8 +15,7 @@ const LEVEL_LABELS: Record<string, string> = {
 };
 
 async function getDashboardData(userId: string) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = tehranDayStart(); // مرز روز به وقت تهران
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
   const [user, todayAggregate] = await Promise.all([

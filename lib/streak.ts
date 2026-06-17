@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
 import { fireEvent } from "@/lib/notification-engine";
+import { tehranDayStart, tehranDayDiff } from "@/lib/date";
 
 /**
  * استریک = تعداد روزهای تقویمی متوالی که کاربر حداقل یک جلسه مطالعه داشته.
@@ -19,16 +20,13 @@ export async function applyStreak(
   });
   if (!user) return { streak: 0, milestone: null };
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = tehranDayStart(); // شروع روز به وقت تهران
 
   let newStreak = user.streak;
   if (!user.lastStudyDate) {
     newStreak = 1;
   } else {
-    const last = new Date(user.lastStudyDate);
-    last.setHours(0, 0, 0, 0);
-    const diffDays = Math.round((today.getTime() - last.getTime()) / 86400000);
+    const diffDays = tehranDayDiff(new Date(), new Date(user.lastStudyDate));
     if (diffDays === 0) {
       return { streak: user.streak, milestone: null }; // امروز قبلاً شمرده شده
     } else if (diffDays === 1) {
