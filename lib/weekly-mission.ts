@@ -13,6 +13,8 @@ import { tehranDayStart, tehranDayDiff } from "@/lib/date";
  */
 export interface WeeklyMissionState {
   hasActive: boolean;
+  /** ماموریت خریده شده ولی هنوز فعال نشده (از فردا شروع می‌شود) */
+  pending: boolean;
   targetHours: number;
   weeklyGoalMin: number;
   weeklyStudiedMin: number;
@@ -20,12 +22,14 @@ export interface WeeklyMissionState {
   dailyGoalMin: number;
   dailyStudiedMin: number;
   isRestDay: boolean; // روز ۷ و هدف هفتگی کامل
+  activatesAt: Date;
   expiresAt: Date;
 }
 
 export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissionState | null> {
+  // ماموریت فعال یا در انتظارِ فعال‌سازی (تازه‌خریده‌شده، از فردا)
   const um = await prisma.userMission.findFirst({
-    where: { userId, status: "active" },
+    where: { userId, status: { in: ["active", "pending"] } },
     include: { mission: true },
     orderBy: { activatesAt: "desc" },
   });
@@ -33,6 +37,24 @@ export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissi
 
   const weeklyGoalMin = um.mission.targetHours * 60;
   const now = new Date();
+
+  // حالت pending: هنوز شروع نشده — پیش‌نمایش هدف روزانه/هفتگی بدون پیشرفت
+  if (um.status === "pending") {
+    return {
+      hasActive: false,
+      pending: true,
+      targetHours: um.mission.targetHours,
+      weeklyGoalMin,
+      weeklyStudiedMin: 0,
+      dayIndex: 0,
+      dailyGoalMin: Math.round(weeklyGoalMin / 6),
+      dailyStudiedMin: 0,
+      isRestDay: false,
+      activatesAt: um.activatesAt,
+      expiresAt: um.expiresAt,
+    };
+  }
+
   const dayIndex = Math.min(7, Math.max(1, tehranDayDiff(now, um.activatesAt) + 1));
 
   const [weekAgg, todayAgg] = await Promise.all([
@@ -61,6 +83,7 @@ export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissi
 
   return {
     hasActive: true,
+    pending: false,
     targetHours: um.mission.targetHours,
     weeklyGoalMin,
     weeklyStudiedMin,
@@ -68,6 +91,7 @@ export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissi
     dailyGoalMin,
     dailyStudiedMin,
     isRestDay,
+    activatesAt: um.activatesAt,
     expiresAt: um.expiresAt,
   };
 }

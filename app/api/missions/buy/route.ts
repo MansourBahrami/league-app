@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { tehranDayStart } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -25,10 +26,8 @@ export async function POST(req: NextRequest) {
   });
   if (existing) return NextResponse.json({ error: "ماموریت فعال دارید" }, { status: 400 });
 
-  // ماموریت از ابتدای روز بعد فعال می‌شود و ۷ روز بعد از آن منقضی می‌شود
-  const activatesAt = new Date();
-  activatesAt.setDate(activatesAt.getDate() + 1);
-  activatesAt.setHours(0, 0, 0, 0);
+  // ماموریت از ابتدای روزِ بعد (به وقت تهران) فعال و ۷ روز بعد منقضی می‌شود
+  const activatesAt = new Date(tehranDayStart().getTime() + 24 * 60 * 60 * 1000);
   const expiresAt = new Date(activatesAt.getTime() + 7 * 24 * 60 * 60 * 1000);
 
   const activityUser = await prisma.user.findUnique({

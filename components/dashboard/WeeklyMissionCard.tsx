@@ -26,6 +26,29 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
     );
   }
 
+  // حالت pending: ماموریت خریده شده ولی از فردا شروع می‌شود
+  if (state.pending) {
+    return (
+      <section className="glass-card rounded-2xl p-4">
+        <div className="flex items-center gap-2 mb-3 flex-row-reverse">
+          <span className="material-symbols-outlined text-secondary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          <h3 className="text-[16px] font-bold text-on-surface flex-1 text-right">ماموریت هفتگی انتخاب شد! ✅</h3>
+        </div>
+        <div className="bg-primary-fixed/60 rounded-xl p-4 text-center">
+          <p className="text-[15px] font-bold text-on-surface mb-1">
+            ماموریت {state.targetHours.toLocaleString("fa-IR")} ساعتی از <span className="text-primary">فردا</span> شروع می‌شه
+          </p>
+          <p className="text-[13px] text-on-surface-variant leading-relaxed">
+            هدف روزانه‌ات می‌شه حدود <span className="font-bold text-primary">{formatStudyMinutes(state.dailyGoalMin)}</span> (۶ روز) — روز ۷ استراحت/جبران.
+          </p>
+        </div>
+        <p className="text-[12px] text-on-surface-variant/80 mt-2 text-right">
+          امروز هم می‌تونی شروع کنی و درس بخونی؛ ماموریت رسماً از فردا شمارش می‌شه.
+        </p>
+      </section>
+    );
+  }
+
   const dailyPct = state.dailyGoalMin > 0 ? Math.min(100, Math.round((state.dailyStudiedMin / state.dailyGoalMin) * 100)) : 100;
   const weeklyPct = state.weeklyGoalMin > 0 ? Math.min(100, Math.round((state.weeklyStudiedMin / state.weeklyGoalMin) * 100)) : 0;
   const dailyDone = state.dailyStudiedMin >= state.dailyGoalMin;
