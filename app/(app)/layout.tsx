@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, hasSeenIntro: true, videoAccess: true },
+    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, hasSeenIntro: true, videoAccess: true, phone: true },
   });
 
   if (!user) redirect("/login");
@@ -20,8 +20,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     await ensureVariant(user.id, user.videoAccess);
   }
 
+  // قفل اپ تا تکمیل لید (بعد از روز اول، اطلاعات + موبایلِ تأییدشده اجباری است)
+  const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
+
   return (
-    <AppShell user={user} showWelcome={!user.hasSeenIntro}>
+    <AppShell user={user} showWelcome={!user.hasSeenIntro} needsLead={needsLead} hasPhone={!!user.phone}>
       {children}
     </AppShell>
   );

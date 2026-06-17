@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { enablePush } from "@/components/push/PushRegister";
 
 /* ---------- ویژوال هر اسلاید ---------- */
 
@@ -94,6 +95,21 @@ function VideosVisual() {
   );
 }
 
+function NotificationVisual() {
+  return (
+    <div className="glass-card rounded-2xl p-5 w-full flex flex-col gap-3">
+      <div className="flex items-center gap-3 flex-row-reverse bg-[#e5eeff] rounded-xl p-3">
+        <span className="material-symbols-outlined text-[#4648d4] text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+        <p className="text-[13px] font-semibold text-[#0b1c30] flex-1 text-right">زنجیره‌ات در خطره! امروز هنوز درس نخوندی 🔥</p>
+      </div>
+      <div className="flex items-center gap-3 flex-row-reverse bg-[#fff7eb] rounded-xl p-3">
+        <span className="material-symbols-outlined text-[#825100] text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>trending_up</span>
+        <p className="text-[13px] font-semibold text-[#0b1c30] flex-1 text-right">سارا ازت جلو زد! جبران کن 💪</p>
+      </div>
+    </div>
+  );
+}
+
 function InstallVisual() {
   return (
     <div className="flex flex-col gap-3 w-full">
@@ -129,6 +145,13 @@ const SLIDES = [
     title: "تایمرو روشن کن و درسو شروع کن",
     desc: "با یه لمس، تایمر مطالعه‌ات شروع میشه. تمرکز کن و بذار زمان برات کار کنه.",
     visual: <TimerVisual />,
+  },
+  {
+    icon: "notifications_active",
+    title: "بذار حواسمون بهت باشه",
+    desc: "با اجازه‌ی نوتیفیکیشن، وقتی رقیبت ازت جلو می‌زنه یا زنجیره‌ی مطالعه‌ات در خطره بهت خبر می‌دیم تا عقب نیفتی.",
+    visual: <NotificationVisual />,
+    action: "push" as const,
   },
   {
     icon: "bolt",
@@ -168,10 +191,22 @@ const HOUR_OPTIONS = [
 
 export default function WelcomeSlides() {
   const router = useRouter();
-  const [step, setStep] = useState(0); // 0..3 اسلایدها، 4 پرسش ساعت
+  const [step, setStep] = useState(0); // اسلایدها سپس پرسش ساعت
   const [pastHours, setPastHours] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [busyPush, setBusyPush] = useState(false);
   const isQuestion = step === SLIDES.length;
+
+  async function handleNext() {
+    // اسلاید نوتیفیکیشن: قبل از رفتن به بعدی، درخواست اجازه (بی‌اثر اگر رد شود)
+    const slide = SLIDES[step];
+    if (slide && "action" in slide && slide.action === "push") {
+      setBusyPush(true);
+      await enablePush().catch(() => {});
+      setBusyPush(false);
+    }
+    setStep((s) => s + 1);
+  }
 
   async function finish() {
     setSaving(true);
@@ -253,11 +288,22 @@ export default function WelcomeSlides() {
 
         {!isQuestion ? (
           <button
-            onClick={() => setStep((s) => s + 1)}
-            className="gamified-btn w-full bg-[#4648d4] text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#4648d4]/20"
+            onClick={handleNext}
+            disabled={busyPush}
+            className="gamified-btn w-full bg-[#4648d4] text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#4648d4]/20 disabled:opacity-60"
           >
-            {step === SLIDES.length - 1 ? "بزن بریم!" : "بعدی"}
-            <span className="material-symbols-outlined text-[20px]" style={{ transform: "scaleX(-1)" }}>arrow_forward</span>
+            {busyPush ? (
+              <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+            ) : (
+              <>
+                {"action" in SLIDES[step] && SLIDES[step].action === "push"
+                  ? "اجازه می‌دم"
+                  : step === SLIDES.length - 1
+                  ? "بزن بریم!"
+                  : "بعدی"}
+                <span className="material-symbols-outlined text-[20px]" style={{ transform: "scaleX(-1)" }}>arrow_forward</span>
+              </>
+            )}
           </button>
         ) : (
           <button

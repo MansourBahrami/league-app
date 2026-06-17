@@ -42,15 +42,15 @@ export async function PATCH(req: NextRequest) {
     updateData.day1GoalMinutes = getDay1MissionHours(pastAvgStudyHours, hourOfDay) * 60;
   }
 
-  // Mark lead as complete if name + grade + field all present
+  // تکمیل لید فقط وقتی نام + پایه + رشته + موبایلِ تأییدشده موجود باشد
   const current = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { name: true, grade: true, field: true, isLeadComplete: true },
+    select: { name: true, grade: true, field: true, phone: true, isLeadComplete: true },
   });
   const mergedName = name ?? current?.name;
   const mergedGrade = grade ?? current?.grade;
   const mergedField = field ?? current?.field;
-  if (mergedName && mergedGrade && mergedField) updateData.isLeadComplete = true;
+  if (mergedName && mergedGrade && mergedField && current?.phone) updateData.isLeadComplete = true;
 
   const user = await prisma.user.update({
     where: { id: session.userId },

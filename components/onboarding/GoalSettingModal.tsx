@@ -179,6 +179,14 @@ export default function GoalSettingModal({
           <p className="text-[14px] text-on-surface-variant">
             {fmt(durationMin)} مطالعه{inOnboarding ? ` — روز ${onboardingDay.toLocaleString("fa-IR")}` : ""}
           </p>
+          {dayCompleted && inOnboarding && (
+            <div className="mt-3 bg-secondary-container/40 rounded-xl p-2.5">
+              <p className="text-[13px] font-semibold text-on-surface leading-relaxed">
+                ماموریت امروزت تموم شد! 🎉 فردا ماموریت جدیدت شروع می‌شه —
+                <span className="text-secondary font-bold"> ولی می‌تونی همین امروز هم ادامه بدی و جلوتر بزنی.</span>
+              </p>
+            </div>
+          )}
         </div>
 
         {/* پرسش هدف فردا */}

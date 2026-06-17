@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import Header from "./Header";
 import BottomNav from "./BottomNav";
 import WelcomeSlides from "@/components/onboarding/WelcomeSlides";
+import LeadCaptureModal from "@/components/onboarding/LeadCaptureModal";
 import PushRegister from "@/components/push/PushRegister";
 
 interface User {
@@ -21,14 +23,22 @@ interface AppShellProps {
   user: User;
   children: React.ReactNode;
   showWelcome?: boolean;
+  /** قفل اپ تا تکمیل لید (نام/پایه/رشته + موبایلِ تأییدشده) */
+  needsLead?: boolean;
+  hasPhone?: boolean;
 }
 
-export default function AppShell({ user, children, showWelcome = false }: AppShellProps) {
+export default function AppShell({ user, children, showWelcome = false, needsLead = false, hasPhone = false }: AppShellProps) {
+  const router = useRouter();
   // مقادیر مستقیم از prop سرور؛ با router.refresh() (بعد از خرید/پایان جلسه) به‌روز می‌شوند
   return (
     <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-24 md:pb-8">
       <PushRegister />
       {showWelcome && <WelcomeSlides />}
+      {/* قفل اجباری لید بعد از روز اول — تا تکمیل نشود کل اپ مسدود است */}
+      {needsLead && !showWelcome && (
+        <LeadCaptureModal hasPhone={hasPhone} onComplete={() => router.refresh()} />
+      )}
       {/* Cyber grid background */}
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"

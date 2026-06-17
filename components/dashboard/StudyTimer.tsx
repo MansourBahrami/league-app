@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
-const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 
 type TimerState = "idle" | "running" | "paused" | "done";
@@ -41,7 +40,6 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
   const [timerState, setTimerState] = useState<TimerState>("idle");
   const [secondsLeft, setSecondsLeft] = useState(60 * 60);
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [showLeadCapture, setShowLeadCapture] = useState(false);
   const [showGoalSetting, setShowGoalSetting] = useState(false);
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
   const [floats, setFloats] = useState<FloatReward[]>([]);
@@ -82,11 +80,8 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
     if (!data) return;
     setSessionResult(data);
     localStorage.removeItem("study_session");
-    if (data.needsLeadCapture) {
-      setShowLeadCapture(true);
-    } else {
-      setShowGoalSetting(true);
-    }
+    // لید (موبایل اجباری) از طریق گیتِ AppShell بعد از router.refresh مدیریت می‌شود
+    setShowGoalSetting(true);
   }
 
   const tick = useCallback(async () => {
@@ -273,15 +268,6 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
           </button>
         )}
       </section>
-
-      {showLeadCapture && (
-        <LeadCaptureModal
-          onComplete={() => {
-            setShowLeadCapture(false);
-            setShowGoalSetting(true);
-          }}
-        />
-      )}
 
       {showGoalSetting && sessionResult && (
         <GoalSettingModal
