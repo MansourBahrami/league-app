@@ -27,12 +27,16 @@ export async function PATCH(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, grade, field, nextStudyTarget, hasSeenIntro, pastAvgStudyHours } = body;
+  const { name, grade, field, nextStudyTarget, hasSeenIntro, pastAvgStudyHours, avatarUrl } = body;
 
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (grade !== undefined) updateData.grade = grade;
   if (field !== undefined) updateData.field = field;
+  // فقط آواتارهای آماده‌ی محلی پذیرفته می‌شوند (بدون آپلود)
+  if (avatarUrl !== undefined && typeof avatarUrl === "string" && /^\/avatars\/[a-z0-9-]+\.svg$/.test(avatarUrl)) {
+    updateData.avatarUrl = avatarUrl;
+  }
   if (nextStudyTarget !== undefined) updateData.nextStudyTarget = nextStudyTarget ? new Date(nextStudyTarget) : null;
   if (hasSeenIntro !== undefined) updateData.hasSeenIntro = hasSeenIntro;
   if (pastAvgStudyHours !== undefined) {

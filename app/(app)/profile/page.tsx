@@ -8,6 +8,7 @@ import { getNextLevelRequirement, effectiveStreak, formatStudyMinutes, xpToStudy
 import { getUserMedalCounts } from "@/lib/mission";
 import NotificationToggle from "@/components/push/NotificationToggle";
 import StarBadge from "@/components/ui/StarBadge";
+import AvatarPicker from "@/components/profile/AvatarPicker";
 
 export const dynamic = "force-dynamic";
 
@@ -52,15 +53,7 @@ export default async function ProfilePage() {
       <section className="glass-card rounded-xl p-6 flex flex-col items-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-full h-24 bg-gradient-to-b from-primary-fixed to-transparent opacity-50 z-0" />
         <div className="relative z-10 flex flex-col items-center w-full">
-          <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg mb-4 overflow-hidden">
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} className="w-full h-full object-cover" alt={user.name ?? ""} />
-            ) : (
-              <div className="w-full h-full bg-primary-fixed flex items-center justify-center text-[36px] font-extrabold text-primary">
-                {user.name ? user.name[0] : "؟"}
-              </div>
-            )}
-          </div>
+          <AvatarPicker currentUrl={user.avatarUrl} name={user.name} />
           <h2 className="text-[24px] font-bold text-on-surface mb-1">{user.name ?? "نام وارد نشده"}</h2>
           <p className="text-[14px] text-on-surface-variant mb-1">
             {[user.grade, user.field].filter(Boolean).join(" • ") || user.phone}

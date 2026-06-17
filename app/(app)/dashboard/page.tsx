@@ -11,6 +11,7 @@ import DailyMissionCard from "@/components/dashboard/DailyMissionCard";
 import WeeklyMissionCard from "@/components/dashboard/WeeklyMissionCard";
 import StreakCard from "@/components/dashboard/StreakCard";
 import CloseCompetitors from "@/components/dashboard/CloseCompetitors";
+import StudyReportCard from "@/components/dashboard/StudyReportCard";
 
 export const dynamic = "force-dynamic";
 
@@ -151,6 +152,9 @@ export default async function DashboardPage() {
 
       {/* Close Competitors */}
       <CloseCompetitors userId={session.userId} />
+
+      {/* گزارش تقویم‌محور مطالعه (ته صفحه) */}
+      <StudyReportCard userId={session.userId} />
     </div>
   );
 }
