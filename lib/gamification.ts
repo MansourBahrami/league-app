@@ -40,9 +40,25 @@ export const MISSION_TABLE = [
 ];
 
 /** هر ۱۵ دقیقه مطالعه = 1 XP + 1 سکه */
+export const MINUTES_PER_XP = 15;
 export function calcRewards(minutes: number): { xp: number; coins: number } {
   const intervals = Math.floor(minutes / 15);
   return { xp: intervals, coins: intervals };
+}
+
+/** تبدیل اختلاف XP به دقیقه‌ی مطالعه‌ی معادل (هر XP = ۱۵ دقیقه) */
+export function xpToStudyMinutes(xp: number): number {
+  return Math.max(0, Math.round(xp)) * MINUTES_PER_XP;
+}
+
+/** قالب‌بندی دقیقه به فارسی: «۹۰ دقیقه» یا «۱ ساعت و ۳۰ دقیقه» */
+export function formatStudyMinutes(min: number): string {
+  const m = Math.max(0, Math.round(min));
+  const h = Math.floor(m / 60);
+  const rem = m % 60;
+  if (h === 0) return `${m.toLocaleString("fa-IR")} دقیقه`;
+  if (rem === 0) return `${h.toLocaleString("fa-IR")} ساعت`;
+  return `${h.toLocaleString("fa-IR")} ساعت و ${rem.toLocaleString("fa-IR")} دقیقه`;
 }
 
 /** هزینه سکه برای باز کردن مشاهده لاگ مطالعه یک کاربر دیگر (تا ۱ روز) */

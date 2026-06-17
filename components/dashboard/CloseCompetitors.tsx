@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { formatStudyMinutes, xpToStudyMinutes } from "@/lib/gamification";
 
 interface Props {
   userId: string;
@@ -60,7 +61,7 @@ export default async function CloseCompetitors({ userId }: Props) {
               )}
               <span className="text-[13px] font-bold text-on-surface truncate w-full">{info?.name ?? "کاربر"}</span>
               <span className="text-[12px] text-tertiary">
-                +{(c.weeklyXp - myWeekly).toLocaleString("fa-IR")} XP تا عبور
+                {formatStudyMinutes(xpToStudyMinutes(c.weeklyXp - myWeekly))} مطالعه تا عبور
               </span>
             </div>
           );

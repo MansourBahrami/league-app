@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import StarBadge from "@/components/ui/StarBadge";
 
 interface User {
   name: string | null;
@@ -42,11 +43,9 @@ export default function Header({ user, xp, coins }: HeaderProps) {
               </div>
             )}
           </div>
-          {/* Stars */}
-          <div className="absolute -bottom-2 -left-2 bg-white rounded-full border border-tertiary-fixed-dim px-1.5 py-0.5 shadow-sm flex items-center gap-0.5">
-            {Array.from({ length: user.stars }).map((_, i) => (
-              <span key={i} className="material-symbols-outlined text-[10px] text-tertiary-fixed-dim" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-            ))}
+          {/* Stars: قاب ۳ ستاره (خاموش/روشن) */}
+          <div className="absolute -bottom-2 -left-2 bg-white rounded-full border border-tertiary-fixed-dim px-1 py-0.5 shadow-sm">
+            <StarBadge stars={user.stars} total={3} size={10} />
           </div>
         </div>
         <div className="flex flex-col items-end">
@@ -54,7 +53,7 @@ export default function Header({ user, xp, coins }: HeaderProps) {
             {user.name ?? "تمرکز"}
           </span>
           <span className="text-[11px] font-semibold text-on-surface-variant">
-            {LEVEL_LABELS[user.level] ?? user.level}
+            {LEVEL_LABELS[user.level] ?? user.level} ـ {user.stars.toLocaleString("fa-IR")} ستاره
           </span>
         </div>
       </Link>

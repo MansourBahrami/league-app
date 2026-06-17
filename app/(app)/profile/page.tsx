@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import StatsGrid from "@/components/profile/StatsGrid";
 import MedalsSection from "@/components/profile/MedalsSection";
 import ProfileActions from "@/components/profile/ProfileActions";
-import { getNextLevelRequirement, effectiveStreak } from "@/lib/gamification";
+import { getNextLevelRequirement, effectiveStreak, formatStudyMinutes, xpToStudyMinutes } from "@/lib/gamification";
 import { getUserMedalCounts } from "@/lib/mission";
 import NotificationToggle from "@/components/push/NotificationToggle";
+import StarBadge from "@/components/ui/StarBadge";
 
 export const dynamic = "force-dynamic";
 
@@ -65,10 +66,10 @@ export default async function ProfilePage() {
             {[user.grade, user.field].filter(Boolean).join(" • ") || user.phone}
           </p>
           <div className="flex items-center gap-2 mb-1">
-            <span className="bg-primary-fixed text-primary px-3 py-1 rounded-full text-[13px] font-bold">{user.level}</span>
-            {Array.from({ length: user.stars }).map((_, i) => (
-              <span key={i} className="material-symbols-outlined text-tertiary-fixed-dim text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-            ))}
+            <span className="bg-primary-fixed text-primary px-3 py-1 rounded-full text-[13px] font-bold">
+              {user.level} ـ {user.stars.toLocaleString("fa-IR")} ستاره
+            </span>
+            <StarBadge stars={user.stars} total={3} size={16} />
           </div>
           {streak > 0 && (
             <div className="flex items-center gap-1 mb-4 text-tertiary">
@@ -83,7 +84,7 @@ export default async function ProfilePage() {
               <span className="text-[13px] font-semibold text-primary">{user.xp.toLocaleString("fa-IR")} XP</span>
               {nextReq ? (
                 <span className="text-[13px] text-on-surface-variant">
-                  تا {nextReq.level} {Array.from({ length: nextReq.stars }).map(() => "⭐").join("")}: {xpToNext > 0 ? `${xpToNext.toLocaleString("fa-IR")} XP` : "XP کافی"}
+                  تا {nextReq.level} ({nextReq.stars.toLocaleString("fa-IR")} ستاره): {xpToNext > 0 ? `${formatStudyMinutes(xpToStudyMinutes(xpToNext))} مطالعه` : "آماده ارتقا"}
                 </span>
               ) : (
                 <span className="text-[13px] text-secondary font-bold">بالاترین سطح! 🏆</span>
