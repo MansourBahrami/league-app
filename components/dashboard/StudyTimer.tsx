@@ -199,74 +199,83 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
 
   return (
     <>
-      <section className="glass-card rounded-xl p-5">
-        {/* ردیف فشرده: زمان + کنترل‌ها کنار هم تا فضای کمتری بگیرد */}
-        <div className="flex items-center gap-4 flex-row-reverse">
-          {/* قاب داینامیک تایمر */}
-          <div className={`relative rounded-2xl p-3 shrink-0 ${timerState === "running" ? "timer-frame-running" : "border-2 border-outline-variant"}`}>
-            <div className="flex flex-col items-center min-w-[104px] relative">
-              {/* جایزه لحظه‌ای شناور */}
-              {floats.map((f) => (
-                <span key={f.id} className="reward-float absolute -top-1 right-0 text-[13px] font-extrabold text-secondary whitespace-nowrap">
-                  +۱ XP · +۱ سکه
-                </span>
-              ))}
-              <span className="text-[34px] leading-none font-extrabold text-primary" dir="ltr" style={{ fontVariant: "tabular-nums" }}>
-                {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
-              </span>
-              <div className="w-full h-1.5 bg-surface-container rounded-full overflow-hidden mt-2" dir="ltr">
-                <div
-                  className="h-full bg-gradient-to-l from-primary to-primary-container rounded-full transition-all ease-linear"
-                  style={{ width: `${progress}%`, transitionDuration: timerState === "running" ? "1s" : "0s" }}
-                />
-              </div>
-            </div>
-          </div>
+      <section className="glass-card rounded-2xl p-5 relative overflow-hidden border-2 border-primary/15">
+        {/* فریم شمارش‌معکوس: هنگام اجرا دور قاب کشیده می‌شود و با گذر زمان خالی می‌شود */}
+        {isActive && (
+          <svg className="absolute inset-0 w-full h-full pointer-events-none z-0" preserveAspectRatio="none" viewBox="0 0 100 100" aria-hidden>
+            <rect
+              x="1" y="1" width="98" height="98" rx="5" fill="none"
+              stroke="var(--color-primary)" strokeWidth="2.5" strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+              pathLength={100}
+              strokeDasharray="100"
+              strokeDashoffset={100 - Number(progress)}
+              style={{ transition: timerState === "running" ? "stroke-dashoffset 1s linear" : "none" }}
+            />
+          </svg>
+        )}
 
-          {/* انتخاب مدت + توضیح */}
-          <div className="flex-1">
-            <h2 className="text-[16px] font-bold text-on-surface mb-2 text-right">زمان مطالعه</h2>
-            <div className="flex justify-end gap-1.5 flex-wrap" dir="rtl">
-              {TIMER_OPTIONS.map((min) => (
+        <div className="relative z-10">
+          {/* ردیف بالا: عنوان + انتخاب مدت (مطابق طرح) */}
+          <div className="flex items-center justify-between flex-row-reverse gap-2 mb-4">
+            <h2 className="text-[15px] font-bold text-on-surface shrink-0">تایمر مطالعه</h2>
+            <div className="flex gap-1.5" dir="ltr">
+              {[...TIMER_OPTIONS].reverse().map((min) => (
                 <button
                   key={min}
                   onClick={() => setTimer(min)}
                   disabled={timerState === "running"}
-                  className={`px-3 py-1.5 rounded-full text-[13px] font-semibold transition-all ${
+                  className={`w-10 h-10 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center ${
                     selectedMinutes === min
                       ? "bg-primary text-on-primary shadow-md scale-105"
                       : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
                 >
                   {min.toLocaleString("fa-IR")}
                 </button>
               ))}
             </div>
-            {timerState === "running" && (
-              <p className="text-[11px] text-on-surface-variant mt-2 text-right">
-                جایزه بعدی تا {minToNext.toLocaleString("fa-IR")} دقیقه دیگر
-              </p>
-            )}
           </div>
-        </div>
 
-        <button
-          onClick={handleToggle}
-          className={`gamified-btn w-full text-[17px] font-bold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg mt-4 ${btn.cls}`}
-        >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{btn.icon}</span>
-          {btn.label}
-        </button>
+          {/* نمایش زمان هنگام اجرا */}
+          {isActive && (
+            <div className="text-center mb-3 relative">
+              {floats.map((f) => (
+                <span key={f.id} className="reward-float absolute -top-2 right-1/2 translate-x-1/2 text-[13px] font-extrabold text-secondary whitespace-nowrap">
+                  +۱ XP · +۱ سکه
+                </span>
+              ))}
+              <span className="text-[44px] leading-none font-extrabold text-primary" dir="ltr" style={{ fontVariant: "tabular-nums" }}>
+                {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+              </span>
+              {timerState === "running" && (
+                <p className="text-[11px] text-on-surface-variant mt-1">جایزه بعدی تا {minToNext.toLocaleString("fa-IR")} دقیقه دیگر</p>
+              )}
+              {timerState === "paused" && (
+                <p className="text-[11px] text-tertiary font-semibold mt-1">⏸ متوقف شده</p>
+              )}
+            </div>
+          )}
 
-        {isActive && (
+          {/* دکمه اصلی */}
           <button
-            onClick={handleStop}
-            className="mt-2 w-full border-2 border-outline-variant text-on-surface-variant py-2 rounded-xl text-[15px] font-semibold hover:bg-surface-container transition-colors flex items-center justify-center gap-2"
+            onClick={handleToggle}
+            className={`gamified-btn w-full text-[17px] font-bold py-4 rounded-xl flex justify-center items-center gap-2 shadow-lg ${btn.cls}`}
           >
-            <span className="material-symbols-outlined text-[18px]">stop</span>
-            توقف و ثبت
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{btn.icon}</span>
+            {btn.label}
           </button>
-        )}
+
+          {isActive && (
+            <button
+              onClick={handleStop}
+              className="mt-2 w-full border-2 border-outline-variant text-on-surface-variant py-2 rounded-xl text-[15px] font-semibold hover:bg-surface-container transition-colors flex items-center justify-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">stop</span>
+              توقف و ثبت
+            </button>
+          )}
+        </div>
       </section>
 
       {showGoalSetting && sessionResult && (
