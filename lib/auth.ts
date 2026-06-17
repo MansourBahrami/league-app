@@ -1,15 +1,19 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
-// در production نبودِ JWT_SECRET باید اپ را متوقف کند (fail-closed) — وگرنه یک رازِ
-// قابل‌حدس امکان جعل سشن (از جمله ادمین) را می‌داد.
-const rawJwtSecret = process.env.JWT_SECRET;
-if (!rawJwtSecret && process.env.NODE_ENV === "production") {
-  throw new Error("JWT_SECRET تنظیم نشده است (در production الزامی است).");
+// راز JWT به‌صورت lazy خوانده می‌شود تا در زمان build (که JWT_SECRET هنوز در محیط
+// نیست) خطا ندهد، ولی در زمان اجرا اگر در production نبود، fail-closed شود —
+// وگرنه یک رازِ قابل‌حدس امکان جعل سشن (از جمله ادمین) را می‌داد.
+let cachedJwtSecret: Uint8Array | null = null;
+function jwtSecret(): Uint8Array {
+  if (cachedJwtSecret) return cachedJwtSecret;
+  const raw = process.env.JWT_SECRET;
+  if (!raw && process.env.NODE_ENV === "production") {
+    throw new Error("JWT_SECRET تنظیم نشده است (در production الزامی است).");
+  }
+  cachedJwtSecret = new TextEncoder().encode(raw ?? "dev-only-insecure-secret-do-not-use-in-prod");
+  return cachedJwtSecret;
 }
-const JWT_SECRET = new TextEncoder().encode(
-  rawJwtSecret ?? "dev-only-insecure-secret-do-not-use-in-prod"
-);
 
 export const COOKIE_NAME = "league_session";
 
@@ -32,12 +36,12 @@ export async function signToken(payload: { userId: string; phone: string }): Pro
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DAYS}d`)
-    .sign(JWT_SECRET);
+    .sign(jwtSecret());
 }
 
 export async function verifyToken(token: string): Promise<JwtPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, jwtSecret());
     return payload as unknown as JwtPayload;
   } catch {
     return null;
