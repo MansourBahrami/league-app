@@ -20,6 +20,21 @@ export async function POST(req: NextRequest) {
     if (!normalized || !isValidIranPhone(normalized)) {
       return NextResponse.json({ error: "شماره موبایل نامعتبر است" }, { status: 400 });
     }
+
+    // محدودیت نرخ: حداکثر ۱ کد هر ۶۰ ثانیه و ۵ کد در ساعت برای هر شماره
+    // (جلوگیری از اسپم پیامک و بمباران شماره)
+    const cooldownKey = `otp_cd:${normalized}`;
+    if (await redis.get(cooldownKey)) {
+      return NextResponse.json({ error: "کمی صبر کن و دوباره تلاش کن" }, { status: 429 });
+    }
+    const hourKey = `otp_rl:${normalized}`;
+    const count = await redis.incr(hourKey);
+    if (count === 1) await redis.expire(hourKey, 3600);
+    if (count > 5) {
+      return NextResponse.json({ error: "تعداد درخواست زیاد است؛ یک ساعت دیگر تلاش کن" }, { status: 429 });
+    }
+    await redis.set(cooldownKey, "1", "EX", 60);
+
     const otp = generateOtp();
     const expirySeconds = parseInt(process.env.OTP_EXPIRY_SECONDS ?? "300");
 

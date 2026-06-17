@@ -1,8 +1,14 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
+// در production نبودِ JWT_SECRET باید اپ را متوقف کند (fail-closed) — وگرنه یک رازِ
+// قابل‌حدس امکان جعل سشن (از جمله ادمین) را می‌داد.
+const rawJwtSecret = process.env.JWT_SECRET;
+if (!rawJwtSecret && process.env.NODE_ENV === "production") {
+  throw new Error("JWT_SECRET تنظیم نشده است (در production الزامی است).");
+}
 const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "fallback-secret-change-in-production"
+  rawJwtSecret ?? "dev-only-insecure-secret-do-not-use-in-prod"
 );
 
 export const COOKIE_NAME = "league_session";
