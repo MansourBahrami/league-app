@@ -2,13 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { signToken, setSessionCookie } from "@/lib/auth";
-
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("98")) return "0" + digits.slice(2);
-  if (digits.startsWith("9") && digits.length === 10) return "0" + digits;
-  return digits;
-}
+import { normalizePhone, normalizeDigits } from "@/lib/phone";
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,10 +11,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "شماره و کد الزامی است" }, { status: 400 });
     }
 
-    const normalized = normalizePhone(phone);
+    const normalized = normalizePhone(String(phone));
+    // کد ممکن است با ارقام فارسی وارد شده باشد
+    const normalizedCode = normalizeDigits(String(code)).trim();
     const storedOtp = await redis.get(`otp:${normalized}`);
 
-    if (!storedOtp || storedOtp !== code.trim()) {
+    if (!storedOtp || storedOtp !== normalizedCode) {
       return NextResponse.json({ error: "کد تأیید اشتباه یا منقضی شده است" }, { status: 401 });
     }
 

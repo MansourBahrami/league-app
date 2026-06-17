@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import Script from "next/script";
 import MiniAppAutoLogin from "@/components/auth/MiniAppAutoLogin";
+import { normalizeDigits } from "@/lib/phone";
 
 type Step = "phone" | "otp";
 
@@ -109,7 +110,7 @@ export default function LoginPage() {
               <input
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(normalizeDigits(e.target.value))}
                 placeholder="09123456789"
                 dir="ltr"
                 className="w-full rounded-xl border border-[#c7c4d7] bg-white/80 px-4 py-3 text-[16px] text-[#0b1c30] placeholder:text-[#767586] focus:outline-none focus:border-[#4648d4] focus:ring-2 focus:ring-[#4648d4]/20 transition-all text-center"
@@ -140,7 +141,7 @@ export default function LoginPage() {
               <input
                 type="text"
                 value={otp}
-                onChange={(e) => setOtp(e.target.value)}
+                onChange={(e) => setOtp(normalizeDigits(e.target.value))}
                 placeholder="------"
                 maxLength={6}
                 dir="ltr"

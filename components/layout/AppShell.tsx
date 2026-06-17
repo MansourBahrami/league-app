@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import Header from "./Header";
 import BottomNav from "./BottomNav";
 import WelcomeSlides from "@/components/onboarding/WelcomeSlides";
@@ -25,9 +24,7 @@ interface AppShellProps {
 }
 
 export default function AppShell({ user, children, showWelcome = false }: AppShellProps) {
-  const [xp] = useState(user.xp);
-  const [coins] = useState(user.coins);
-
+  // مقادیر مستقیم از prop سرور؛ با router.refresh() (بعد از خرید/پایان جلسه) به‌روز می‌شوند
   return (
     <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-24 md:pb-8">
       <PushRegister />
@@ -41,7 +38,7 @@ export default function AppShell({ user, children, showWelcome = false }: AppShe
         }}
       />
 
-      <Header user={user} xp={xp} coins={coins} />
+      <Header user={user} xp={user.xp} coins={user.coins} />
 
       <main className="w-full max-w-[600px] mt-20 mb-6 relative z-10">
         {children}

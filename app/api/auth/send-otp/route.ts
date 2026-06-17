@@ -2,30 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { sendOtpSms } from "@/lib/sms";
+import { normalizePhone } from "@/lib/phone";
 
 function generateOtp(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 function isValidIranPhone(phone: string): boolean {
-  return /^(\+98|0)?9[0-9]{9}$/.test(phone.trim());
-}
-
-function normalizePhone(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("98")) return "0" + digits.slice(2);
-  if (digits.startsWith("9") && digits.length === 10) return "0" + digits;
-  return digits;
+  return /^09[0-9]{9}$/.test(phone);
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { phone } = await req.json();
-    if (!phone || !isValidIranPhone(phone)) {
+    // ارقام فارسی/عربی پشتیبانی می‌شوند: اول نرمال‌سازی، بعد اعتبارسنجی
+    const normalized = normalizePhone(String(phone ?? ""));
+    if (!normalized || !isValidIranPhone(normalized)) {
       return NextResponse.json({ error: "شماره موبایل نامعتبر است" }, { status: 400 });
     }
-
-    const normalized = normalizePhone(phone);
     const otp = generateOtp();
     const expirySeconds = parseInt(process.env.OTP_EXPIRY_SECONDS ?? "300");
 

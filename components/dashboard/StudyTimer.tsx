@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
@@ -35,6 +36,7 @@ const TICK_INTERVAL = 15 * 60;
 interface FloatReward { id: number; }
 
 export default function StudyTimer({ userId, isLeadComplete }: Props) {
+  const router = useRouter();
   const [selectedMinutes, setSelectedMinutes] = useState(60);
   const [timerState, setTimerState] = useState<TimerState>("idle");
   const [secondsLeft, setSecondsLeft] = useState(60 * 60);
@@ -297,6 +299,8 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
           onClose={() => {
             setShowGoalSetting(false);
             setSessionResult(null);
+            // به‌روزرسانی داشبورد سمت سرور (پراگرس‌بار، سکه/XP هدر، وضعیت روز)
+            router.refresh();
           }}
         />
       )}
