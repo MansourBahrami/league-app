@@ -91,7 +91,7 @@ export default function LeadCaptureModal({ onComplete, hasPhone = false }: Props
   const inputCls = "w-full rounded-xl border border-[#c7c4d7] bg-white/80 px-4 py-3 text-[16px] text-[#0b1c30] placeholder:text-[#767586] focus:outline-none focus:border-[#4648d4] focus:ring-2 focus:ring-[#4648d4]/20 transition-all text-right";
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
       <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8 relative">
         <div className="flex flex-col items-center mb-6">
           <div className="w-16 h-16 rounded-2xl bg-[#4648d4] flex items-center justify-center shadow-lg shadow-[#4648d4]/30 mb-3">

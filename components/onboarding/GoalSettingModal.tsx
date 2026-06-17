@@ -101,7 +101,7 @@ export default function GoalSettingModal({
   /* ---------- حالت الف: دقیقه‌ها کامل شد ولی ویدیوی روز مانده ---------- */
   if (inOnboarding && needsVideo && rewardVideo) {
     return (
-      <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
         <Confetti count={30} />
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
@@ -135,7 +135,7 @@ export default function GoalSettingModal({
   if (inOnboarding && !dayCompleted) {
     const progressPct = Math.min(100, Math.round(((dailyGoalMinutes - remainingMinutes) / dailyGoalMinutes) * 100));
     return (
-      <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
           <div className="text-center mb-5">
@@ -169,7 +169,7 @@ export default function GoalSettingModal({
   const celebrate = dayCompleted ? "ماموریت امروز رو کامل کردی! 🎉" : durationMin >= 30 ? "آفرین! جلسه خوبی داشتی 🎉" : "شروع کردی، ادامه بده!";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
       {dayCompleted && <Confetti count={50} />}
       <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
         {rewardBadges}
