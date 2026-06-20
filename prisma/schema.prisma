@@ -50,6 +50,10 @@ model User {
   friendsReceived  Friendship[] @relation("FriendshipsReceived")
   pushSubscriptions PushSubscription[]
   tournamentEntries TournamentParticipant[]
+  reactionsMade     Reaction[]  @relation("ReactionsMade")
+  reactionsReceived Reaction[]  @relation("ReactionsReceived")
+  inboxItems        InboxItem[] @relation("InboxRecipient")
+  inboxActed        InboxItem[] @relation("InboxActor")
   // آخرین رتبه هفتگی شناخته‌شده (برای نوتیف «فلانی ازت جلو زد»)
   lastWeeklyRank   Int?
 
@@ -188,10 +192,48 @@ model ActivityLog {
   metadata  Json?
   createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
 
   @@index([createdAt(sort: Desc)])
   @@index([userId])
+}
+
+// واکنش یک کاربر به یک آیتم فید (هر کاربر روی هر آیتم فقط یک واکنش؛ قابل تغییر/برداشتن)
+model Reaction {
+  id           String   @id @default(cuid())
+  actorId      String   // واکنش‌دهنده
+  activityId   String   // آیتم فید
+  targetUserId String   // صاحب آیتم فید (denormalized برای شمارش جایزه و صندوق)
+  emoji        String   // یکی از مجموعه‌ی مجاز (lib/reaction.ts)
+  createdAt    DateTime @default(now())
+
+  actor    User        @relation("ReactionsMade", fields: [actorId], references: [id], onDelete: Cascade)
+  target   User        @relation("ReactionsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+  activity ActivityLog @relation(fields: [activityId], references: [id], onDelete: Cascade)
+
+  @@unique([actorId, activityId])
+  @@index([activityId])
+  @@index([actorId, createdAt])
+  @@index([targetUserId])
+}
+
+// صندوق پیام/نوتیفیکیشن کاربر (واکنش‌های دریافتی، جایزه‌ها؛ آماده‌ی توسعه به DM)
+model InboxItem {
+  id        String   @id @default(cuid())
+  userId    String   // گیرنده
+  type      String   // reaction | reaction_reward | system | message
+  actorId   String?  // کاربری که باعث این آیتم شد (مثلاً واکنش‌دهنده)
+  body      String?  // متن (برای پیام خصوصی آینده)
+  metadata  Json?    // داده‌ی نمایشی (emoji، نوع فعالیت، coins، ...)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user  User  @relation("InboxRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("InboxActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([userId, read])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 model OtpToken {

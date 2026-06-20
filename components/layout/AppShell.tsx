@@ -26,9 +26,10 @@ interface AppShellProps {
   /** قفل اپ تا تکمیل لید (نام/پایه/رشته + موبایلِ تأییدشده) */
   needsLead?: boolean;
   hasPhone?: boolean;
+  unreadCount?: number;
 }
 
-export default function AppShell({ user, children, showWelcome = false, needsLead = false, hasPhone = false }: AppShellProps) {
+export default function AppShell({ user, children, showWelcome = false, needsLead = false, hasPhone = false, unreadCount = 0 }: AppShellProps) {
   const router = useRouter();
   // مقادیر مستقیم از prop سرور؛ با router.refresh() (بعد از خرید/پایان جلسه) به‌روز می‌شوند
   return (
@@ -48,7 +49,7 @@ export default function AppShell({ user, children, showWelcome = false, needsLea
         }}
       />
 
-      <Header user={user} xp={user.xp} coins={user.coins} />
+      <Header user={user} xp={user.xp} coins={user.coins} unreadCount={unreadCount} />
 
       <main className="w-full max-w-[600px] mt-20 mb-6 relative z-10">
         {children}

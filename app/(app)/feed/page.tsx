@@ -1,14 +1,25 @@
 import { prisma } from "@/lib/db";
+import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth";
 import LiveFeed from "@/components/feed/LiveFeed";
+import { getReactionsForActivities } from "@/lib/reaction";
 
 export const dynamic = "force-dynamic";
 
 export default async function FeedPage() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
   const activities = await prisma.activityLog.findMany({
     orderBy: { createdAt: "desc" },
     take: 200,
     include: { user: { select: { name: true, avatarUrl: true } } },
   });
+
+  const { counts, mine } = await getReactionsForActivities(
+    activities.map((a) => a.id),
+    session.userId
+  );
 
   return (
     <div className="flex flex-col items-center w-full px-4">
@@ -24,7 +35,12 @@ export default async function FeedPage() {
         </div>
       </div>
 
-      <LiveFeed initialActivities={activities} />
+      <LiveFeed
+        initialActivities={activities}
+        meId={session.userId}
+        initialCounts={counts}
+        initialMine={mine}
+      />
     </div>
   );
 }

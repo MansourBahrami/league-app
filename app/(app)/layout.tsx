@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureVariant } from "@/lib/ab";
+import { getUnreadCount } from "@/lib/inbox";
 import AppShell from "@/components/layout/AppShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -23,8 +24,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // قفل اپ تا تکمیل لید (بعد از روز اول، اطلاعات + موبایلِ تأییدشده اجباری است)
   const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
 
+  const unreadCount = await getUnreadCount(user.id);
+
   return (
-    <AppShell user={user} showWelcome={!user.hasSeenIntro} needsLead={needsLead} hasPhone={!!user.phone}>
+    <AppShell user={user} showWelcome={!user.hasSeenIntro} needsLead={needsLead} hasPhone={!!user.phone} unreadCount={unreadCount}>
       {children}
     </AppShell>
   );
