@@ -2,7 +2,7 @@
 
 > سند فنی و محصولی پروژه. هرچیزی که برای ادامه توسعه لازم است اینجاست: استک، ساختار دیتابیس، یوزر فلو، فیچرها، و گام‌های بعدی.
 >
-> **آخرین به‌روزرسانی:** خرداد ۱۴۰۵ — **استقرار production زنده** (HTTPS با CDN پارس‌پک، ربات بله، پیامک کاوه‌نگار). فازهای ۱ تا ۲۷ تکمیل. نقشهٔ فایل‌ها: [FILES.md](FILES.md) · استقرار: [DEPLOYMENT.md](DEPLOYMENT.md) · کارهای آینده: [ROADMAP.md](ROADMAP.md).
+> **آخرین به‌روزرسانی:** خرداد ۱۴۰۵ — **استقرار production زنده** (HTTPS با CDN پارس‌پک، ربات بله، پیامک کاوه‌نگار). فازهای ۱ تا ۲۸ تکمیل (۲۸: ری‌اکشن فید + صندوق نوتیف). نقشهٔ فایل‌ها: [FILES.md](FILES.md) · استقرار: [DEPLOYMENT.md](DEPLOYMENT.md) · کارهای آینده: [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -131,6 +131,12 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 #### `ActivityLog` — فید فعالیت‌ها
 `type` (`timer_start`, `session_complete`, `mission_buy`, `medal_earn`, `level_up`, `streak`, `video_complete`)، `metadata` (JSON). ایندکس نزولی روی `createdAt` برای فید زنده.
 
+#### `Reaction` — واکنش روی آیتم فید
+`actorId` (واکنش‌دهنده)، `activityId`، `targetUserId` (صاحب آیتم، denormalized)، `emoji`. یکتا بر `[actorId, activityId]` (هر کاربر یک واکنش روی هر آیتم، قابل تغییر/برداشتن). منطق در `lib/reaction.ts`.
+
+#### `InboxItem` — صندوق پیام/نوتیف
+`userId` (گیرنده)، `type` (`reaction` / `reaction_reward` / `system` / `message`)، `actorId?`، `body?` (برای DM آینده)، `metadata` (JSON)، `read`. ایندکس‌ها روی `[userId, read]` و `[userId, createdAt desc]`. منطق در `lib/inbox.ts`. (مدل عمداً برای توسعه به پیام خصوصی آماده شده؛ DM فعلاً ساخته نشده — ریسک مودریشن کاربر زیر سن قانونی.)
+
 #### `OtpToken` — کد یکبارمصرف
 `phone` (PK)، `code`، `expiresAt`. (همچنین در Redis با TTL نگهداری می‌شود — Redis منبع اصلی اعتبارسنجی است.)
 
@@ -196,6 +202,12 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 - `ensureReferralCode(userId)` → کد دعوت یکتا (lazy).
 - `addFriendByCode(userId, code)` → دوستی دوطرفه (رد خوداضافه/تکرار).
 - `getFriendIds(userId)` → شناسه همه دوستان (هر دو جهت).
+
+### واکنش فید و صندوق (`lib/reaction.ts` + `lib/inbox.ts`)
+- `REACTION_EMOJIS` (🔥 👏 💪 ❤️ 🎯)، `toggleReaction(actorId, activityId, emoji)` → افزودن/تغییر/برداشتن + اعلان به گیرنده (صندوق + Web Push) + بررسی جایزه.
+- `getReactionsForActivities(ids, meId)` → شمارش‌ها + واکنش خودِ کاربر (برای رندر فید).
+- **جایزه‌ی روزانه‌ی تشویق**: واکنش به `REACTION_REWARD_TARGETS` (=۵) نفرِ متفاوت در یک روزِ تهران → یک‌بار `REACTION_REWARD_COINS` (=۵) سکه. idempotent با چک کردن آیتم `reaction_reward` امروزِ صندوق.
+- `lib/inbox.ts`: `createInboxItem`، `getUnreadCount` (نشان زنگوله)، `listInbox`، `markAllRead`.
 
 ---
 
@@ -338,6 +350,9 @@ league_proj_new/
 | POST | `/api/missions/buy` | `{ missionId }` | خرید ماموریت (وضعیت `pending`) |
 | POST | `/api/videos/[id]/progress` | `{ watchedSeconds, totalSeconds }` | ثبت پیشرفت + جایزه ۹۰٪ (۲× اگر در ۲۴ ساعت اول) + احتمال تکمیل روز آنبوردینگ |
 | GET | `/api/feed/stream` | — | SSE stream فعالیت‌ها |
+| POST | `/api/feed/[id]/react` | `{ emoji }` | افزودن/تغییر/برداشتن واکنش روی آیتم فید → `{ action, myEmoji, counts, rewardGranted }` |
+| GET | `/api/inbox` | — | فهرست صندوق + تعداد نخوانده‌ها |
+| POST | `/api/inbox/read` | — | علامت‌گذاری همه‌ی نخوانده‌ها به‌عنوان خوانده‌شده |
 | GET | `/api/friends` | — | کد دعوت من + فهرست دوستان |
 | POST | `/api/friends` | `{ code }` | افزودن دوست با کد دعوت |
 | POST | `/api/admin/videos` | فیلدهای ویدیو + `grades[]` + `ctaLabel`/`ctaUrl` | ساخت ویدیو (فقط ادمین → ۴۰۳) |
@@ -379,6 +394,7 @@ league_proj_new/
 - **۲۵**: Magic Link (`lib/magic.ts`, `/api/auth/magic`, `/api/bot/magic-link`) + سرویس ربات مجزا در `bot/`.
 - **۲۶**: Web Push (`lib/push.ts`, `public/sw.js`, `PushSubscription`, `/api/push/subscribe`, `PushRegister`/`NotificationToggle`).
 - **۲۷**: نوتیف رقابتی (`lib/notifications.ts`) + تورنومنت (`lib/tournament.ts`, پنل ادمین + صفحات کاربر + تسویه در cron).
+- **۲۸**: تعامل اجتماعی فید — ری‌اکشن روی آیتم‌های فید (`Reaction`, `lib/reaction.ts`, نوار واکنش در `LiveFeed` با به‌روزرسانی خوش‌بینانه)، صندوق نوتیف (`InboxItem`, `lib/inbox.ts`, آیکون زنگوله‌ی هدر + صفحه‌ی `/inbox`)، اعلان واکنش با Web Push، و جایزه‌ی روزانه‌ی تشویق (۵ نفر/روز = ۵ سکه). مدل صندوق آماده‌ی توسعه به پیام خصوصی (DM).
 
 ---
 
