@@ -1,4 +1,5 @@
 {
+  "_note": "⚠️ این فایل برای دیپلوی استفاده نمی‌شود. production روی یک VPS با Docker Compose اجرا می‌شود؛ دیپلوی از مسیر: git push → GitHub Actions → Docker Hub → docker compose up روی سرور. migration هم خودکار با CMD کانتینر (npx prisma migrate deploy && npm start) اجرا می‌شود. به DEPLOYMENT.md مراجعه کنید. (این فایل فقط برای روش کنارگذاشته‌ی Liara PaaS بود.)",
   "id": "league-app",
   "platform": "nextjs",
   "port": 3000,
