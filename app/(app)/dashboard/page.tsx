@@ -1,15 +1,15 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { getLeaderboardMessage, effectiveStreak } from "@/lib/gamification";
+import { getLeaderboardMessage, effectiveStreak, formatStudyMinutes, STREAK_FREEZE_COST } from "@/lib/gamification";
 import { getOnboardingState } from "@/lib/onboarding";
 import { getWeeklyMissionState } from "@/lib/weekly-mission";
 import { processUserMissions } from "@/lib/mission";
-import { tehranDayStart } from "@/lib/date";
+import { tehranDayStart, tehranDayDiff } from "@/lib/date";
 import StudyTimer from "@/components/dashboard/StudyTimer";
 import DailyMissionCard from "@/components/dashboard/DailyMissionCard";
 import WeeklyMissionCard from "@/components/dashboard/WeeklyMissionCard";
-import StreakCard from "@/components/dashboard/StreakCard";
+import StreakBar from "@/components/dashboard/StreakBar";
 import CloseCompetitors from "@/components/dashboard/CloseCompetitors";
 import StudyReportCard from "@/components/dashboard/StudyReportCard";
 
@@ -27,7 +27,7 @@ async function getDashboardData(userId: string) {
     prisma.user.findUnique({
       where: { id: userId },
       select: {
-        xp: true, level: true, onboardingDay: true, isLeadComplete: true,
+        xp: true, coins: true, level: true, onboardingDay: true, isLeadComplete: true,
         nextStudyTarget: true, streak: true, lastStudyDate: true,
       },
     }),
@@ -70,17 +70,62 @@ export default async function DashboardPage() {
   const progressMinutes = state?.stepMinutes ?? 0;
   const progressPercent = Math.min(100, Math.round((progressMinutes / dailyGoalMinutes) * 100));
 
-  // بعد از آنبوردینگ: فعال‌سازی ماموریت‌های pending + وضعیت ماموریت هفتگی
+  // بعد از آنبوردینگ: فعال‌سازی ماموریت‌های pending + وضعیت ماموریت هفتگی + ماموریت روزانه‌ی فعال
   let weeklyState = null;
+  let activeDaily: { targetHours: number; coinReward: number; studiedMin: number; goalMin: number } | null = null;
   if (!inOnboarding) {
     await processUserMissions(session.userId);
     weeklyState = await getWeeklyMissionState(session.userId);
+
+    const daily = await prisma.userMission.findFirst({
+      where: { userId: session.userId, status: "active", mission: { kind: "daily" } },
+      include: { mission: true },
+    });
+    if (daily) {
+      const agg = await prisma.studySession.aggregate({
+        where: { userId: session.userId, startTime: { gte: daily.activatesAt } },
+        _sum: { durationMin: true },
+      });
+      activeDaily = {
+        targetHours: daily.mission.targetHours,
+        coinReward: daily.mission.coinReward,
+        studiedMin: agg._sum.durationMin ?? 0,
+        goalMin: daily.mission.targetHours * 60,
+      };
+    }
   }
+
+  // مرخصی فقط وقتی زنجیره زنده است و امروز هنوز ثبت نشده (دیروز آخرین مطالعه بوده)
+  const lastDiff = user?.lastStudyDate ? tehranDayDiff(new Date(), new Date(user.lastStudyDate)) : null;
+  const canFreeze = !inOnboarding && streak > 0 && lastDiff === 1;
 
   return (
     <div className="flex flex-col gap-3 px-4">
-      {/* استریک بالای صفحه فقط بعد از آنبوردینگ (جایگزین باکس مسیر) */}
-      {!inOnboarding && <StreakCard streak={streak} studiedToday={todayMinutes > 0} />}
+      {/* رده‌بندی لحظه‌ای — بالای همه */}
+      <section className="glass-card rounded-2xl p-4 border-r-4 border-r-tertiary-fixed-dim mt-1">
+        <div className="flex items-start gap-3 flex-row-reverse">
+          <div className="bg-tertiary-fixed/30 p-2 rounded-full flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              trending_up
+            </span>
+          </div>
+          <div className="text-right">
+            <h3 className="text-[15px] font-bold text-on-surface mb-0.5">رده‌بندی لحظه‌ای</h3>
+            <p className="text-[13px] text-on-surface-variant leading-relaxed">{leaderboardMsg}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* نوار یک‌خطی زنجیره + دکمه مرخصی (بعد از آنبوردینگ) */}
+      {!inOnboarding && (
+        <StreakBar
+          streak={streak}
+          studiedToday={todayMinutes > 0}
+          canFreeze={canFreeze}
+          freezeCost={STREAK_FREEZE_COST}
+          coins={user?.coins ?? 0}
+        />
+      )}
 
       {/* Streak banner (فقط حین آنبوردینگ) */}
       {inOnboarding && streak > 0 && (
@@ -108,6 +153,32 @@ export default async function DashboardPage() {
         </section>
       )}
 
+      {/* ماموریت روزانه‌ی فعال (اگر باشد) */}
+      {activeDaily && (() => {
+        const pct = Math.min(100, Math.round((activeDaily.studiedMin / activeDaily.goalMin) * 100));
+        const done = activeDaily.studiedMin >= activeDaily.goalMin;
+        return (
+          <section className="glass-card rounded-2xl p-4 border-r-4 border-r-secondary">
+            <div className="flex items-center justify-between mb-2 flex-row-reverse">
+              <h3 className="text-[15px] font-bold text-on-surface flex items-center gap-1.5">
+                <span className={`material-symbols-outlined text-[18px] ${done ? "text-secondary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}>
+                  {done ? "check_circle" : "today"}
+                </span>
+                ماموریت روزانه: {activeDaily.targetHours.toLocaleString("fa-IR")} ساعت
+              </h3>
+              <span className="text-[12px] font-bold text-tertiary">+{activeDaily.coinReward.toLocaleString("fa-IR")} سکه</span>
+            </div>
+            <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden mb-1.5">
+              <div className="h-full bg-gradient-to-l from-secondary to-secondary-fixed-dim rounded-full transition-all" style={{ width: `${pct}%` }} />
+            </div>
+            <p className="text-[12px] text-on-surface-variant text-right">
+              {formatStudyMinutes(activeDaily.studiedMin)} از {formatStudyMinutes(activeDaily.goalMin)}
+              {done ? " · انجام شد! ✓" : ` · ${formatStudyMinutes(activeDaily.goalMin - activeDaily.studiedMin)} مونده`}
+            </p>
+          </section>
+        );
+      })()}
+
       {/* آنبوردینگ: مسیر ۶ روزه + ماموریت روز | بعد از آن: ماموریت هفتگی (یا دعوت به انتخاب) */}
       {inOnboarding ? (
         <DailyMissionCard
@@ -134,21 +205,6 @@ export default async function DashboardPage() {
 
       {/* Study Timer */}
       <StudyTimer userId={session.userId} isLeadComplete={user?.isLeadComplete ?? false} />
-
-      {/* Mini Leaderboard Message */}
-      <section className="glass-card rounded-2xl p-4 border-r-4 border-r-tertiary-fixed-dim">
-        <div className="flex items-start gap-3 flex-row-reverse">
-          <div className="bg-tertiary-fixed/30 p-2 rounded-full flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              trending_up
-            </span>
-          </div>
-          <div className="text-right">
-            <h3 className="text-[15px] font-bold text-on-surface mb-0.5">رده‌بندی لحظه‌ای</h3>
-            <p className="text-[13px] text-on-surface-variant leading-relaxed">{leaderboardMsg}</p>
-          </div>
-        </div>
-      </section>
 
       {/* Close Competitors */}
       <CloseCompetitors userId={session.userId} />

@@ -41,6 +41,21 @@ export const MISSION_TABLE = [
   { targetHours: 70, minAvgHours: 9, entryCost: 250, xpReward: 1000 },
 ];
 
+/**
+ * ماموریت‌های روزانه: هدف ساعت مطالعه در یک روز (به وقت تهران).
+ * ۳ و ۵ ساعته رایگان‌اند؛ بقیه با سکه. جایزه همیشه سکه است.
+ */
+export const DAILY_MISSION_TABLE = [
+  { targetHours: 3, entryCost: 0, coinReward: 5 },
+  { targetHours: 5, entryCost: 0, coinReward: 10 },
+  { targetHours: 7, entryCost: 10, coinReward: 15 },
+  { targetHours: 8, entryCost: 12, coinReward: 20 },
+  { targetHours: 10, entryCost: 15, coinReward: 25 },
+];
+
+/** هزینه‌ی «مرخصی» برای نسوختن زنجیره‌ی مطالعه (یک روز) */
+export const STREAK_FREEZE_COST = 50;
+
 /** هر ۱۵ دقیقه مطالعه = 1 XP + 1 سکه */
 export const MINUTES_PER_XP = 15;
 export function calcRewards(minutes: number): { xp: number; coins: number } {

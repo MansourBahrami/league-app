@@ -29,7 +29,7 @@ export interface WeeklyMissionState {
 export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissionState | null> {
   // ماموریت فعال یا در انتظارِ فعال‌سازی (تازه‌خریده‌شده، از فردا)
   const um = await prisma.userMission.findFirst({
-    where: { userId, status: { in: ["active", "pending"] } },
+    where: { userId, status: { in: ["active", "pending"] }, mission: { kind: "weekly" } },
     include: { mission: true },
     orderBy: { activatesAt: "desc" },
   });

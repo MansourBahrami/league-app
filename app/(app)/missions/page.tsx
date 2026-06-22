@@ -1,9 +1,10 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import { suggestMissions } from "@/lib/gamification";
+import { suggestMissions, formatStudyMinutes } from "@/lib/gamification";
 import { processUserMissions } from "@/lib/mission";
 import MissionCard from "@/components/missions/MissionCard";
+import DailyMissionCard from "@/components/missions/DailyMissionCard";
 
 export const dynamic = "force-dynamic";
 
@@ -30,13 +31,33 @@ export default async function MissionsPage() {
 
   const suggested = suggestMissions(avgHoursPerDay);
   const missions = await prisma.mission.findMany({
-    where: { targetHours: { in: suggested.map((s) => s.targetHours) }, isActive: true },
+    where: { kind: "weekly", targetHours: { in: suggested.map((s) => s.targetHours) }, isActive: true },
+  });
+
+  // ماموریت‌های روزانه (جایزه سکه)
+  const dailyMissions = await prisma.mission.findMany({
+    where: { kind: "daily", isActive: true },
+    orderBy: { targetHours: "asc" },
   });
 
   const currentMission = await prisma.userMission.findFirst({
-    where: { userId: session.userId, status: { in: ["active", "pending"] } },
+    where: { userId: session.userId, status: { in: ["active", "pending"] }, mission: { kind: "weekly" } },
     include: { mission: true },
   });
+
+  // ماموریت روزانه‌ی فعالِ امروز + پیشرفت آن
+  const activeDaily = await prisma.userMission.findFirst({
+    where: { userId: session.userId, status: "active", mission: { kind: "daily" } },
+    include: { mission: true },
+  });
+  let dailyStudiedMin = 0;
+  if (activeDaily) {
+    const agg = await prisma.studySession.aggregate({
+      where: { userId: session.userId, startTime: { gte: activeDaily.activatesAt } },
+      _sum: { durationMin: true },
+    });
+    dailyStudiedMin = agg._sum.durationMin ?? 0;
+  }
 
   // پیشرفت ماموریت فعال: مجموع ساعت مطالعه از زمان فعال‌سازی
   let missionProgressHours = 0;
@@ -99,9 +120,56 @@ export default async function MissionsPage() {
         </div>
       )}
 
+      {/* ماموریت‌های روزانه */}
+      <div className="flex items-center gap-2 mb-4">
+        <span className="material-symbols-outlined text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>today</span>
+        <h2 className="text-[20px] font-bold text-[#0b1c30]">ماموریت‌های روزانه</h2>
+      </div>
+
+      {activeDaily && (
+        <div className="mb-4 glass-card rounded-xl p-4 border-r-4 border-r-secondary">
+          {(() => {
+            const goal = activeDaily.mission.targetHours * 60;
+            const pct = Math.min(100, Math.round((dailyStudiedMin / goal) * 100));
+            const done = dailyStudiedMin >= goal;
+            return (
+              <>
+                <div className="flex items-center justify-between mb-2 flex-row-reverse">
+                  <h3 className="text-[15px] font-bold text-secondary flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>{done ? "check_circle" : "timer"}</span>
+                    ماموریت امروز: {activeDaily.mission.targetHours.toLocaleString("fa-IR")} ساعت
+                  </h3>
+                  <span className="text-[12px] font-bold text-tertiary">جایزه: {activeDaily.mission.coinReward.toLocaleString("fa-IR")} سکه</span>
+                </div>
+                <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden mb-1.5">
+                  <div className="h-full bg-gradient-to-l from-secondary to-secondary-fixed-dim rounded-full transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <p className="text-[12px] text-on-surface-variant text-right">
+                  {formatStudyMinutes(dailyStudiedMin)} از {formatStudyMinutes(goal)}
+                  {done ? " · انجام شد! ✓" : ` · ${formatStudyMinutes(goal - dailyStudiedMin)} مونده`}
+                </p>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {dailyMissions.map((m) => (
+          <DailyMissionCard
+            key={m.id}
+            mission={m}
+            userCoins={user.coins}
+            isLocked={isWeek1}
+            hasActiveDaily={!!activeDaily}
+          />
+        ))}
+      </div>
+
+      {/* ماموریت‌های هفتگی */}
       <div className="flex items-center gap-2 mb-4">
         <span className="material-symbols-outlined text-[#4648d4]" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-        <h2 className="text-[20px] font-bold text-[#0b1c30]">ماموریت‌های پیشنهادی</h2>
+        <h2 className="text-[20px] font-bold text-[#0b1c30]">ماموریت‌های هفتگی</h2>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

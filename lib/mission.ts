@@ -110,20 +110,34 @@ export async function processUserMissions(userId: string): Promise<void> {
     const targetMin = um.mission.targetHours * 60;
 
     if (studiedMin >= targetMin) {
-      // موفقیت → جایزه
-      await prisma.$transaction([
-        prisma.userMission.update({
-          where: { id: um.id },
-          data: { status: "completed", completedAt: now },
-        }),
-        prisma.user.update({
-          where: { id: userId },
-          data: { xp: { increment: um.mission.xpReward } },
-        }),
-      ]);
-      // اعطای مدال اختصاصی ماموریت (تکرارپذیر)
-      await awardMedal(userId, um.mission.targetHours, user);
-      await recalcUserLevel(userId);
+      if (um.mission.kind === "daily") {
+        // ماموریت روزانه → جایزه سکه (بدون XP/مدال)
+        await prisma.$transaction([
+          prisma.userMission.update({
+            where: { id: um.id },
+            data: { status: "completed", completedAt: now },
+          }),
+          prisma.user.update({
+            where: { id: userId },
+            data: { coins: { increment: um.mission.coinReward } },
+          }),
+        ]);
+      } else {
+        // ماموریت هفتگی → جایزه XP + مدال + بازمحاسبه سطح
+        await prisma.$transaction([
+          prisma.userMission.update({
+            where: { id: um.id },
+            data: { status: "completed", completedAt: now },
+          }),
+          prisma.user.update({
+            where: { id: userId },
+            data: { xp: { increment: um.mission.xpReward } },
+          }),
+        ]);
+        // اعطای مدال اختصاصی ماموریت (تکرارپذیر)
+        await awardMedal(userId, um.mission.targetHours, user);
+        await recalcUserLevel(userId);
+      }
     } else if (um.expiresAt < now) {
       // مهلت تمام شد و انجام نشد → سکه سوخته، شکست
       await prisma.userMission.update({

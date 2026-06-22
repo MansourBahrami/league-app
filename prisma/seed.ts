@@ -1,7 +1,7 @@
 import "dotenv/config";
 import { PrismaClient } from "../app/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
-import { MISSION_TABLE } from "../lib/gamification";
+import { MISSION_TABLE, DAILY_MISSION_TABLE } from "../lib/gamification";
 import { seedNotificationRules } from "../lib/notification-seed";
 
 const adapter = new PrismaPg(process.env.DATABASE_URL!);
@@ -41,6 +41,25 @@ async function main() {
     }
   }
   console.log("✅ Missions seeded");
+
+  // Daily missions (ماموریت روزانه — جایزه سکه)
+  for (const m of DAILY_MISSION_TABLE) {
+    const existing = await prisma.mission.findFirst({ where: { kind: "daily", targetHours: m.targetHours } });
+    if (!existing) {
+      await prisma.mission.create({
+        data: {
+          kind: "daily",
+          targetHours: m.targetHours,
+          minAvgHours: 0,
+          entryCost: m.entryCost,
+          xpReward: 0,
+          coinReward: m.coinReward,
+          description: `${m.targetHours} ساعت مطالعه در یک روز`,
+        },
+      });
+    }
+  }
+  console.log("✅ Daily missions seeded");
 
   // Sample videos for onboarding
   const sampleVideos = [

@@ -98,10 +98,13 @@ model StudySession {
 
 model Mission {
   id          String  @id @default(cuid())
+  // نوع ماموریت: "weekly" (هدف ۷روزه، جایزه XP+مدال) یا "daily" (هدف یک‌روزه، جایزه سکه)
+  kind        String  @default("weekly")
   targetHours Int
   minAvgHours Float
   entryCost   Int
   xpReward    Int
+  coinReward  Int     @default(0) // جایزه سکه (برای ماموریت روزانه)
   medalId     String?
   description String?
   isActive    Boolean @default(true)

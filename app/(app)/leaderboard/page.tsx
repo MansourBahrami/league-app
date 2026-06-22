@@ -68,6 +68,11 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const referralCode = await ensureReferralCode(session.userId);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
+  // باکس تورنومنت فقط وقتی نمایش داده می‌شود که تورنومنت فعالی (در حال اجرا یا پیشِ‌رو) وجود داشته باشد
+  const hasTournament = (await prisma.tournament.count({
+    where: { isActive: true, endAt: { gte: new Date() } },
+  })) > 0;
+
   // تعیین مجموعه‌ی رقبا بر اساس تب
   let poolIds: string[];
   let title: string;
@@ -127,15 +132,17 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         <Link href="/leaderboard?tab=friends" className={tabCls(isFriends)}>دوستان</Link>
       </div>
 
-      {/* Tournament entry */}
-      <Link href="/tournaments" className="glass-card rounded-xl p-3 flex items-center gap-3 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
-        <span className="material-symbols-outlined text-tertiary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
-        <div className="text-right flex-1">
-          <p className="text-[14px] font-bold text-on-surface">تورنومنت‌های ویژه</p>
-          <p className="text-[12px] text-on-surface-variant">رقابت‌های بازه‌دار با جایزه</p>
-        </div>
-        <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
-      </Link>
+      {/* Tournament entry — فقط وقتی تورنومنت فعالی هست */}
+      {hasTournament && (
+        <Link href="/tournaments" className="glass-card rounded-xl p-3 flex items-center gap-3 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
+          <span className="material-symbols-outlined text-tertiary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
+          <div className="text-right flex-1">
+            <p className="text-[14px] font-bold text-on-surface">تورنومنت‌های ویژه</p>
+            <p className="text-[12px] text-on-surface-variant">رقابت‌های بازه‌دار با جایزه</p>
+          </div>
+          <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
+        </Link>
+      )}
 
       {/* Header */}
       <div className="text-center">
