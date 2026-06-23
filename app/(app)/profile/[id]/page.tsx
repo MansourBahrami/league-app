@@ -2,12 +2,12 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
-import { PROFILE_UNLOCK_COST } from "@/lib/gamification";
+import { PROFILE_UNLOCK_COST, effectiveStreak } from "@/lib/gamification";
 import { formatDistanceToNow } from "date-fns";
 import { faIR } from "date-fns/locale";
-import StatsGrid from "@/components/profile/StatsGrid";
 import MedalsSection from "@/components/profile/MedalsSection";
-import UnlockLogButton from "@/components/profile/UnlockLogButton";
+import StudyReportCard from "@/components/dashboard/StudyReportCard";
+import LockedStudySection from "@/components/profile/LockedStudySection";
 
 export const dynamic = "force-dynamic";
 
@@ -23,13 +23,15 @@ export default async function PublicProfilePage({ params }: Props) {
   // پروفایل خودِ کاربر → به صفحه پروفایل اصلی برود
   if (id === session.userId) redirect("/profile");
 
-  const [target, viewer, totalAgg, userMedals, totalUsers] = await Promise.all([
+  const [target, viewer, userMedals, totalUsers] = await Promise.all([
     prisma.user.findUnique({
       where: { id },
-      select: { id: true, name: true, avatarUrl: true, xp: true, level: true, stars: true, grade: true, field: true },
+      select: {
+        id: true, name: true, avatarUrl: true, xp: true, level: true, stars: true,
+        grade: true, field: true, coins: true, streak: true, lastStudyDate: true,
+      },
     }),
     prisma.user.findUnique({ where: { id: session.userId }, select: { coins: true } }),
-    prisma.studySession.aggregate({ where: { userId: id }, _sum: { durationMin: true } }),
     prisma.userMedal.findMany({ where: { userId: id }, include: { medal: true }, orderBy: { earnedAt: "desc" } }),
     prisma.user.count(),
   ]);
@@ -37,15 +39,15 @@ export default async function PublicProfilePage({ params }: Props) {
   if (!target) notFound();
 
   const targetRank = await prisma.user.count({ where: { xp: { gt: target.xp } } });
-  const totalHours = Math.floor((totalAgg._sum.durationMin ?? 0) / 60);
 
-  // بررسی قفل لاگ مطالعه
+  // بررسی قفل بخش مطالعه
   const unlock = await prisma.profileUnlock.findUnique({
     where: { viewerId_targetUserId: { viewerId: session.userId, targetUserId: id } },
   });
   const isUnlocked = !!unlock && unlock.expiresAt > new Date();
 
-  // لاگ مطالعه (فقط اگر باز شده)
+  // داده‌های مطالعه فقط در صورت آنلاک واکشی می‌شوند (جلوگیری از نشت اطلاعات)
+  const streak = isUnlocked ? effectiveStreak(target.streak, target.lastStudyDate) : 0;
   const studyLog = isUnlocked
     ? await prisma.studySession.findMany({
         where: { userId: id, endTime: { not: null } },
@@ -63,7 +65,7 @@ export default async function PublicProfilePage({ params }: Props) {
         <span className="text-[14px] font-semibold">بازگشت</span>
       </Link>
 
-      {/* Header */}
+      {/* Header — همیشه قابل مشاهده: نام، آواتار، سطح، ستاره‌ها */}
       <section className="glass-card rounded-xl p-6 flex flex-col items-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-full h-24 bg-gradient-to-b from-[#e1e0ff] to-transparent opacity-50 z-0" />
         <div className="relative z-10 flex flex-col items-center w-full">
@@ -89,42 +91,87 @@ export default async function PublicProfilePage({ params }: Props) {
         </div>
       </section>
 
-      {/* Stats */}
-      <StatsGrid totalHours={totalHours} streak={0} rank={targetRank + 1} totalUsers={totalUsers} />
-
-      {/* Study log (locked/unlocked) */}
-      {isUnlocked ? (
-        <section className="glass-card rounded-xl p-6">
-          <div className="flex items-center gap-2 mb-4 flex-row-reverse">
-            <span className="material-symbols-outlined text-[#006c49]" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
-            <h3 className="text-[18px] font-bold text-[#0b1c30]">لاگ مطالعه اخیر</h3>
+      {/* XP و سکه و رتبه — همیشه قابل مشاهده */}
+      <section className="grid grid-cols-2 gap-2">
+        <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
+          <div className="w-12 h-12 rounded-full bg-[#4648d4]/15 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#4648d4] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
           </div>
-          {studyLog.length === 0 ? (
-            <p className="text-[14px] text-[#464554] text-center py-4">هنوز جلسه مطالعه‌ای ثبت نشده.</p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {studyLog.map((s) => {
-                const h = Math.floor(s.durationMin / 60);
-                const m = s.durationMin % 60;
-                return (
-                  <div key={s.id} className="flex justify-between items-center bg-white/60 rounded-lg p-3">
-                    <span className="text-[13px] text-[#767586]">
-                      {formatDistanceToNow(new Date(s.startTime), { addSuffix: true, locale: faIR })}
-                    </span>
-                    <span className="text-[14px] font-bold text-[#4648d4]">
-                      {h > 0 ? `${h} ساعت ` : ""}{m > 0 ? `${m} دقیقه` : h > 0 ? "" : "۰ دقیقه"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
+          <h3 className="text-[14px] font-semibold text-[#464554]">امتیاز (XP)</h3>
+          <p className="text-[20px] font-bold text-[#0b1c30]">{target.xp.toLocaleString("fa-IR")}</p>
+        </div>
+        <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
+          <div className="w-12 h-12 rounded-full bg-[#a36700]/20 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[#825100] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>paid</span>
+          </div>
+          <h3 className="text-[14px] font-semibold text-[#464554]">سکه</h3>
+          <p className="text-[20px] font-bold text-[#0b1c30]">{target.coins.toLocaleString("fa-IR")}</p>
+        </div>
+        <div className="glass-card rounded-xl p-4 flex items-center gap-3 col-span-2">
+          <span className="material-symbols-outlined text-[#006c49] text-4xl">emoji_events</span>
+          <div className="text-right">
+            <h3 className="text-[14px] font-semibold text-[#464554]">رتبه در جدول برتر</h3>
+            <p className="text-[20px] font-bold text-[#0b1c30]">جایگاه {(targetRank + 1).toLocaleString("fa-IR")} از {totalUsers.toLocaleString("fa-IR")}</p>
+          </div>
+        </div>
+      </section>
+
+      {/* بخش مطالعه — قفل‌شونده با پرداخت */}
+      {isUnlocked ? (
+        <>
+          {unlock && (
+            <p className="text-[12px] text-[#006c49] text-center font-semibold">
+              بخش مطالعه باز است — اعتبار تا {formatDistanceToNow(new Date(unlock.expiresAt), { locale: faIR })} دیگر
+            </p>
           )}
-        </section>
+
+          {/* زنجیره مطالعه */}
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3 flex-row-reverse">
+            <div className="w-12 h-12 rounded-full bg-[#a36700]/20 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-[#825100] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+            </div>
+            <div className="text-right">
+              <h3 className="text-[14px] font-semibold text-[#464554]">زنجیره مطالعه</h3>
+              <p className="text-[20px] font-bold text-[#0b1c30]">{streak.toLocaleString("fa-IR")} <span className="text-[16px] font-normal">روز</span></p>
+            </div>
+          </div>
+
+          {/* مجموع و نمودار ۷ روز اخیر */}
+          <StudyReportCard userId={id} days={7} />
+
+          {/* لاگ مطالعه */}
+          <section className="glass-card rounded-xl p-6">
+            <div className="flex items-center gap-2 mb-4 flex-row-reverse">
+              <span className="material-symbols-outlined text-[#006c49]" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
+              <h3 className="text-[18px] font-bold text-[#0b1c30]">لاگ مطالعه اخیر</h3>
+            </div>
+            {studyLog.length === 0 ? (
+              <p className="text-[14px] text-[#464554] text-center py-4">هنوز جلسه مطالعه‌ای ثبت نشده.</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {studyLog.map((s) => {
+                  const h = Math.floor(s.durationMin / 60);
+                  const m = s.durationMin % 60;
+                  return (
+                    <div key={s.id} className="flex justify-between items-center bg-white/60 rounded-lg p-3">
+                      <span className="text-[13px] text-[#767586]">
+                        {formatDistanceToNow(new Date(s.startTime), { addSuffix: true, locale: faIR })}
+                      </span>
+                      <span className="text-[14px] font-bold text-[#4648d4]">
+                        {h > 0 ? `${h} ساعت ` : ""}{m > 0 ? `${m} دقیقه` : h > 0 ? "" : "۰ دقیقه"}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </>
       ) : (
-        <UnlockLogButton targetUserId={id} cost={PROFILE_UNLOCK_COST} userCoins={viewer?.coins ?? 0} />
+        <LockedStudySection targetUserId={id} cost={PROFILE_UNLOCK_COST} userCoins={viewer?.coins ?? 0} />
       )}
 
-      {/* Medals */}
+      {/* Medals — همیشه قابل مشاهده */}
       <MedalsSection medals={userMedals.map((um) => ({ id: um.id, name: um.medal.name, targetHours: um.medal.targetHours, earnedAt: um.earnedAt }))} />
     </div>
   );

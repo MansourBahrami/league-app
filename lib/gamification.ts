@@ -78,8 +78,11 @@ export function formatStudyMinutes(min: number): string {
   return `${h.toLocaleString("fa-IR")} ساعت و ${rem.toLocaleString("fa-IR")} دقیقه`;
 }
 
-/** هزینه سکه برای باز کردن مشاهده لاگ مطالعه یک کاربر دیگر (تا ۱ روز) */
-export const PROFILE_UNLOCK_COST = 10;
+/** هزینه سکه برای باز کردن بخش مطالعه‌ی پروفایل یک کاربر دیگر (تا ۱ ساعت) */
+export const PROFILE_UNLOCK_COST = 20;
+
+/** مدت اعتبار آنلاک بخش مطالعه‌ی پروفایل (ساعت) */
+export const PROFILE_UNLOCK_HOURS = 1;
 
 /** هدف کامل روز اول (بدون قانون ساعت ورود): ۲ تا ۴ ساعت بر اساس میانگین گذشته */
 export function getFullDay1Hours(pastAvgHours: number | null): number {

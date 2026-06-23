@@ -4,16 +4,17 @@ import { formatStudyMinutes } from "@/lib/gamification";
 
 interface Props {
   userId: string;
+  days?: number;
 }
 
-const DAYS = 14; // دو هفته‌ی اخیر
 const CHART_H = 104; // ارتفاع ناحیه‌ی میله‌ها (px)
 
 /**
  * گزارش مطالعه به‌صورت نمودار میله‌ای: دقیقه‌ی مطالعه‌ی هر روز
  * (به وقت تهران، تاریخ شمسی). در انتهای داشبورد نمایش داده می‌شود.
  */
-export default async function StudyReportCard({ userId }: Props) {
+export default async function StudyReportCard({ userId, days = 14 }: Props) {
+  const DAYS = days;
   const rangeStart = tehranDayStartDaysAgo(DAYS - 1);
   const sessions = await prisma.studySession.findMany({
     where: { userId, startTime: { gte: rangeStart } },

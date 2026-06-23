@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { PROFILE_UNLOCK_COST } from "@/lib/gamification";
+import { PROFILE_UNLOCK_COST, PROFILE_UNLOCK_HOURS } from "@/lib/gamification";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -35,7 +35,7 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "سکه کافی نیست" }, { status: 400 });
   }
 
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // ۱ روز
+  const expiresAt = new Date(Date.now() + PROFILE_UNLOCK_HOURS * 60 * 60 * 1000); // ۱ ساعت
 
   await prisma.$transaction([
     prisma.user.update({ where: { id: session.userId }, data: { coins: { decrement: PROFILE_UNLOCK_COST } } }),
