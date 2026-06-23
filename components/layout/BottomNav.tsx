@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", icon: "center_focus_strong", label: "تمرکز" },
-  { href: "/feed", icon: "bolt", label: "بورد زنده" },
-  { href: "/leaderboard", icon: "leaderboard", label: "جدول‌برتر" },
-  { href: "/profile", icon: "person", label: "پروفایل" },
+  { href: "/dashboard", icon: "center_focus_strong", label: "تمرکز", tour: "nav-dashboard" },
+  { href: "/feed", icon: "bolt", label: "بورد زنده", tour: "nav-feed" },
+  { href: "/leaderboard", icon: "leaderboard", label: "جدول‌برتر", tour: "nav-leaderboard" },
+  { href: "/profile", icon: "person", label: "پروفایل", tour: "nav-profile" },
 ];
 
 export default function BottomNav() {
@@ -24,6 +24,7 @@ export default function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
+            data-tour={item.tour}
             className={`flex flex-col items-center justify-center px-3 py-1.5 rounded-xl transition-all ${
               isActive
                 ? "bg-primary-fixed text-primary scale-95"

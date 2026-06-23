@@ -212,7 +212,7 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
 
   return (
     <>
-      <section ref={frameRef} className="glass-card rounded-xl p-5 relative border-2 border-primary/15">
+      <section ref={frameRef} data-tour="timer" className="glass-card rounded-xl p-5 relative border-2 border-primary/15">
         {/* فریم شمارش‌معکوس: با اندازه‌ی واقعی قاب کشیده می‌شود (بدون اعوجاج) و با گذر زمان خالی می‌شود */}
         {isActive && box.w > 0 && (
           <svg className="absolute inset-0 pointer-events-none z-0" width={box.w} height={box.h} aria-hidden>

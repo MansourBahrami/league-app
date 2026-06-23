@@ -59,6 +59,7 @@ export default function Header({ user, xp, coins, unreadCount = 0 }: HeaderProps
       <div className="flex items-center gap-2" dir="ltr">
         <Link
           href="/inbox"
+          data-tour="inbox"
           className="relative flex items-center justify-center w-9 h-9 rounded-full bg-surface-container-high hover:scale-105 transition-transform"
           aria-label="صندوق"
         >
@@ -69,13 +70,15 @@ export default function Header({ user, xp, coins, unreadCount = 0 }: HeaderProps
             </span>
           )}
         </Link>
-        <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer">
-          <span className="material-symbols-outlined text-[16px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-          <span className="text-[14px] font-bold text-primary">{xp.toLocaleString("fa-IR")}</span>
-        </div>
-        <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer">
-          <span className="material-symbols-outlined text-[16px] text-tertiary-fixed-dim" style={{ fontVariationSettings: "'FILL' 1" }}>generating_tokens</span>
-          <span className="text-[14px] font-bold text-tertiary">{coins.toLocaleString("fa-IR")}</span>
+        <div data-tour="rewards" className="flex items-center gap-2">
+          <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer">
+            <span className="material-symbols-outlined text-[16px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
+            <span className="text-[14px] font-bold text-primary">{xp.toLocaleString("fa-IR")}</span>
+          </div>
+          <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer">
+            <span className="material-symbols-outlined text-[16px] text-tertiary-fixed-dim" style={{ fontVariationSettings: "'FILL' 1" }}>generating_tokens</span>
+            <span className="text-[14px] font-bold text-tertiary">{coins.toLocaleString("fa-IR")}</span>
+          </div>
         </div>
       </div>
     </header>

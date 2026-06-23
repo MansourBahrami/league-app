@@ -180,6 +180,7 @@ export default async function DashboardPage() {
       })()}
 
       {/* آنبوردینگ: مسیر ۶ روزه + ماموریت روز | بعد از آن: ماموریت هفتگی (یا دعوت به انتخاب) */}
+      <div data-tour="mission">
       {inOnboarding ? (
         <DailyMissionCard
           inOnboarding={inOnboarding}
@@ -202,6 +203,7 @@ export default async function DashboardPage() {
       ) : (
         <WeeklyMissionCard state={weeklyState} />
       )}
+      </div>
 
       {/* Study Timer */}
       <StudyTimer userId={session.userId} isLeadComplete={user?.isLeadComplete ?? false} />

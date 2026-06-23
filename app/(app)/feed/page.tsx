@@ -24,7 +24,7 @@ export default async function FeedPage() {
   return (
     <div className="flex flex-col items-center w-full px-4">
       {/* Header (فشرده، یک‌ردیفه) */}
-      <div className="glass-card w-full rounded-2xl px-4 py-2.5 flex items-center gap-2.5 flex-row-reverse mb-4">
+      <div data-tour="feed" className="glass-card w-full rounded-2xl px-4 py-2.5 flex items-center gap-2.5 flex-row-reverse mb-4">
         <div className="w-8 h-8 rounded-xl bg-[#4648d4] flex items-center justify-center shrink-0">
           <span className="material-symbols-outlined text-white text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
         </div>

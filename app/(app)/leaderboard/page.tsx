@@ -141,7 +141,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       </div>
 
       {/* Header */}
-      <div className="text-center">
+      <div data-tour="leaderboard" className="text-center">
         <h1 className="text-[22px] font-extrabold text-on-surface tracking-tight">{title}</h1>
         {!isFriends && (
           <div className="inline-flex items-center gap-1.5 mt-2 bg-primary-fixed px-3 py-1 rounded-full">

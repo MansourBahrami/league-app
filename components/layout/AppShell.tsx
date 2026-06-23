@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import Header from "./Header";
 import BottomNav from "./BottomNav";
-import WelcomeSlides from "@/components/onboarding/WelcomeSlides";
+import GuidedTour from "@/components/onboarding/GuidedTour";
 import LeadCaptureModal from "@/components/onboarding/LeadCaptureModal";
 import PushRegister from "@/components/push/PushRegister";
 
@@ -35,7 +35,7 @@ export default function AppShell({ user, children, showWelcome = false, needsLea
   return (
     <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-24 md:pb-8">
       <PushRegister />
-      {showWelcome && <WelcomeSlides />}
+      {showWelcome && <GuidedTour />}
       {/* قفل اجباری لید بعد از روز اول — تا تکمیل نشود کل اپ مسدود است */}
       {needsLead && !showWelcome && (
         <LeadCaptureModal hasPhone={hasPhone} onComplete={() => router.refresh()} />

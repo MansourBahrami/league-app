@@ -53,7 +53,7 @@ export default async function VideosPage() {
       </div>
 
       {/* Videos (باز + قفل) */}
-      <div className="flex flex-col gap-4">
+      <div data-tour="videos" className="flex flex-col gap-4">
         {videos.length === 0 ? (
           <div className="text-center py-8 text-on-surface-variant">
             <span className="material-symbols-outlined text-[48px] text-outline-variant mb-3 block">video_library</span>
