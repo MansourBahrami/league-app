@@ -7,7 +7,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
   // حالت بدون ماموریت فعال → دعوت به انتخاب ماموریت هفتگی
   if (!state) {
     return (
-      <section className="glass-card rounded-2xl p-5 text-center">
+      <section className="glass-card rounded-xl p-5 text-center">
         <span className="material-symbols-outlined text-secondary text-[40px] mb-2 block" style={{ fontVariationSettings: "'FILL' 1" }}>
           flag
         </span>
@@ -29,7 +29,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
   // حالت pending: ماموریت خریده شده ولی از فردا شروع می‌شود
   if (state.pending) {
     return (
-      <section className="glass-card rounded-2xl p-4">
+      <section className="glass-card rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3 flex-row-reverse">
           <span className="material-symbols-outlined text-secondary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
           <h3 className="text-[16px] font-bold text-on-surface flex-1 text-right">ماموریت هفتگی انتخاب شد! ✅</h3>
@@ -54,7 +54,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
   const dailyDone = state.dailyStudiedMin >= state.dailyGoalMin;
 
   return (
-    <section className="glass-card rounded-2xl p-4">
+    <section className="glass-card rounded-xl p-4">
       <div className="flex items-center justify-between mb-3 flex-row-reverse">
         <h3 className="text-[16px] font-bold text-on-surface flex items-center gap-1.5">
           <span className="material-symbols-outlined text-secondary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>target</span>

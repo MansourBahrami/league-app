@@ -84,7 +84,7 @@ export default function DailyMissionCard({
   }));
 
   return (
-    <section className="glass-card rounded-2xl p-4">
+    <section className="glass-card rounded-xl p-4">
       {/* مسیر ۶ روزه (فقط در آنبوردینگ) */}
       {inOnboarding && (
         <>

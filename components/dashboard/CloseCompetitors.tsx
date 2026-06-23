@@ -51,7 +51,7 @@ export default async function CloseCompetitors({ userId }: Props) {
         {competitors.map((c) => {
           const info = infoMap.get(c.id);
           return (
-            <div key={c.id} className="shrink-0 w-32 glass-card p-3 rounded-2xl flex flex-col items-center text-center">
+            <div key={c.id} className="shrink-0 w-32 glass-card p-3 rounded-xl flex flex-col items-center text-center">
               {info?.avatarUrl ? (
                 <img src={info.avatarUrl} className="w-11 h-11 rounded-full border-2 border-tertiary-fixed-dim mb-1.5 object-cover" alt={info.name ?? "user"} />
               ) : (

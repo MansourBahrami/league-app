@@ -45,7 +45,7 @@ export default async function StudyReportCard({ userId, days = 14 }: Props) {
   });
 
   return (
-    <section className="glass-card rounded-2xl p-4 mb-2">
+    <section className="glass-card rounded-xl p-4 mb-2">
       <div className="flex items-center justify-between mb-1 flex-row-reverse">
         <h3 className="text-[16px] font-bold text-on-surface flex items-center gap-1.5">
           <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>bar_chart</span>

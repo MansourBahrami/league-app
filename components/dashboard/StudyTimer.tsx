@@ -212,12 +212,12 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
 
   return (
     <>
-      <section ref={frameRef} className="glass-card rounded-2xl p-5 relative border-2 border-primary/15">
+      <section ref={frameRef} className="glass-card rounded-xl p-5 relative border-2 border-primary/15">
         {/* فریم شمارش‌معکوس: با اندازه‌ی واقعی قاب کشیده می‌شود (بدون اعوجاج) و با گذر زمان خالی می‌شود */}
         {isActive && box.w > 0 && (
           <svg className="absolute inset-0 pointer-events-none z-0" width={box.w} height={box.h} aria-hidden>
             <rect
-              x={2.5} y={2.5} width={box.w - 5} height={box.h - 5} rx={14} fill="none"
+              x={2.5} y={2.5} width={box.w - 5} height={box.h - 5} rx={10} fill="none"
               stroke="var(--color-primary)" strokeWidth={3} strokeLinecap="round"
               pathLength={1000}
               strokeDasharray={1000}

@@ -102,7 +102,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-3 px-4">
       {/* رده‌بندی لحظه‌ای — بالای همه */}
-      <section className="glass-card rounded-2xl p-4 border-r-4 border-r-tertiary-fixed-dim mt-1">
+      <section className="glass-card rounded-xl p-4 border-r-4 border-r-tertiary-fixed-dim mt-1">
         <div className="flex items-start gap-3 flex-row-reverse">
           <div className="bg-tertiary-fixed/30 p-2 rounded-full flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
@@ -129,7 +129,7 @@ export default async function DashboardPage() {
 
       {/* Streak banner (فقط حین آنبوردینگ) */}
       {inOnboarding && streak > 0 && (
-        <section className="glass-card rounded-2xl p-3 flex items-center gap-2.5 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim">
+        <section className="glass-card rounded-xl p-3 flex items-center gap-2.5 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim">
           <span className="material-symbols-outlined text-tertiary text-[22px] streak-flame" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
           <div className="text-right flex-1">
             <p className="text-[12px] font-semibold text-tertiary">زنجیره مطالعه</p>
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
 
       {/* Next Study Reminder */}
       {user?.nextStudyTarget && new Date(user.nextStudyTarget) > new Date() && (
-        <section className="glass-card rounded-2xl p-3 flex items-center gap-2.5 flex-row-reverse border-r-4 border-r-primary">
+        <section className="glass-card rounded-xl p-3 flex items-center gap-2.5 flex-row-reverse border-r-4 border-r-primary">
           <span className="material-symbols-outlined text-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>alarm</span>
           <div className="text-right">
             <p className="text-[12px] font-semibold text-primary">یادآوری هدف فردا</p>
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
         const pct = Math.min(100, Math.round((activeDaily.studiedMin / activeDaily.goalMin) * 100));
         const done = activeDaily.studiedMin >= activeDaily.goalMin;
         return (
-          <section className="glass-card rounded-2xl p-4 border-r-4 border-r-secondary">
+          <section className="glass-card rounded-xl p-4 border-r-4 border-r-secondary">
             <div className="flex items-center justify-between mb-2 flex-row-reverse">
               <h3 className="text-[15px] font-bold text-on-surface flex items-center gap-1.5">
                 <span className={`material-symbols-outlined text-[18px] ${done ? "text-secondary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}>

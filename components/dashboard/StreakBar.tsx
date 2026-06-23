@@ -45,7 +45,7 @@ export default function StreakBar({ streak, studiedToday, canFreeze, freezeCost,
   }
 
   return (
-    <section className="glass-card rounded-2xl px-4 py-3 flex items-center gap-3 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim">
+    <section className="glass-card rounded-xl px-4 py-3 flex items-center gap-3 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim">
       <span
         className="material-symbols-outlined text-tertiary text-[24px] streak-flame shrink-0"
         style={{ fontVariationSettings: streak > 0 ? "'FILL' 1" : "'FILL' 0" }}
