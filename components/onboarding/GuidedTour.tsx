@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { enablePush } from "@/components/push/PushRegister";
 
@@ -135,6 +135,7 @@ const HOUR_OPTIONS = [
 
 const SPOTLIGHT_PAD = 8; // فاصله‌ی حفره‌ی نورافکن تا عنصر
 const FIND_TIMEOUT = 4000; // اگر عنصر هدف پیدا نشد، fallback به کارت مرکزی
+const VIEWPORT_MARGIN = 16; // حداقل حاشیه‌ی کارت تا لبه‌ی صفحه
 
 export default function GuidedTour() {
   const router = useRouter();
@@ -146,9 +147,14 @@ export default function GuidedTour() {
   const [pastHours, setPastHours] = useState<number | null>(null);
   const [busyPush, setBusyPush] = useState(false);
   const [saving, setSaving] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [cardH, setCardH] = useState(0); // ارتفاع واقعی کارت توضیح (برای clamp داخل صفحه)
 
   const step = STEPS[index];
   const wantsSpotlight = step.kind === "spotlight" || step.kind === "nav";
+  const hasSpotlight = wantsSpotlight && !!rect;
+  // در حال جست‌وجوی عنصر هدف: فقط پس‌زمینه‌ی تیره، بدون کارت (تا جای اشتباه پرش نکند)
+  const locating = wantsSpotlight && !rect && !located;
 
   // رفتن به گام دیگر: ریست وضعیت نورافکن داخل هندلر (نه افکت) تا رندر آبشاری نشود
   const goTo = useCallback((i: number) => {
@@ -215,6 +221,18 @@ export default function GuidedTour() {
     };
   }, [rect, wantsSpotlight, step.selector]);
 
+  // اندازه‌گیری ارتفاع واقعی کارت توضیح تا بتوانیم موقعیتش را داخل صفحه clamp کنیم
+  // (عنصرِ هدفِ بلند نباید باعث شود کارت از بالا/پایینِ صفحه بیرون بزند)
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+    const update = () => setCardH(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [index, located, hasSpotlight]);
+
   const finish = useCallback(async () => {
     setSaving(true);
     await fetch("/api/profile", {
@@ -245,21 +263,23 @@ export default function GuidedTour() {
   const nextDisabled = (isQuestion && pastHours === null) || busyPush || saving;
   const ctaLabel = step.cta ?? (isLast ? "شروع کن" : "بعدی");
 
-  // محل قرارگیری کارت توضیح برای گام نورافکن: زیر عنصر اگر جا باشد، وگرنه بالا
+  // محل قرارگیری کارت توضیح برای گام نورافکن: زیر عنصر اگر جا باشد، وگرنه بالا.
+  // با اندازه‌ی واقعیِ کارت داخل صفحه clamp می‌شود تا روی عنصرهای بلند هم بیرون نزند.
   const cardPos: React.CSSProperties = {};
-  if (wantsSpotlight && rect) {
+  if (hasSpotlight && rect) {
     const vh = typeof window !== "undefined" ? window.innerHeight : 800;
-    const below = vh - rect.bottom;
-    if (below > 280) {
-      cardPos.top = rect.bottom + SPOTLIGHT_PAD + 14;
-    } else {
-      cardPos.bottom = vh - rect.top + SPOTLIGHT_PAD + 14;
-    }
+    const gap = SPOTLIGHT_PAD + 14;
+    const needed = cardH + gap;
+    const spaceBelow = vh - rect.bottom;
+    const spaceAbove = rect.top;
+    let top: number;
+    if (spaceBelow >= needed) top = rect.bottom + gap; // زیر عنصر جا هست
+    else if (spaceAbove >= needed) top = rect.top - gap - cardH; // بالای عنصر جا هست
+    else top = spaceBelow >= spaceAbove ? rect.bottom + gap : rect.top - gap - cardH; // عنصر بلند: سمت بازتر
+    // clamp داخل viewport با حاشیه‌ی امن
+    cardPos.top = Math.max(VIEWPORT_MARGIN, Math.min(top, vh - cardH - VIEWPORT_MARGIN));
+    cardPos.opacity = cardH > 0 ? 1 : 0; // تا قبل از اندازه‌گیری مخفی بماند (بدون پرش)
   }
-
-  const hasSpotlight = wantsSpotlight && !!rect;
-  // در حال جست‌وجوی عنصر هدف: فقط پس‌زمینه‌ی تیره، بدون کارت (تا جای اشتباه پرش نکند)
-  const locating = wantsSpotlight && !rect && !located;
 
   return (
     // root کلیک‌ها را عبور می‌دهد (pointer-events-none)؛ فقط لایه‌های لازم آن را می‌گیرند
@@ -291,14 +311,15 @@ export default function GuidedTour() {
         <div
           className={
             hasSpotlight
-              ? "absolute left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[440px] px-0 pointer-events-auto"
+              ? "absolute left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-[440px] px-0 pointer-events-auto transition-opacity duration-150"
               : "absolute inset-0 flex items-center justify-center p-4 pointer-events-auto"
           }
           style={hasSpotlight ? cardPos : undefined}
         >
           <div
             key={step.id}
-            className="feed-item-enter w-full max-w-[440px] bg-surface rounded-2xl shadow-2xl border border-outline-variant/30 p-5 flex flex-col gap-3.5"
+            ref={cardRef}
+            className="feed-item-enter w-full max-w-[440px] max-h-[calc(100dvh-32px)] overflow-y-auto bg-surface rounded-2xl shadow-2xl border border-outline-variant/30 p-5 flex flex-col gap-3.5"
           >
             {/* آیکن + رد کردن */}
             <div className="flex items-center justify-between flex-row-reverse">
