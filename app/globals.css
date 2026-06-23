@@ -113,10 +113,6 @@ body {
   box-shadow: 0 0 10px rgba(70, 72, 212, 0.6);
 }
 
-/* === Leaderboard scanline === */
-@keyframes scanline { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-.animate-scan { animation: scanline 3s linear infinite; }
-
 .focus-mask {
   mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 15%, black 85%, transparent);
