@@ -49,14 +49,14 @@ export default function LockedStudySection({ targetUserId, cost, userCoins }: Pr
                 <span className="material-symbols-outlined text-[#825100] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
               </div>
               <h3 className="text-[14px] font-semibold text-[#464554]">زنجیره مطالعه</h3>
-              <p className="text-[20px] font-bold text-[#0b1c30]">۱۲ روز</p>
+              <p className="text-[18px] font-bold text-[#0b1c30]">۱۲ روز</p>
             </div>
             <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
               <div className="w-12 h-12 rounded-full bg-[#e1e0ff]/40 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[#4648d4] text-3xl">schedule</span>
               </div>
               <h3 className="text-[14px] font-semibold text-[#464554]">مجموع ۷ روز</h3>
-              <p className="text-[20px] font-bold text-[#0b1c30]">۱۸ ساعت</p>
+              <p className="text-[18px] font-bold text-[#0b1c30]">۱۸ ساعت</p>
             </div>
           </div>
 
@@ -86,7 +86,7 @@ export default function LockedStudySection({ targetUserId, cost, userCoins }: Pr
         <div className="w-14 h-14 rounded-full bg-[#e1e0ff] flex items-center justify-center shadow-md">
           <span className="material-symbols-outlined text-[#4648d4] text-[28px]">lock</span>
         </div>
-        <h3 className="text-[18px] font-bold text-[#0b1c30]">بخش مطالعه قفل است</h3>
+        <h3 className="text-[16px] font-bold text-[#0b1c30]">بخش مطالعه قفل است</h3>
         <p className="text-[13px] text-[#464554] max-w-[280px]">
           زنجیره، مجموع و نمودار ۷ روز اخیر و لاگ مطالعه‌ی این کاربر را با پرداخت{" "}
           {cost.toLocaleString("fa-IR")} سکه تا ۱ ساعت ببین.

@@ -57,7 +57,7 @@ export default function LeaderboardList({ entries, currentUserId }: Props) {
                 </div>
               )}
             </div>
-            <div className={`font-bold flex items-end gap-1 ${entry.isCurrentUser ? "text-[20px] text-primary" : "text-[14px] text-on-surface-variant"}`}>
+            <div className={`font-bold flex items-end gap-1 ${entry.isCurrentUser ? "text-[17px] text-primary" : "text-[14px] text-on-surface-variant"}`}>
               {entry.weeklyXp.toLocaleString("fa-IR")}
               <span className={`font-normal mb-0.5 ${entry.isCurrentUser ? "text-[12px] text-primary-fixed-dim" : "text-[10px] text-outline"}`}>XP</span>
             </div>

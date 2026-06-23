@@ -323,8 +323,8 @@ export default function GuidedTour() {
           >
             {/* آیکن + رد کردن */}
             <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 shrink-0">
-                <span className="material-symbols-outlined text-on-primary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <div className="w-11 h-11 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 shrink-0">
+                <span className="material-symbols-outlined text-on-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   {step.icon}
                 </span>
               </div>

@@ -68,7 +68,7 @@ export default function ProfileActions({ user }: Props) {
               <button onClick={() => setShowEdit(false)} className="text-[#464554] hover:text-[#0b1c30]">
                 <span className="material-symbols-outlined">close</span>
               </button>
-              <h3 className="text-[20px] font-bold text-[#0b1c30]">ویرایش پروفایل</h3>
+              <h3 className="text-[17px] font-bold text-[#0b1c30]">ویرایش پروفایل</h3>
             </div>
 
             <div className="flex flex-col gap-4">

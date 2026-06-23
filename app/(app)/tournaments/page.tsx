@@ -49,7 +49,7 @@ export default async function TournamentsPage() {
               <div className="glass-card rounded-xl p-5 flex flex-col gap-3 hover:shadow-lg transition-shadow">
                 <div className="flex items-start justify-between">
                   <div className="text-right flex-1">
-                    <h2 className="text-[18px] font-bold text-on-surface">{t.name}</h2>
+                    <h2 className="text-[16px] font-bold text-on-surface">{t.name}</h2>
                     {t.description && <p className="text-[13px] text-on-surface-variant mt-0.5">{t.description}</p>}
                   </div>
                   <span className={`material-symbols-outlined text-[28px] ${started ? "text-tertiary" : "text-outline"}`} style={{ fontVariationSettings: "'FILL' 1" }}>

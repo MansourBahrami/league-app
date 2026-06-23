@@ -27,7 +27,7 @@ export default function NotificationToggle() {
 
   return (
     <section className="glass-card rounded-xl p-4 flex items-center gap-3">
-      <span className="material-symbols-outlined text-primary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+      <span className="material-symbols-outlined text-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>
         notifications
       </span>
       <div className="text-right flex-1">

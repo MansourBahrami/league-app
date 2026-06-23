@@ -42,7 +42,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
         </div>
         <div className="flex-1 flex flex-col items-start text-right">
           <div className="bg-primary-fixed/40 text-primary px-2 py-0.5 rounded text-[10px] font-bold mb-1">{badge}</div>
-          <h3 className="text-[16px] font-bold text-on-surface leading-tight mb-2">{video.title}</h3>
+          <h3 className="text-[15px] font-bold text-on-surface leading-tight mb-2">{video.title}</h3>
           {isLocked ? (
             <span className="text-[12px] text-outline flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">lock</span>

@@ -197,7 +197,7 @@ export default async function MissionsPage() {
     <div className="flex flex-col px-5">
       <section className="mb-6 mt-2 text-center">
         <h1 className="text-[20px] font-extrabold text-[#4648d4] mb-1">بازارچه ماموریت‌ها</h1>
-        <p className="text-[18px] text-[#464554]">ماموریت بخر، درس بخون، جایزه بگیر!</p>
+        <p className="text-[14px] text-[#464554]">ماموریت بخر، درس بخون، جایزه بگیر!</p>
       </section>
 
       <MissionTabs

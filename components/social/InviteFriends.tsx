@@ -65,7 +65,7 @@ export default function InviteFriends({ referralCode, appUrl }: Props) {
       </p>
 
       <div className="flex items-center gap-2 bg-surface-container rounded-xl p-3 flex-row-reverse">
-        <span className="text-[20px] font-extrabold text-primary tracking-widest" dir="ltr">{referralCode}</span>
+        <span className="text-[18px] font-extrabold text-primary tracking-widest" dir="ltr">{referralCode}</span>
         <span className="text-[12px] text-on-surface-variant flex-1 text-right">کد دعوت تو</span>
       </div>
 

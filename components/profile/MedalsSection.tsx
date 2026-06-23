@@ -17,7 +17,7 @@ export default function MedalsSection({ medals }: Props) {
   return (
     <section className="glass-card rounded-xl p-6 flex flex-col gap-4">
       <div className="flex justify-between items-center w-full">
-        <h3 className="text-[20px] font-bold text-[#0b1c30]">مدال‌های من</h3>
+        <h3 className="text-[16px] font-bold text-[#0b1c30]">مدال‌های من</h3>
         <span className="text-[14px] text-[#4648d4]">{medals.length} مدال</span>
       </div>
       <div className="grid grid-cols-4 gap-3">

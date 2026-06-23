@@ -98,20 +98,20 @@ export default async function PublicProfilePage({ params }: Props) {
             <span className="material-symbols-outlined text-[#4648d4] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
           </div>
           <h3 className="text-[14px] font-semibold text-[#464554]">امتیاز (XP)</h3>
-          <p className="text-[20px] font-bold text-[#0b1c30]">{target.xp.toLocaleString("fa-IR")}</p>
+          <p className="text-[18px] font-bold text-[#0b1c30]">{target.xp.toLocaleString("fa-IR")}</p>
         </div>
         <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
           <div className="w-12 h-12 rounded-full bg-[#a36700]/20 flex items-center justify-center">
             <span className="material-symbols-outlined text-[#825100] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>paid</span>
           </div>
           <h3 className="text-[14px] font-semibold text-[#464554]">سکه</h3>
-          <p className="text-[20px] font-bold text-[#0b1c30]">{target.coins.toLocaleString("fa-IR")}</p>
+          <p className="text-[18px] font-bold text-[#0b1c30]">{target.coins.toLocaleString("fa-IR")}</p>
         </div>
         <div className="glass-card rounded-xl p-4 flex items-center gap-3 col-span-2">
           <span className="material-symbols-outlined text-[#006c49] text-4xl">emoji_events</span>
           <div className="text-right">
             <h3 className="text-[14px] font-semibold text-[#464554]">رتبه در جدول برتر</h3>
-            <p className="text-[20px] font-bold text-[#0b1c30]">جایگاه {(targetRank + 1).toLocaleString("fa-IR")} از {totalUsers.toLocaleString("fa-IR")}</p>
+            <p className="text-[18px] font-bold text-[#0b1c30]">جایگاه {(targetRank + 1).toLocaleString("fa-IR")} از {totalUsers.toLocaleString("fa-IR")}</p>
           </div>
         </div>
       </section>
@@ -132,7 +132,7 @@ export default async function PublicProfilePage({ params }: Props) {
             </div>
             <div className="text-right">
               <h3 className="text-[14px] font-semibold text-[#464554]">زنجیره مطالعه</h3>
-              <p className="text-[20px] font-bold text-[#0b1c30]">{streak.toLocaleString("fa-IR")} <span className="text-[16px] font-normal">روز</span></p>
+              <p className="text-[18px] font-bold text-[#0b1c30]">{streak.toLocaleString("fa-IR")} <span className="text-[13px] font-normal">روز</span></p>
             </div>
           </div>
 
@@ -143,7 +143,7 @@ export default async function PublicProfilePage({ params }: Props) {
           <section className="glass-card rounded-xl p-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="material-symbols-outlined text-[#006c49]" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
-              <h3 className="text-[18px] font-bold text-[#0b1c30]">لاگ مطالعه اخیر</h3>
+              <h3 className="text-[16px] font-bold text-[#0b1c30]">لاگ مطالعه اخیر</h3>
             </div>
             {studyLog.length === 0 ? (
               <p className="text-[14px] text-[#464554] text-center py-4">هنوز جلسه مطالعه‌ای ثبت نشده.</p>

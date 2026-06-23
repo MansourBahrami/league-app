@@ -116,7 +116,7 @@ export default async function ProfilePage() {
 
       {/* بازار ماموریت‌ها */}
       <a href="/missions" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
-        <span className="material-symbols-outlined text-tertiary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
+        <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
         <div className="text-right flex-1">
           <p className="text-[15px] font-bold text-on-surface">بازار ماموریت‌ها</p>
           <p className="text-[12px] text-on-surface-variant">ماموریت هفتگی انتخاب کن و جایزه بگیر</p>
@@ -126,7 +126,7 @@ export default async function ProfilePage() {
 
       {/* آموزش‌ها (ویدیوهای آموزشی) — دسترسی دائمی بعد از پایان آنبوردینگ */}
       <Link href="/videos" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-primary hover:bg-primary-fixed/40 transition-colors">
-        <span className="material-symbols-outlined text-primary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+        <span className="material-symbols-outlined text-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
         <div className="text-right flex-1">
           <p className="text-[15px] font-bold text-on-surface">آموزش‌ها</p>
           <p className="text-[12px] text-on-surface-variant">ویدیوهای آموزشی مطالعه و تکنیک‌ها</p>
@@ -143,7 +143,7 @@ export default async function ProfilePage() {
       {/* Admin panel link (admins only) */}
       {user.role === "admin" && (
         <a href="/admin" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-secondary hover:bg-secondary-container/30 transition-colors">
-          <span className="material-symbols-outlined text-secondary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
+          <span className="material-symbols-outlined text-secondary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
           <div className="text-right flex-1">
             <p className="text-[15px] font-bold text-on-surface">پنل مدیریت</p>
             <p className="text-[12px] text-on-surface-variant">مدیریت ویدیوها و محتوا</p>

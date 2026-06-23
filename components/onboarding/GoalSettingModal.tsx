@@ -106,13 +106,13 @@ export default function GoalSettingModal({
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
           <div className="text-center mb-5">
-            <h2 className="text-[20px] font-extrabold text-on-surface mb-1">دقیقه‌های امروزت تکمیل شد! 🎯</h2>
+            <h2 className="text-[18px] font-extrabold text-on-surface mb-1">دقیقه‌های امروزت تکمیل شد! 🎯</h2>
             <p className="text-[14px] text-on-surface-variant">
               یک قدم تا تکمیل روز {onboardingDay.toLocaleString("fa-IR")} مونده: ویدیوی امروز رو ببین (الان ببینی سکه ۲× می‌گیری).
             </p>
           </div>
           <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-3">
-            <span className="material-symbols-outlined text-tertiary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
+            <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
             <p className="text-[14px] font-bold text-on-surface leading-tight flex-1 text-right">{rewardVideo.title}</p>
           </div>
           <button
@@ -139,7 +139,7 @@ export default function GoalSettingModal({
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
           <div className="text-center mb-5">
-            <h2 className="text-[20px] font-extrabold text-on-surface mb-1">آفرین! {fmt(durationMin)} مطالعه کردی</h2>
+            <h2 className="text-[18px] font-extrabold text-on-surface mb-1">آفرین! {fmt(durationMin)} مطالعه کردی</h2>
             <p className="text-[14px] text-on-surface-variant">
               برای تکمیل ماموریت امروز، <span className="font-bold text-primary">{fmt(remainingMinutes)}</span> دیگه مونده.
             </p>
@@ -224,7 +224,7 @@ export default function GoalSettingModal({
         {/* هدف فردا = امروز + نیم ساعت */}
         {inOnboarding && tomorrowGoalMinutes > 0 && (
           <div className="mb-5 bg-primary-fixed rounded-xl p-3 flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>trending_up</span>
+            <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>trending_up</span>
             <div className="text-right">
               <p className="text-[13px] font-semibold text-primary">هدف فردا</p>
               <p className="text-[14px] font-bold text-on-surface">{fmt(tomorrowGoalMinutes)} (نیم ساعت بیشتر از امروز)</p>
@@ -236,7 +236,7 @@ export default function GoalSettingModal({
         {rewardVideo ? (
           <div className="flex flex-col gap-2">
             <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-1">
-              <span className="material-symbols-outlined text-tertiary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+              <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
               <div className="text-right">
                 <p className="text-[13px] font-semibold text-tertiary">جایزه‌ات باز شد: ویدیوی آموزشی</p>
                 <p className="text-[14px] font-bold text-on-surface leading-tight">{rewardVideo.title}</p>
