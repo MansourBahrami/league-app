@@ -153,16 +153,19 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
         const itemCounts = counts[a.id] ?? {};
         const myEmoji = mine[a.id] ?? null;
         const activeEmojis = REACTION_EMOJIS.filter((e) => (itemCounts[e] ?? 0) > 0);
+        // نوار واکنش فقط وقتی چیزی برای نمایش هست رندر شود (وگرنه حاشیه‌ی خالی می‌ماند)
+        const isPicking = pickerFor === a.id;
+        const showReactionRow = !isMine || activeEmojis.length > 0;
 
         return (
           <div
             key={a.id}
-            className="glass-card w-full rounded-xl p-3 feed-item-enter border-r-4"
+            className="glass-card w-full rounded-xl px-3 py-2.5 feed-item-enter border-r-4"
             style={{ animationDelay: `${i * 0.05}s`, borderRightColor: config.accent }}
           >
-            <div className="flex items-start gap-3">
-              {/* آواتار (سمت راست در RTL) */}
-              <Link href={`/profile/${a.userId}`} className="shrink-0 hover:scale-105 transition-transform">
+            <div className="flex items-center gap-2.5">
+              {/* آواتار + نشان نوع فعالیت (سمت راست در RTL) */}
+              <Link href={`/profile/${a.userId}`} className="relative shrink-0 hover:scale-105 transition-transform">
                 {a.user.avatarUrl ? (
                   <img src={a.user.avatarUrl} className="w-10 h-10 rounded-full object-cover border border-[#c7c4d7]" alt={name} />
                 ) : (
@@ -170,86 +173,89 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
                     {name[0]}
                   </div>
                 )}
+                <span
+                  className="absolute -bottom-0.5 -left-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white"
+                  style={{ backgroundColor: config.bg }}
+                >
+                  <span className="material-symbols-outlined text-[12px]" style={{ color: config.color, fontVariationSettings: "'FILL' 1" }}>
+                    {config.icon}
+                  </span>
+                </span>
               </Link>
 
-              {/* متن (چندخطی، بدون بریدگی) */}
+              {/* متن + خط متادیتا (زمان سمت راست، واکنش‌ها سمت چپ) */}
               <div className="flex-1 min-w-0 text-right">
-                <p className="text-[14px] text-[#0b1c30] leading-snug">
+                <p className="text-[13.5px] text-[#0b1c30] leading-snug">
                   <Link href={`/profile/${a.userId}`} className="font-bold text-[#4648d4] hover:underline">{name}</Link>{" "}
                   {label}
                 </p>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="material-symbols-outlined text-[13px] text-[#767586]">schedule</span>
-                  <span className="text-[11px] text-[#767586]">
-                    {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true, locale: faIR })}
-                  </span>
-                </div>
-              </div>
+                <div className="flex items-center justify-between gap-2 mt-1">
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="material-symbols-outlined text-[12px] text-[#767586]">schedule</span>
+                    <span className="text-[11px] text-[#767586]">
+                      {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true, locale: faIR })}
+                    </span>
+                  </div>
 
-              {/* نشان نوع فعالیت (رنگی، سمت چپ) */}
-              <div className="w-9 h-9 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: config.bg }}>
-                <span className="material-symbols-outlined text-[20px]" style={{ color: config.color, fontVariationSettings: "'FILL' 1" }}>
-                  {config.icon}
-                </span>
-              </div>
-            </div>
-
-            {/* نوار واکنش */}
-            <div className="flex items-center gap-1.5 mt-2.5 flex-row-reverse flex-wrap">
-              {/* دکمه افزودن واکنش (روی آیتم خودِ کاربر مخفی) */}
-              {!isMine && (
-                <div className="relative">
-                  <button
-                    onClick={() => setPickerFor((p) => (p === a.id ? null : a.id))}
-                    className={`flex items-center justify-center w-8 h-8 rounded-full border transition-colors ${
-                      myEmoji
-                        ? "bg-[#e1e0ff] border-[#4648d4]/30"
-                        : "bg-surface-container border-outline-variant/40 hover:bg-[#e1e0ff]"
-                    }`}
-                    aria-label="افزودن واکنش"
-                  >
-                    {myEmoji ? (
-                      <span className="text-[16px] leading-none">{myEmoji}</span>
-                    ) : (
-                      <span className="material-symbols-outlined text-[18px] text-[#767586]">add_reaction</span>
-                    )}
-                  </button>
-
-                  {pickerFor === a.id && (
-                    <div className="absolute bottom-10 right-0 z-20 flex items-center gap-1 bg-surface rounded-full shadow-lg border border-outline-variant/40 px-2 py-1.5">
-                      {REACTION_EMOJIS.map((e) => (
+                  {/* واکنش‌ها روی همان خط زمان — بدون افزودن ارتفاع اضافه */}
+                  {showReactionRow && (
+                    <div className="flex items-center gap-1 flex-row-reverse min-w-0 overflow-hidden">
+                      {!isMine && (
+                        <button
+                          onClick={() => setPickerFor((p) => (p === a.id ? null : a.id))}
+                          className={`flex items-center justify-center w-7 h-7 rounded-full border shrink-0 transition-colors ${
+                            myEmoji || isPicking
+                              ? "bg-[#e1e0ff] border-[#4648d4]/30"
+                              : "bg-surface-container border-outline-variant/40 hover:bg-[#e1e0ff]"
+                          }`}
+                          aria-label="افزودن واکنش"
+                        >
+                          {myEmoji ? (
+                            <span className="text-[15px] leading-none">{myEmoji}</span>
+                          ) : (
+                            <span className="material-symbols-outlined text-[16px] text-[#767586]">add_reaction</span>
+                          )}
+                        </button>
+                      )}
+                      {activeEmojis.map((e) => (
                         <button
                           key={e}
-                          onClick={() => react(a.id, e)}
-                          className={`text-[20px] leading-none w-8 h-8 rounded-full transition-transform hover:scale-125 ${
-                            myEmoji === e ? "bg-[#e1e0ff]" : ""
-                          }`}
+                          onClick={() => !isMine && react(a.id, e)}
+                          disabled={isMine}
+                          className={`flex items-center gap-0.5 px-1.5 h-7 rounded-full border shrink-0 text-[12px] font-semibold transition-colors ${
+                            myEmoji === e
+                              ? "bg-[#e1e0ff] border-[#4648d4]/40 text-[#4648d4]"
+                              : "bg-surface-container border-outline-variant/30 text-[#464554]"
+                          } ${isMine ? "cursor-default" : "hover:bg-[#e1e0ff]"}`}
                         >
-                          {e}
+                          <span className="text-[13px] leading-none">{e}</span>
+                          <span>{faNum(itemCounts[e])}</span>
                         </button>
                       ))}
                     </div>
                   )}
                 </div>
-              )}
-
-              {/* تراشه‌های شمارش */}
-              {activeEmojis.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => !isMine && react(a.id, e)}
-                  disabled={isMine}
-                  className={`flex items-center gap-1 px-2 h-8 rounded-full border text-[13px] font-semibold transition-colors ${
-                    myEmoji === e
-                      ? "bg-[#e1e0ff] border-[#4648d4]/40 text-[#4648d4]"
-                      : "bg-surface-container border-outline-variant/30 text-[#464554]"
-                  } ${isMine ? "cursor-default" : "hover:bg-[#e1e0ff]"}`}
-                >
-                  <span className="text-[14px] leading-none">{e}</span>
-                  <span>{faNum(itemCounts[e])}</span>
-                </button>
-              ))}
+              </div>
             </div>
+
+            {/* انتخابگر واکنش — درون‌خطی (همیشه داخل صفحه، بدون بریدگی) */}
+            {isPicking && (
+              <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-outline-variant/20 flex-row-reverse flex-wrap">
+                {REACTION_EMOJIS.map((e) => (
+                  <button
+                    key={e}
+                    onClick={() => react(a.id, e)}
+                    className={`text-[19px] leading-none w-9 h-9 rounded-full border transition-transform hover:scale-110 ${
+                      myEmoji === e
+                        ? "bg-[#e1e0ff] border-[#4648d4]/40"
+                        : "bg-surface-container border-outline-variant/30"
+                    }`}
+                  >
+                    {e}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}

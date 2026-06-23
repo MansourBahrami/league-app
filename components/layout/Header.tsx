@@ -32,29 +32,25 @@ export default function Header({ user, xp, coins, unreadCount = 0 }: HeaderProps
     <header className="fixed top-0 right-0 w-full z-50 flex flex-row-reverse justify-between items-center px-5 py-2 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_20px_30px_rgba(70,72,212,0.1)] md:max-w-[600px] md:left-1/2 md:-translate-x-1/2">
       {/* Leading: Avatar + level */}
       <Link href="/profile" className="flex items-center gap-2.5 flex-row-reverse cursor-pointer hover:scale-105 transition-transform">
-        <div className="relative">
-          <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20 p-0.5">
-            {user.avatarUrl ? (
-              <img src={user.avatarUrl} className="w-full h-full object-cover rounded-full" alt="Avatar" />
-            ) : (
-              <div className="w-full h-full rounded-full bg-primary-fixed flex items-center justify-center">
-                <span className="text-[18px] font-bold text-primary">
-                  {user.name ? user.name[0] : "؟"}
-                </span>
-              </div>
-            )}
-          </div>
-          {/* Stars: قاب ۳ ستاره (خاموش/روشن) */}
-          <div className="absolute -bottom-2 -left-2 bg-white rounded-full border border-tertiary-fixed-dim px-1 py-0.5 shadow-sm">
-            <StarBadge stars={user.stars} total={3} size={10} />
-          </div>
+        <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20 p-0.5">
+          {user.avatarUrl ? (
+            <img src={user.avatarUrl} className="w-full h-full object-cover rounded-full" alt="Avatar" />
+          ) : (
+            <div className="w-full h-full rounded-full bg-primary-fixed flex items-center justify-center">
+              <span className="text-[18px] font-bold text-primary">
+                {user.name ? user.name[0] : "؟"}
+              </span>
+            </div>
+          )}
         </div>
         <div className="flex flex-col items-end">
           <span className="text-[16px] font-bold text-primary leading-tight">
             {user.name ?? "تمرکز"}
           </span>
-          <span className="text-[11px] font-semibold text-on-surface-variant">
-            {LEVEL_LABELS[user.level] ?? user.level} ـ {user.stars.toLocaleString("fa-IR")} ستاره
+          {/* سطح + قاب ۳ ستاره (خاموش/روشن) */}
+          <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant" dir="rtl">
+            {LEVEL_LABELS[user.level] ?? user.level} ـ
+            <StarBadge stars={user.stars} total={3} size={11} />
           </span>
         </div>
       </Link>
