@@ -99,8 +99,8 @@ export default function LoginPage() {
               school
             </span>
           </div>
-          <h1 className="text-[24px] font-extrabold text-[#4648d4]">گیمیفیکیشن مطالعه</h1>
-          <p className="text-[14px] text-[#464554] mt-1">مطالعه را به بازی تبدیل کن</p>
+          <h1 className="text-[24px] font-extrabold text-[#4648d4]">اپ G-camp</h1>
+          <p className="text-[14px] text-[#464554] mt-1">درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن</p>
         </div>
 
         {step === "phone" ? (

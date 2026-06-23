@@ -1,7 +1,7 @@
 {
-  "name": "گیمیفیکیشن مطالعه",
-  "short_name": "لیگ",
-  "description": "مطالعه را به بازی تبدیل کن",
+  "name": "اپ G-camp",
+  "short_name": "G-camp",
+  "description": "درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#f8f9ff",
