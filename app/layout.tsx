@@ -9,8 +9,8 @@ const vazirmatn = Vazirmatn({
 });
 
 export const metadata: Metadata = {
-  title: "گیمیفیکیشن مطالعه",
-  description: "مطالعه را به بازی تبدیل کن",
+  title: "اپ G-camp",
+  description: "درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن",
   manifest: "/manifest.json",
 };
 

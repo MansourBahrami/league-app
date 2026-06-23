@@ -19,7 +19,7 @@ export default function StatsGrid({ totalHours, streak, rank, totalUsers }: Prop
         <div className="w-12 h-12 rounded-full bg-[#a36700]/20 flex items-center justify-center">
           <span className="material-symbols-outlined text-[#825100] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
         </div>
-        <h3 className="text-[14px] font-semibold text-[#464554]">زنجیره معلی</h3>
+        <h3 className="text-[14px] font-semibold text-[#464554]">زنجیره مطالعه</h3>
         <p className="text-[20px] font-bold text-[#0b1c30]">{streak.toLocaleString("fa-IR")} <span className="text-[16px] font-normal">روز</span></p>
       </div>
       <div className="glass-card rounded-xl p-4 flex items-center gap-3 col-span-2">
