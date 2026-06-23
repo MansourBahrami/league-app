@@ -37,7 +37,7 @@ export default async function VideosPage() {
   return (
     <div className="flex flex-col px-5">
       <div className="mb-8 mt-2 text-center">
-        <h2 className="text-[24px] font-bold text-primary mb-2">ویدیوهای آموزشی</h2>
+        <h2 className="text-[20px] font-bold text-primary mb-1.5">ویدیوهای آموزشی</h2>
         <p className="text-[16px] text-on-surface-variant">مسیر آشنایی و پیشرفت شما</p>
       </div>
 

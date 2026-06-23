@@ -65,7 +65,7 @@ export default async function ProfilePage() {
         <div className="absolute top-0 right-0 w-full h-24 bg-gradient-to-b from-primary-fixed to-transparent opacity-50 z-0" />
         <div className="relative z-10 flex flex-col items-center w-full">
           <AvatarPicker currentUrl={user.avatarUrl} name={user.name} />
-          <h2 className="text-[24px] font-bold text-on-surface mb-1">{user.name ?? "نام وارد نشده"}</h2>
+          <h2 className="text-[20px] font-bold text-on-surface mb-1">{user.name ?? "نام وارد نشده"}</h2>
           <p className="text-[14px] text-on-surface-variant mb-1">
             {[user.grade, user.field].filter(Boolean).join(" • ") || user.phone}
           </p>

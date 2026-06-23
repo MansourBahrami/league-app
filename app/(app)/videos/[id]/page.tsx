@@ -48,7 +48,7 @@ export default async function VideoPlayerPage({ params }: Props) {
 
       {/* Video Info */}
       <section className="flex flex-col gap-4">
-        <h1 className="text-[24px] font-bold text-[#0b1c30]">{video.title}</h1>
+        <h1 className="text-[20px] font-bold text-[#0b1c30]">{video.title}</h1>
         <div className="flex gap-2 items-center">
           <span className="bg-[#dce9ff] text-[#4648d4] px-3 py-1 rounded-full text-[14px] font-semibold flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">calendar_today</span>روز {video.day.toLocaleString("fa-IR")}

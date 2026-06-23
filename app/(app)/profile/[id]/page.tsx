@@ -78,7 +78,7 @@ export default async function PublicProfilePage({ params }: Props) {
               </div>
             )}
           </div>
-          <h2 className="text-[24px] font-bold text-[#0b1c30] mb-1">{target.name ?? "کاربر"}</h2>
+          <h2 className="text-[20px] font-bold text-[#0b1c30] mb-1">{target.name ?? "کاربر"}</h2>
           <div className="flex items-center gap-2 mb-1">
             <span className="bg-[#e1e0ff] text-[#4648d4] px-3 py-1 rounded-full text-[13px] font-bold">{target.level}</span>
             {Array.from({ length: target.stars }).map((_, i) => (

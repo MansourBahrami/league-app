@@ -30,7 +30,7 @@ export default async function TournamentsPage() {
   return (
     <div className="flex flex-col gap-4 px-5">
       <div className="text-center mt-2">
-        <h1 className="text-[24px] font-extrabold text-primary">تورنومنت‌ها</h1>
+        <h1 className="text-[20px] font-extrabold text-primary">تورنومنت‌ها</h1>
         <p className="text-[13px] text-on-surface-variant mt-1">رقابت‌های ویژه با جایزه — جدا از لیگ هفتگی</p>
       </div>
 
