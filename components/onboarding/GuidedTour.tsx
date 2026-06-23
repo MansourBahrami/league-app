@@ -322,7 +322,7 @@ export default function GuidedTour() {
             className="feed-item-enter w-full max-w-[440px] max-h-[calc(100dvh-32px)] overflow-y-auto bg-surface rounded-2xl shadow-2xl border border-outline-variant/30 p-5 flex flex-col gap-3.5"
           >
             {/* آیکن + رد کردن */}
-            <div className="flex items-center justify-between flex-row-reverse">
+            <div className="flex items-center justify-between">
               <div className="w-12 h-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 shrink-0">
                 <span className="material-symbols-outlined text-on-primary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   {step.icon}

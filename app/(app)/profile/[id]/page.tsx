@@ -126,7 +126,7 @@ export default async function PublicProfilePage({ params }: Props) {
           )}
 
           {/* زنجیره مطالعه */}
-          <div className="glass-card rounded-xl p-4 flex items-center gap-3 flex-row-reverse">
+          <div className="glass-card rounded-xl p-4 flex items-center gap-3">
             <div className="w-12 h-12 rounded-full bg-[#a36700]/20 flex items-center justify-center shrink-0">
               <span className="material-symbols-outlined text-[#825100] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
             </div>
@@ -141,7 +141,7 @@ export default async function PublicProfilePage({ params }: Props) {
 
           {/* لاگ مطالعه */}
           <section className="glass-card rounded-xl p-6">
-            <div className="flex items-center gap-2 mb-4 flex-row-reverse">
+            <div className="flex items-center gap-2 mb-4">
               <span className="material-symbols-outlined text-[#006c49]" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
               <h3 className="text-[18px] font-bold text-[#0b1c30]">لاگ مطالعه اخیر</h3>
             </div>

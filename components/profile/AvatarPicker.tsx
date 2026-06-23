@@ -47,7 +47,7 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto" onClick={() => setOpen(false)}>
           <div className="glass-card w-full max-w-[420px] rounded-2xl p-5" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-[16px] font-bold text-on-surface text-center mb-4">یه آواتار انتخاب کن</h3>
             <div className="grid grid-cols-4 gap-3">

@@ -147,25 +147,25 @@ export default function DailyMissionCard({
       )}
 
       {/* ماموریت امروز */}
-      <div className="flex items-center justify-between mb-3 flex-row-reverse">
-        <h3 className="text-[16px] font-bold text-on-surface flex items-center gap-1.5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[15px] font-bold text-on-surface flex items-center gap-1.5">
           <span className="material-symbols-outlined text-secondary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             target
           </span>
           {inOnboarding ? "ماموریت امروزت:" : isDay1 ? "ماموریت روز اول" : "ماموریت روزانه"}
         </h3>
-        <span className="text-[14px] font-bold text-secondary">{progress.toLocaleString("fa-IR")}٪</span>
+        <span className="text-[13px] font-bold text-secondary">{progress.toLocaleString("fa-IR")}٪</span>
       </div>
 
       {/* بخش ۱: مطالعه — جمله هدف + نوار پیشرفت */}
-      <div className="flex items-center gap-2 mb-1.5 flex-row-reverse">
+      <div className="flex items-center gap-2 mb-1.5">
         <span
           className={`material-symbols-outlined text-[18px] ${minutesDone ? "text-secondary" : "text-on-surface-variant"}`}
           style={{ fontVariationSettings: minutesDone ? "'FILL' 1" : "'FILL' 0" }}
         >
           {minutesDone ? "check_circle" : "timer"}
         </span>
-        <p className="text-[15px] font-bold text-on-surface flex-1 text-right">
+        <p className="text-[14px] font-bold text-on-surface flex-1 text-right">
           {goalText} درس بخون
         </p>
       </div>
@@ -188,14 +188,14 @@ export default function DailyMissionCard({
       {/* بخش ۲: ویدیوی روز + دکمه تماشا */}
       {video && (
         <div className="mt-4">
-          <div className="flex items-center gap-2 mb-2 flex-row-reverse">
+          <div className="flex items-center gap-2 mb-2">
             <span
               className={`material-symbols-outlined text-[18px] ${video.watched ? "text-secondary" : "text-on-surface-variant"}`}
               style={{ fontVariationSettings: video.watched ? "'FILL' 1" : "'FILL' 0" }}
             >
               {video.watched ? "check_circle" : "play_circle"}
             </span>
-            <p className="text-[15px] font-bold text-on-surface flex-1 text-right leading-snug">
+            <p className="text-[14px] font-bold text-on-surface flex-1 text-right leading-snug">
               {variant === "paid" && !video.purchased
                 ? `ویدیوی «${video.title}» رو بخر و ببین!`
                 : `ویدیوی «${video.title}» رو ببین!`}
@@ -211,9 +211,9 @@ export default function DailyMissionCard({
                 type="button"
                 onClick={handleBuy}
                 disabled={buying || userCoins < video.price}
-                className="gamified-btn w-full bg-tertiary text-on-tertiary text-[16px] font-bold py-3 rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-tertiary/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="gamified-btn w-full bg-tertiary text-on-tertiary text-[15px] font-bold py-2.5 rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-tertiary/20 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   {buying ? "progress_activity" : "shopping_cart"}
                 </span>
                 {buying ? "در حال خرید..." : `خرید ویدیو با ${video.price.toLocaleString("fa-IR")} سکه`}
@@ -228,9 +228,9 @@ export default function DailyMissionCard({
           ) : (
             <Link
               href={`/videos/${video.id}`}
-              className="gamified-btn w-full bg-primary text-on-primary text-[16px] font-bold py-3 rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-primary/20"
+              className="gamified-btn w-full bg-primary text-on-primary text-[15px] font-bold py-2.5 rounded-xl flex justify-center items-center gap-2 shadow-lg shadow-primary/20"
             >
-              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                 play_circle
               </span>
               تماشا

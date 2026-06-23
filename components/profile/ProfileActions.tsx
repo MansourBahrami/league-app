@@ -62,7 +62,7 @@ export default function ProfileActions({ user }: Props) {
       </div>
 
       {showEdit && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[80] flex items-end justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm">
           <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
             <div className="flex justify-between items-center mb-5">
               <button onClick={() => setShowEdit(false)} className="text-[#464554] hover:text-[#0b1c30]">

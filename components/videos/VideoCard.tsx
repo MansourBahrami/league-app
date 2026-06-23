@@ -22,7 +22,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
 
   const inner = (
     <div className={`relative bg-white/80 rounded-xl p-1 shadow-[0_10px_25px_rgba(70,72,212,0.1)] border border-primary/20 backdrop-blur-xl group overflow-hidden transition-all duration-300 ${isLocked ? "opacity-80" : "hover:shadow-[0_15px_30px_rgba(70,72,212,0.15)] cursor-pointer"}`}>
-      <div className="flex flex-row-reverse gap-4 bg-white rounded-xl p-3 items-center">
+      <div className="flex gap-4 bg-white rounded-xl p-3 items-center">
         <div className="w-24 h-24 rounded-xl overflow-hidden relative shrink-0 bg-primary-fixed flex items-center justify-center">
           {video.thumbnailUrl ? (
             <img src={video.thumbnailUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={video.title} />
@@ -40,7 +40,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
             </div>
           )}
         </div>
-        <div className="flex-1 flex flex-col items-end text-right">
+        <div className="flex-1 flex flex-col items-start text-right">
           <div className="bg-primary-fixed/40 text-primary px-2 py-0.5 rounded text-[10px] font-bold mb-1">{badge}</div>
           <h3 className="text-[16px] font-bold text-on-surface leading-tight mb-2">{video.title}</h3>
           {isLocked ? (

@@ -15,7 +15,7 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 w-full z-50 flex flex-row-reverse justify-around items-center px-4 pt-2 bg-surface/70 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] rounded-t-2xl md:max-w-[600px] md:left-1/2 md:-translate-x-1/2"
+      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] z-50 flex justify-around items-center px-4 pt-2 bg-surface/70 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] rounded-t-2xl"
       style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
     >
       {NAV_ITEMS.map((item) => {

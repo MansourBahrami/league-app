@@ -154,7 +154,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
       {/* Tournament entry — فقط وقتی تورنومنت فعالی هست */}
       {hasTournament && (
-        <Link href="/tournaments" className="glass-card rounded-xl p-3 flex items-center gap-3 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
+        <Link href="/tournaments" className="glass-card rounded-xl p-3 flex items-center gap-3 border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
           <span className="material-symbols-outlined text-tertiary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>emoji_events</span>
           <div className="text-right flex-1">
             <p className="text-[14px] font-bold text-on-surface">تورنومنت‌های ویژه</p>

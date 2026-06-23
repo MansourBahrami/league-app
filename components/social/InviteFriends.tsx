@@ -56,7 +56,7 @@ export default function InviteFriends({ referralCode, appUrl }: Props) {
 
   return (
     <section className="glass-card rounded-xl p-5 flex flex-col gap-3">
-      <div className="flex items-center gap-2 flex-row-reverse">
+      <div className="flex items-center gap-2">
         <span className="material-symbols-outlined text-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>group_add</span>
         <h3 className="text-[16px] font-bold text-on-surface">دوستاتو دعوت کن</h3>
       </div>
@@ -82,7 +82,7 @@ export default function InviteFriends({ referralCode, appUrl }: Props) {
 
       <div className="border-t border-outline-variant/30 pt-3 flex flex-col gap-2">
         <p className="text-[13px] font-semibold text-on-surface text-right">کد دعوت یه دوست داری؟</p>
-        <div className="flex gap-2 flex-row-reverse">
+        <div className="flex gap-2">
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}

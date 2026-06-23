@@ -7,19 +7,19 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
   // حالت بدون ماموریت فعال → دعوت به انتخاب ماموریت هفتگی
   if (!state) {
     return (
-      <section className="glass-card rounded-xl p-5 text-center">
-        <span className="material-symbols-outlined text-secondary text-[40px] mb-2 block" style={{ fontVariationSettings: "'FILL' 1" }}>
+      <section className="glass-card rounded-xl p-4 text-center">
+        <span className="material-symbols-outlined text-secondary text-[32px] mb-1.5 block" style={{ fontVariationSettings: "'FILL' 1" }}>
           flag
         </span>
-        <h3 className="text-[16px] font-bold text-on-surface mb-1">ماموریت هفتگی فعالی نداری</h3>
-        <p className="text-[13px] text-on-surface-variant mb-4 leading-relaxed">
+        <h3 className="text-[15px] font-bold text-on-surface mb-1">ماموریت هفتگی فعالی نداری</h3>
+        <p className="text-[13px] text-on-surface-variant mb-3 leading-relaxed">
           یه ماموریت هفتگی انتخاب کن تا ساعت مطالعه‌ات به ۶ روز تقسیم شه و هر روز هدف روشنی داشته باشی.
         </p>
         <Link
           href="/missions"
-          className="gamified-btn inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-[15px] font-bold py-3 px-6 rounded-xl shadow-lg shadow-primary/20"
+          className="gamified-btn inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-[14px] font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-primary/20"
         >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
+          <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
           انتخاب ماموریت هفتگی
         </Link>
       </section>
@@ -30,9 +30,9 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
   if (state.pending) {
     return (
       <section className="glass-card rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-3 flex-row-reverse">
+        <div className="flex items-center gap-2 mb-3">
           <span className="material-symbols-outlined text-secondary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-          <h3 className="text-[16px] font-bold text-on-surface flex-1 text-right">ماموریت هفتگی انتخاب شد! ✅</h3>
+          <h3 className="text-[15px] font-bold text-on-surface flex-1 text-right">ماموریت هفتگی انتخاب شد! ✅</h3>
         </div>
         <div className="bg-primary-fixed/60 rounded-xl p-4 text-center">
           <p className="text-[15px] font-bold text-on-surface mb-1">
@@ -55,8 +55,8 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
 
   return (
     <section className="glass-card rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3 flex-row-reverse">
-        <h3 className="text-[16px] font-bold text-on-surface flex items-center gap-1.5">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-[15px] font-bold text-on-surface flex items-center gap-1.5">
           <span className="material-symbols-outlined text-secondary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>target</span>
           ماموریت امروز (روز {state.dayIndex.toLocaleString("fa-IR")} از ۷)
         </h3>
@@ -67,14 +67,14 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
 
       {state.isRestDay ? (
         <div className="bg-secondary-container/40 rounded-xl p-4 text-center">
-          <span className="material-symbols-outlined text-secondary text-[32px] mb-1 block" style={{ fontVariationSettings: "'FILL' 1" }}>celebration</span>
-          <p className="text-[15px] font-bold text-on-surface">امروز روز استراحته! 🎉</p>
+          <span className="material-symbols-outlined text-secondary text-[28px] mb-1 block" style={{ fontVariationSettings: "'FILL' 1" }}>celebration</span>
+          <p className="text-[14px] font-bold text-on-surface">امروز روز استراحته! 🎉</p>
           <p className="text-[13px] text-on-surface-variant mt-1">ماموریت هفتگی‌ت رو کامل کردی. می‌تونی استراحت کنی یا جلوتر بزنی.</p>
         </div>
       ) : (
         <>
           {/* پیشرفت روزانه */}
-          <div className="flex items-center gap-2 mb-1.5 flex-row-reverse">
+          <div className="flex items-center gap-2 mb-1.5">
             <span className={`material-symbols-outlined text-[18px] ${dailyDone ? "text-secondary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: dailyDone ? "'FILL' 1" : "'FILL' 0" }}>
               {dailyDone ? "check_circle" : "timer"}
             </span>
@@ -94,7 +94,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
 
       {/* پیشرفت هفتگی */}
       <div className="border-t border-outline-variant/30 mt-4 pt-3">
-        <div className="flex items-center gap-2 mb-1.5 flex-row-reverse">
+        <div className="flex items-center gap-2 mb-1.5">
           <span className="material-symbols-outlined text-[18px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_month</span>
           <p className="text-[14px] font-bold text-on-surface flex-1 text-right">پیشرفت هفتگی</p>
           <span className="text-[12px] font-bold text-primary">{weeklyPct.toLocaleString("fa-IR")}٪</span>

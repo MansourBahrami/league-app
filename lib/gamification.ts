@@ -9,8 +9,8 @@ import { tehranDayDiff } from "@/lib/date";
  * اگر minXp و maxXp هر دو ۰ باشند یعنی «XP مهم نیست» (فقط مدال شرط است — سطح الگو).
  */
 export const LEVEL_TABLE = [
-  { level: "تازه‌نفس", stars: 1, minXp: 8, maxXp: 29, requiredMedals: [] },
-  { level: "تازه‌نفس", stars: 2, minXp: 30, maxXp: 59, requiredMedals: [] },
+  { level: "تازه‌نفس", stars: 1, minXp: 0, maxXp: 7, requiredMedals: [] },
+  { level: "تازه‌نفس", stars: 2, minXp: 8, maxXp: 59, requiredMedals: [] },
   { level: "تازه‌نفس", stars: 3, minXp: 60, maxXp: 199, requiredMedals: [] },
   { level: "ثابت‌قدم", stars: 1, minXp: 200, maxXp: 499, requiredMedals: [[{ hours: 20, count: 1 }]] },
   { level: "ثابت‌قدم", stars: 2, minXp: 500, maxXp: 799, requiredMedals: [[{ hours: 25, count: 1 }, { hours: 30, count: 1 }]] },

@@ -199,7 +199,7 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
 
                   {/* واکنش‌ها روی همان خط زمان — بدون افزودن ارتفاع اضافه */}
                   {showReactionRow && (
-                    <div className="flex items-center gap-1 flex-row-reverse min-w-0 overflow-hidden">
+                    <div className="flex items-center gap-1 min-w-0 overflow-hidden">
                       {!isMine && (
                         <button
                           onClick={() => setPickerFor((p) => (p === a.id ? null : a.id))}
@@ -240,7 +240,7 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
 
             {/* انتخابگر واکنش — درون‌خطی (همیشه داخل صفحه، بدون بریدگی) */}
             {isPicking && (
-              <div className="flex items-center justify-end gap-1.5 mt-2 pt-2 border-t border-outline-variant/20 flex-row-reverse flex-wrap">
+              <div className="flex items-center justify-start gap-1.5 mt-2 pt-2 border-t border-outline-variant/20 flex-wrap">
                 {REACTION_EMOJIS.map((e) => (
                   <button
                     key={e}

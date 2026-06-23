@@ -212,7 +212,7 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
 
   return (
     <>
-      <section ref={frameRef} data-tour="timer" className="glass-card rounded-xl p-5 relative border-2 border-primary/15">
+      <section ref={frameRef} data-tour="timer" className="glass-card rounded-xl p-4 relative border border-primary/15">
         {/* فریم شمارش‌معکوس: با اندازه‌ی واقعی قاب کشیده می‌شود (بدون اعوجاج) و با گذر زمان خالی می‌شود */}
         {isActive && box.w > 0 && (
           <svg className="absolute inset-0 pointer-events-none z-0" width={box.w} height={box.h} aria-hidden>
@@ -229,15 +229,15 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
 
         <div className="relative z-10">
           {/* ردیف بالا: عنوان + انتخاب مدت (مطابق طرح) */}
-          <div className="flex items-center justify-between flex-row-reverse gap-2 mb-4">
-            <h2 className="text-[16px] font-extrabold text-on-surface shrink-0">تایمر مطالعه</h2>
-            <div className="flex gap-2" dir="ltr">
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h2 className="text-[15px] font-extrabold text-on-surface shrink-0">تایمر مطالعه</h2>
+            <div className="flex gap-1.5" dir="ltr">
               {[...TIMER_OPTIONS].reverse().map((min) => (
                 <button
                   key={min}
                   onClick={() => setTimer(min)}
                   disabled={timerState === "running"}
-                  className={`w-12 h-12 rounded-2xl text-[14px] font-bold transition-all flex items-center justify-center ${
+                  className={`w-10 h-10 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center ${
                     selectedMinutes === min
                       ? "bg-primary text-on-primary shadow-md scale-105"
                       : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
@@ -251,13 +251,13 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
 
           {/* نمایش زمان هنگام اجرا */}
           {isActive && (
-            <div className="text-center mb-4 relative">
+            <div className="text-center mb-3 relative">
               {floats.map((f) => (
                 <span key={f.id} className="reward-float absolute -top-2 right-1/2 translate-x-1/2 text-[13px] font-extrabold text-secondary whitespace-nowrap">
                   +۱ XP · +۱ سکه
                 </span>
               ))}
-              <span className="text-[52px] leading-none font-extrabold text-primary" dir="ltr" style={{ fontVariant: "tabular-nums" }}>
+              <span className="text-[44px] leading-none font-extrabold text-primary" dir="ltr" style={{ fontVariant: "tabular-nums" }}>
                 {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
               </span>
               {timerState === "running" && (
@@ -272,18 +272,18 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
           {/* دکمه اصلی (بزرگ) */}
           <button
             onClick={handleToggle}
-            className={`gamified-btn w-full text-[18px] font-extrabold py-5 rounded-2xl flex justify-center items-center gap-2 shadow-lg ${btn.cls}`}
+            className={`gamified-btn w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${btn.cls}`}
           >
-            <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>{btn.icon}</span>
+            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{btn.icon}</span>
             {btn.label}
           </button>
 
           {isActive && (
             <button
               onClick={handleStop}
-              className="mt-3 w-full border-2 border-outline-variant text-on-surface-variant py-3.5 rounded-2xl text-[16px] font-bold hover:bg-surface-container transition-colors flex items-center justify-center gap-2"
+              className="mt-2.5 w-full border border-outline-variant text-on-surface-variant py-3 rounded-xl text-[15px] font-bold hover:bg-surface-container transition-colors flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-[20px]">stop</span>
+              <span className="material-symbols-outlined text-[18px]">stop</span>
               توقف و ثبت
             </button>
           )}

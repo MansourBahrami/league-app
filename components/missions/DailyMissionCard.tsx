@@ -46,8 +46,8 @@ export default function DailyMissionCard({ mission, userCoins, isLocked, hasActi
 
   return (
     <div className="glass-card rounded-2xl p-4 flex flex-col">
-      <div className="flex items-center justify-between mb-3 flex-row-reverse">
-        <div className="flex items-center gap-2 flex-row-reverse">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
           <div className="bg-secondary-container/50 text-secondary rounded-full w-11 h-11 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>today</span>
           </div>
@@ -66,7 +66,7 @@ export default function DailyMissionCard({ mission, userCoins, isLocked, hasActi
         )}
       </div>
 
-      <div className="flex items-center gap-1.5 text-[13px] text-on-surface-variant mb-3 flex-row-reverse">
+      <div className="flex items-center gap-1.5 text-[13px] text-on-surface-variant mb-3">
         <span className="material-symbols-outlined text-tertiary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>redeem</span>
         <span>جایزه: <span className="font-bold text-tertiary">{mission.coinReward.toLocaleString("fa-IR")} سکه</span></span>
       </div>

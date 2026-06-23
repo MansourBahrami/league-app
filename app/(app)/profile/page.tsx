@@ -1,14 +1,16 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import StatsGrid from "@/components/profile/StatsGrid";
 import MedalsSection from "@/components/profile/MedalsSection";
 import ProfileActions from "@/components/profile/ProfileActions";
-import { getNextLevelRequirement, effectiveStreak, formatStudyMinutes, xpToStudyMinutes } from "@/lib/gamification";
+import { getNextLevelRequirement, effectiveStreak, formatStudyMinutes, xpToStudyMinutes, LEVEL_TABLE } from "@/lib/gamification";
 import { getUserMedalCounts } from "@/lib/mission";
 import NotificationToggle from "@/components/push/NotificationToggle";
 import StarBadge from "@/components/ui/StarBadge";
 import AvatarPicker from "@/components/profile/AvatarPicker";
+import LevelInfoButton from "@/components/profile/LevelInfoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +49,15 @@ export default async function ProfilePage() {
     ? Math.min(100, Math.round((user.xp / (user.xp + nextReq.xpNeeded)) * 100))
     : 100;
 
+  // جدول سطح‌ها برای پاپ‌آپ راهنما (به آبجکت ساده‌ی قابل‌سریال تبدیل می‌شود)
+  const levelRows = LEVEL_TABLE.map((r) => ({
+    level: r.level,
+    stars: r.stars,
+    minXp: r.minXp,
+    maxXp: r.maxXp,
+    requiredMedals: r.requiredMedals.map((g) => g.map((m) => ({ hours: m.hours, count: m.count }))),
+  }));
+
   return (
     <div className="flex flex-col gap-4 px-5 pb-6">
       {/* Profile Header */}
@@ -63,6 +74,7 @@ export default async function ProfilePage() {
               {user.level} ـ {user.stars.toLocaleString("fa-IR")} ستاره
             </span>
             <StarBadge stars={user.stars} total={3} size={16} />
+            <LevelInfoButton levels={levelRows} currentLevel={user.level} currentStars={user.stars} />
           </div>
           {streak > 0 && (
             <div className="flex items-center gap-1 mb-4 text-tertiary">
@@ -103,7 +115,7 @@ export default async function ProfilePage() {
       </section>
 
       {/* بازار ماموریت‌ها */}
-      <a href="/missions" className="glass-card rounded-xl p-4 flex items-center gap-3 flex-row-reverse border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
+      <a href="/missions" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
         <span className="material-symbols-outlined text-tertiary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
         <div className="text-right flex-1">
           <p className="text-[15px] font-bold text-on-surface">بازار ماموریت‌ها</p>
@@ -111,6 +123,16 @@ export default async function ProfilePage() {
         </div>
         <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
       </a>
+
+      {/* آموزش‌ها (ویدیوهای آموزشی) — دسترسی دائمی بعد از پایان آنبوردینگ */}
+      <Link href="/videos" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-primary hover:bg-primary-fixed/40 transition-colors">
+        <span className="material-symbols-outlined text-primary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
+        <div className="text-right flex-1">
+          <p className="text-[15px] font-bold text-on-surface">آموزش‌ها</p>
+          <p className="text-[12px] text-on-surface-variant">ویدیوهای آموزشی مطالعه و تکنیک‌ها</p>
+        </div>
+        <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
+      </Link>
 
       {/* Notifications */}
       <NotificationToggle />
@@ -120,7 +142,7 @@ export default async function ProfilePage() {
 
       {/* Admin panel link (admins only) */}
       {user.role === "admin" && (
-        <a href="/admin" className="glass-card rounded-xl p-4 flex items-center gap-3 flex-row-reverse border-r-4 border-r-secondary hover:bg-secondary-container/30 transition-colors">
+        <a href="/admin" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-secondary hover:bg-secondary-container/30 transition-colors">
           <span className="material-symbols-outlined text-secondary text-[26px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
           <div className="text-right flex-1">
             <p className="text-[15px] font-bold text-on-surface">پنل مدیریت</p>

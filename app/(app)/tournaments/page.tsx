@@ -47,7 +47,7 @@ export default async function TournamentsPage() {
           return (
             <Link key={t.id} href={`/tournaments/${t.id}`}>
               <div className="glass-card rounded-xl p-5 flex flex-col gap-3 hover:shadow-lg transition-shadow">
-                <div className="flex items-start justify-between flex-row-reverse">
+                <div className="flex items-start justify-between">
                   <div className="text-right flex-1">
                     <h2 className="text-[18px] font-bold text-on-surface">{t.name}</h2>
                     {t.description && <p className="text-[13px] text-on-surface-variant mt-0.5">{t.description}</p>}
@@ -66,7 +66,7 @@ export default async function TournamentsPage() {
                   <span className="text-[11px] text-on-surface-variant bg-surface-container px-2 py-1 rounded-full">{t._count.participants.toLocaleString("fa-IR")} شرکت‌کننده</span>
                 </div>
 
-                <div className="flex items-center justify-between flex-row-reverse">
+                <div className="flex items-center justify-between">
                   {joined ? (
                     <span className="text-[13px] font-bold text-secondary flex items-center gap-1">
                       <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>

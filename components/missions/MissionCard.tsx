@@ -57,7 +57,7 @@ export default function MissionCard({ mission, userCoins, isLocked, hasActiveMis
         </div>
         <h3 className="text-[20px] font-bold text-[#0b1c30] mb-2">{mission.targetHours} ساعت مطالعه هفتگی</h3>
         {/* تقسیم به ۶ روز → ماموریت روزانه (روز ۷ استراحت/جبران) */}
-        <div className="bg-[#e5eeff] rounded-xl p-2.5 mb-3 flex items-center gap-2 flex-row-reverse">
+        <div className="bg-[#e5eeff] rounded-xl p-2.5 mb-3 flex items-center gap-2">
           <span className="material-symbols-outlined text-[#4648d4] text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>calendar_view_week</span>
           <p className="text-[12px] text-[#0b1c30] flex-1 text-right leading-snug">
             یعنی روزانه حدود <span className="font-bold text-[#4648d4]">{(Math.round((mission.targetHours / 6) * 10) / 10).toLocaleString("fa-IR")} ساعت</span> · روز ۷ استراحت

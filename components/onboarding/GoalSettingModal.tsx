@@ -101,7 +101,7 @@ export default function GoalSettingModal({
   /* ---------- حالت الف: دقیقه‌ها کامل شد ولی ویدیوی روز مانده ---------- */
   if (inOnboarding && needsVideo && rewardVideo) {
     return (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
         <Confetti count={30} />
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
@@ -111,7 +111,7 @@ export default function GoalSettingModal({
               یک قدم تا تکمیل روز {onboardingDay.toLocaleString("fa-IR")} مونده: ویدیوی امروز رو ببین (الان ببینی سکه ۲× می‌گیری).
             </p>
           </div>
-          <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 flex-row-reverse mb-3">
+          <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-3">
             <span className="material-symbols-outlined text-tertiary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
             <p className="text-[14px] font-bold text-on-surface leading-tight flex-1 text-right">{rewardVideo.title}</p>
           </div>
@@ -135,7 +135,7 @@ export default function GoalSettingModal({
   if (inOnboarding && !dayCompleted) {
     const progressPct = Math.min(100, Math.round(((dailyGoalMinutes - remainingMinutes) / dailyGoalMinutes) * 100));
     return (
-      <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+      <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
           <div className="text-center mb-5">
@@ -169,7 +169,7 @@ export default function GoalSettingModal({
   const celebrate = dayCompleted ? "ماموریت امروز رو کامل کردی! 🎉" : durationMin >= 30 ? "آفرین! جلسه خوبی داشتی 🎉" : "شروع کردی، ادامه بده!";
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
       {dayCompleted && <Confetti count={50} />}
       <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
         {rewardBadges}
@@ -209,7 +209,7 @@ export default function GoalSettingModal({
             ))}
           </div>
           {/* ورودی ساعت دلخواه */}
-          <div className="flex items-center gap-2 mt-2 justify-end flex-row-reverse">
+          <div className="flex items-center gap-2 mt-2">
             <span className="text-[12px] text-on-surface-variant">یا ساعت دلخواه:</span>
             <input
               type="time"
@@ -223,7 +223,7 @@ export default function GoalSettingModal({
 
         {/* هدف فردا = امروز + نیم ساعت */}
         {inOnboarding && tomorrowGoalMinutes > 0 && (
-          <div className="mb-5 bg-primary-fixed rounded-xl p-3 flex items-center gap-3 flex-row-reverse">
+          <div className="mb-5 bg-primary-fixed rounded-xl p-3 flex items-center gap-3">
             <span className="material-symbols-outlined text-primary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>trending_up</span>
             <div className="text-right">
               <p className="text-[13px] font-semibold text-primary">هدف فردا</p>
@@ -235,7 +235,7 @@ export default function GoalSettingModal({
         {/* جایزه ویدیویی */}
         {rewardVideo ? (
           <div className="flex flex-col gap-2">
-            <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 flex-row-reverse mb-1">
+            <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-1">
               <span className="material-symbols-outlined text-tertiary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
               <div className="text-right">
                 <p className="text-[13px] font-semibold text-tertiary">جایزه‌ات باز شد: ویدیوی آموزشی</p>
