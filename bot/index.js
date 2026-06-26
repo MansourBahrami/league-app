@@ -55,7 +55,7 @@ async function handleUpdate(update) {
       const url = await getMagicLink(msg.from);
       await sendMessage(
         msg.chat.id,
-        "به اپ مطالعه و رقابت خوش اومدی! 🎯\nبرای ورود روی دکمه زیر بزن:",
+        "سلام عزیزم😍\nبه اَپ G-cmap خوش‌اومدی💛\n\nاینجا با بقیه درس میخونی و رقابت میکنی.\nبرای ورود، روی دکمه زیر بزن:",
         { inline_keyboard: [[{ text: "🚀 ورود به اپ", url }]] }
       );
     } catch (e) {
