@@ -65,7 +65,8 @@ export default async function VideosPage() {
             const isCompleted = prog?.completed ?? false;
             const isFuture = video.day > user.onboardingDay + 1;
             let isLocked: boolean;
-            let lockNote: string | undefined;
+            let purchasable = false;
+            let price = 0;
             if (isPaid) {
               const purchased = !!prog?.purchasedAt;
               if (purchased) {
@@ -73,8 +74,10 @@ export default async function VideosPage() {
               } else if (isFuture) {
                 isLocked = true; // روزهای آینده هنوز در دسترس نیستند
               } else {
-                isLocked = true; // در دسترس ولی خریده‌نشده → از داشبورد بخر
-                lockNote = `برای تماشا، از داشبورد با ${getVideoPrice(video.day).toLocaleString("fa-IR")} سکه بخر`;
+                // در دسترس ولی خریده‌نشده → کارت به صفحه‌ی ویدیو می‌رود و همان‌جا خرید می‌شود
+                isLocked = false;
+                purchasable = true;
+                price = getVideoPrice(video.day);
               }
             } else {
               // گروه free: روز جاری و گذشته باز؛ فقط روزهای آینده قفل
@@ -83,7 +86,7 @@ export default async function VideosPage() {
             const watchPct = prog && video.durationMin > 0
               ? Math.round((prog.watchedSeconds / (video.durationMin * 60)) * 100)
               : 0;
-            return <VideoCard key={video.id} video={video} watchPct={watchPct} isCompleted={isCompleted} isLocked={isLocked} lockNote={lockNote} />;
+            return <VideoCard key={video.id} video={video} watchPct={watchPct} isCompleted={isCompleted} isLocked={isLocked} purchasable={purchasable} price={price} />;
           })
         )}
       </div>

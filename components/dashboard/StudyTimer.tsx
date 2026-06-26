@@ -205,7 +205,7 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
     idle: { icon: "play_arrow", label: "شروع مطالعه", cls: "bg-primary text-on-primary shadow-primary/20" },
     running: { icon: "pause", label: "در حال تمرکز...", cls: "bg-tertiary-fixed-dim text-on-tertiary-fixed shadow-tertiary-fixed-dim/20" },
     paused: { icon: "play_arrow", label: "ادامه مطالعه", cls: "bg-primary text-on-primary shadow-primary/20" },
-    done: { icon: "emoji_events", label: "پایان ماموریت! 🎉", cls: "bg-secondary text-on-secondary shadow-secondary/20" },
+    done: { icon: "replay", label: "ثبت شد ✓ دوباره شروع کن", cls: "bg-primary text-on-primary shadow-primary/20" },
   };
   const btn = btnConfig[timerState];
   const isActive = timerState === "running" || timerState === "paused";
@@ -217,8 +217,8 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
         {isActive && box.w > 0 && (
           <svg className="absolute inset-0 pointer-events-none z-0" width={box.w} height={box.h} aria-hidden>
             <rect
-              x={2.5} y={2.5} width={box.w - 5} height={box.h - 5} rx={10} fill="none"
-              stroke="var(--color-primary)" strokeWidth={3} strokeLinecap="round"
+              x={3} y={3} width={box.w - 6} height={box.h - 6} rx={45} fill="none"
+              stroke="var(--color-primary)" strokeWidth={6} strokeLinecap="round"
               pathLength={1000}
               strokeDasharray={1000}
               strokeDashoffset={1000 * (1 - secondsLeft / totalSeconds)}

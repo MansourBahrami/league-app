@@ -2,6 +2,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import VideoPlayerClient from "@/components/videos/VideoPlayerClient";
+import BuyVideoButton from "@/components/videos/BuyVideoButton";
+import { getVideoPrice } from "@/lib/ab";
 import Link from "next/link";
 
 interface Props {
@@ -20,12 +22,50 @@ export default async function VideoPlayerPage({ params }: Props) {
     prisma.videoProgress.findUnique({
       where: { userId_videoId: { userId: session.userId, videoId: id } },
     }),
-    prisma.user.findUnique({ where: { id: session.userId }, select: { videoAccess: true } }),
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { videoAccess: true, coins: true, onboardingDay: true },
+    }),
   ]);
 
-  // گروه paid: ویدیوهای مسیر فقط بعد از خرید قابل تماشا هستند (خرید از داشبورد)
-  if (viewer?.videoAccess === "paid" && video.day >= 1 && !progress?.purchasedAt) {
-    redirect("/dashboard");
+  // گروه paid: ویدیوهای مسیر فقط بعد از خرید قابل تماشا هستند.
+  // به‌جای ریدایرکت به داشبورد، خرید را همین‌جا روی صفحه‌ی ویدیو ممکن می‌کنیم.
+  const needsPurchase = viewer?.videoAccess === "paid" && video.day >= 1 && !progress?.purchasedAt;
+  if (needsPurchase) {
+    // روزهای آینده هنوز قابل خرید نیستند
+    const isFuture = video.day > (viewer?.onboardingDay ?? 0) + 1;
+    const price = getVideoPrice(video.day);
+    return (
+      <div className="flex flex-col gap-6 px-5 pb-6">
+        <Link href="/videos" className="flex items-center gap-2 text-[#464554] hover:text-[#4648d4] transition-colors mt-2">
+          <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_back</span>
+          <span className="text-[14px] font-semibold">بازگشت به لیست ویدیوها</span>
+        </Link>
+
+        <div className="glass-card rounded-2xl p-6 flex flex-col items-center text-center gap-3">
+          <div className="w-16 h-16 rounded-full bg-tertiary-fixed/30 flex items-center justify-center">
+            <span className="material-symbols-outlined text-tertiary text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              {isFuture ? "lock" : "shopping_cart"}
+            </span>
+          </div>
+          <h1 className="text-[18px] font-extrabold text-on-surface">{video.title}</h1>
+          {isFuture ? (
+            <p className="text-[14px] text-on-surface-variant">
+              این ویدیوی روز {video.day.toLocaleString("fa-IR")} است و هنوز در دسترس نیست. ماموریت‌های روزهای قبل را کامل کن.
+            </p>
+          ) : (
+            <>
+              <p className="text-[14px] text-on-surface-variant">
+                برای تماشای این ویدیو و گرفتن سکه‌ی جایزه، اول آن را با سکه بخر.
+              </p>
+              <div className="w-full max-w-[360px] mt-2">
+                <BuyVideoButton videoId={video.id} price={price} userCoins={viewer?.coins ?? 0} />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -7,6 +7,7 @@ import { processUserMissions, recalcUserLevel } from "@/lib/mission";
 import { getOnboardingState, tryCompleteOnboardingDay } from "@/lib/onboarding";
 import { applyStreak } from "@/lib/streak";
 import { fireEvent } from "@/lib/notification-engine";
+import { tehranDayDiff } from "@/lib/date";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -43,13 +44,19 @@ export async function POST(req: NextRequest) {
 
   const userBefore = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { isLeadComplete: true },
+    select: { isLeadComplete: true, lastStudyDate: true },
   });
   if (!userBefore) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   // وضعیت آنبوردینگ پیش از اعمال این جلسه (برای گزارش هدف/باقیمانده)
   const stateBefore = await getOnboardingState(session.userId);
   const inOnboarding = stateBefore?.inOnboarding ?? false;
+
+  // آیا این اولین جلسه‌ی امروز (به وقت تهران) است؟ هر روزِ آنبوردینگ باید در یک
+  // روزِ تقویمی کامل شود؛ پس با شروع روز جدید، دقیقه‌های روزهای قبل سرریز نمی‌شوند
+  // (وگرنه مطالعه‌ی پراکنده در چند روز، روزهای آنبوردینگ را اشتباهاً کامل می‌کرد).
+  const startsNewTehranDay =
+    !userBefore.lastStudyDate || tehranDayDiff(endTime, userBefore.lastStudyDate) >= 1;
 
   await prisma.$transaction([
     prisma.studySession.update({
@@ -67,8 +74,11 @@ export async function POST(req: NextRequest) {
       data: {
         xp: { increment: xp },
         coins: { increment: coins },
-        // پیشرفت روز جاری آنبوردینگ: دقایق انباشته (پیوسته، نه تقویمی)
-        ...(inOnboarding ? { onboardingStepMinutes: { increment: durationMin } } : {}),
+        // پیشرفت روز جاری آنبوردینگ: دقیقه‌های مطالعه‌ی همین روزِ تقویمی (با شروع
+        // روز جدید از نو شمرده می‌شود تا روزِ ناتمامِ قبلی سرریز نکند).
+        ...(inOnboarding
+          ? { onboardingStepMinutes: startsNewTehranDay ? durationMin : { increment: durationMin } }
+          : {}),
       },
     }),
   ]);
@@ -109,8 +119,8 @@ export async function POST(req: NextRequest) {
       ? { id: stateAfter.video.id, title: stateAfter.video.title }
       : null;
 
-  // نیاز به تماشای ویدیو برای تکمیل روز (دقیقه‌ها کامل ولی ویدیو دیده نشده)
-  const needsVideo = !!(stateAfter?.video && stateAfter.minutesDone && !stateAfter.videoWatched && stateAfter.inOnboarding);
+  // ویدیو دیگر شرط تکمیل روز نیست؛ صرفاً جایزه‌ی اختیاری است.
+  const needsVideo = false;
 
   const tomorrowGoalMinutes = stateAfter?.inOnboarding ? stateAfter.goalMinutes : 0;
 
@@ -124,9 +134,10 @@ export async function POST(req: NextRequest) {
     dayCompleted,
     onboardingDay: newOnboardingDay,
     inOnboarding,
-    dailyGoalMinutes: stateBefore?.goalMinutes ?? 0,
+    dailyGoalMinutes: stateAfter?.goalMinutes ?? 0,
     stepMinutes: stateAfter?.stepMinutes ?? 0,
-    remainingMinutes: Math.max(0, (stateBefore?.goalMinutes ?? 0) - (stateBefore?.stepMinutes ?? 0) - durationMin),
+    // باقیمانده‌ی واقعی بر اساس دقیقه‌های همین روز (بعد از احتساب این جلسه/ریست روز جدید)
+    remainingMinutes: Math.max(0, (stateAfter?.goalMinutes ?? 0) - (stateAfter?.stepMinutes ?? 0)),
     needsVideo,
     needsLeadCapture,
     tomorrowGoalMinutes,

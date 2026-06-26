@@ -15,9 +15,13 @@ interface Props {
   isLocked?: boolean;
   /** متن جایگزین برای حالت قفل (مثلاً راهنمای خرید در گروه paid) */
   lockNote?: string;
+  /** گروه paid: ویدیوی در دسترسِ خریده‌نشده — کارت به صفحه‌ی ویدیو برای خرید می‌رود */
+  purchasable?: boolean;
+  /** قیمت خرید (سکه) برای حالت purchasable */
+  price?: number;
 }
 
-export default function VideoCard({ video, watchPct, isCompleted, isLocked = false, lockNote }: Props) {
+export default function VideoCard({ video, watchPct, isCompleted, isLocked = false, lockNote, purchasable = false, price = 0 }: Props) {
   const badge = `روز ${video.day.toLocaleString("fa-IR")}`;
 
   const inner = (
@@ -34,7 +38,12 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
               <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
             </div>
           )}
-          {!isLocked && isCompleted && (
+          {!isLocked && purchasable && (
+            <div className="absolute inset-0 bg-tertiary/70 flex items-center justify-center">
+              <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
+            </div>
+          )}
+          {!isLocked && !purchasable && isCompleted && (
             <div className="absolute inset-0 bg-secondary/70 flex items-center justify-center">
               <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             </div>
@@ -47,6 +56,11 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
             <span className="text-[12px] text-outline flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">lock</span>
               {lockNote ?? `روز ${video.day.toLocaleString("fa-IR")} — بعد از انجام ماموریت‌های اون روز باز میشه`}
+            </span>
+          ) : purchasable ? (
+            <span className="text-[12px] font-semibold text-tertiary flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">shopping_cart</span>
+              خرید با {price.toLocaleString("fa-IR")} سکه
             </span>
           ) : (
             <div className="flex items-center gap-2 text-on-surface-variant text-[12px]">

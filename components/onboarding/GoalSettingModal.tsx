@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Confetti from "@/components/ui/Confetti";
+import { tehranInstantAt } from "@/lib/date";
 
 interface Props {
   xpEarned: number;
@@ -60,10 +61,9 @@ export default function GoalSettingModal({
   async function saveGoalThen(after: () => void) {
     setSaving(true);
     if (effectiveTime) {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
       const [h, m] = effectiveTime.split(":").map(Number);
-      tomorrow.setHours(h, m, 0, 0);
+      // ساعت انتخابی به وقت تهران تفسیر می‌شود (نه تایم‌زون دستگاه کاربر)
+      const tomorrow = tehranInstantAt(1, h, m);
       await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },

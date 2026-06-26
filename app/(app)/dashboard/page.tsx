@@ -147,7 +147,7 @@ export default async function DashboardPage() {
           <div className="text-right">
             <p className="text-[12px] font-semibold text-primary">یادآوری هدف فردا</p>
             <p className="text-[14px] font-bold text-on-surface">
-              {new Date(user.nextStudyTarget).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit" })} — آماده‌ای؟
+              {new Date(user.nextStudyTarget).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran" })} — آماده‌ای؟
             </p>
           </div>
         </section>

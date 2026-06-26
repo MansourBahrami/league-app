@@ -20,6 +20,21 @@ export function tehranDayStartDaysAgo(daysAgo: number, instant: Date = new Date(
   return new Date(tehranDayStart(instant).getTime() - daysAgo * 86400000);
 }
 
+/**
+ * لحظه‌ی (UTC) متناظر با ساعت HH:MM به وقت تهران، در روزی که `daysFromToday` روز
+ * بعد از امروزِ تهران است. مستقل از تایم‌زون مرورگر/سرور — مبنا همیشه Asia/Tehran.
+ * مثال: `tehranInstantAt(1, 7, 0)` = فردا ساعت ۷ صبح به وقت تهران.
+ */
+export function tehranInstantAt(
+  daysFromToday: number,
+  hour: number,
+  minute: number,
+  instant: Date = new Date()
+): Date {
+  const dayStart = tehranDayStart(instant).getTime();
+  return new Date(dayStart + daysFromToday * 86400000 + (hour * 60 + minute) * 60000);
+}
+
 /** اختلاف روزِ تقویمیِ تهران بین دو لحظه (تعداد روزهای کامل بین شروعِ روزها) */
 export function tehranDayDiff(a: Date, b: Date): number {
   return Math.round((tehranDayStart(a).getTime() - tehranDayStart(b).getTime()) / 86400000);

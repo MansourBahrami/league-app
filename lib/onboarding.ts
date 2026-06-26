@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getOnboardingDailyGoalMinutes } from "@/lib/gamification";
 import { getVideoPrice, type VideoAccess } from "@/lib/ab";
+import { tehranDayDiff } from "@/lib/date";
 
 /**
  * منطق مسیر آنبوردینگ (روز دوبخشی: دقیقه‌های مطالعه + ویدیوی روز).
@@ -68,6 +69,7 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
       grade: true,
       coins: true,
       videoAccess: true,
+      lastStudyDate: true,
     },
   });
   if (!user) return null;
@@ -82,7 +84,14 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
     user.pastAvgStudyHours,
     user.day1GoalMinutes
   );
-  const minutesDone = user.onboardingStepMinutes >= goalMinutes;
+  // دقیقه‌های ماموریتِ روز فقط مربوط به همین روزِ تقویمیِ تهران است؛ اگر آخرین
+  // مطالعه پیش از امروز بوده، پیشرفتِ روزِ قبل صفر در نظر گرفته می‌شود (روزِ ناتمام
+  // سرریز نمی‌کند). study/end هم هنگام ثبتِ اولین جلسه‌ی روز جدید مقدار DB را بازنشانی می‌کند.
+  const stepMinutes =
+    !user.lastStudyDate || tehranDayDiff(new Date(), user.lastStudyDate) >= 1
+      ? 0
+      : user.onboardingStepMinutes;
+  const minutesDone = stepMinutes >= goalMinutes;
 
   let video: OnboardingState["video"] = null;
   let videoUnlocked = false;
@@ -129,7 +138,7 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
     inOnboarding,
     currentDay,
     goalMinutes,
-    stepMinutes: user.onboardingStepMinutes,
+    stepMinutes,
     minutesDone,
     video,
     videoUnlocked,
@@ -142,8 +151,12 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 }
 
 /**
- * اگر هر دو بخش روز (دقیقه + ویدیو) کامل شده باشد، روز را جلو می‌برد.
- * با پر شدن دقیقه‌ها، ویدیوی روز را باز (`unlockedAt`) می‌کند.
+ * اگر دقیقه‌های هدفِ روز پر شده باشد، روز را جلو می‌برد.
+ *
+ * معیار تکمیل روز فقط «دقیقه‌های مطالعه‌ی همان روز» است؛ تماشای ویدیو الزامی نیست
+ * (ویدیوی روز جایزه‌ی اختیاری است، نه شرط پیشروی). ویدیو هیچ‌وقت اینجا به‌صورت
+ * دیده‌شده علامت نمی‌خورد — تیک ویدیو فقط با تماشای واقعی در videos/progress ثبت می‌شود.
+ *
  * idempotent است — از study/end و videos/progress هر دو قابل فراخوانی است.
  */
 export async function tryCompleteOnboardingDay(
@@ -152,7 +165,7 @@ export async function tryCompleteOnboardingDay(
   const state = await getOnboardingState(userId);
   if (!state || !state.inOnboarding) return { dayCompleted: false, state };
 
-  if (state.minutesDone && state.videoWatched) {
+  if (state.minutesDone) {
     await prisma.user.update({
       where: { id: userId },
       data: { onboardingDay: { increment: 1 }, onboardingStepMinutes: 0 },

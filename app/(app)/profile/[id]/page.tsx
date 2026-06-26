@@ -137,7 +137,7 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
 
           {/* مجموع و نمودار ۷ روز اخیر */}
-          <StudyReportCard userId={id} days={7} />
+          <StudyReportCard userId={id} maxDays={7} />
 
           {/* لاگ مطالعه */}
           <section className="glass-card rounded-xl p-6">
