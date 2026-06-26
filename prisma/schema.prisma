@@ -54,11 +54,25 @@ model User {
   reactionsReceived Reaction[]  @relation("ReactionsReceived")
   inboxItems        InboxItem[] @relation("InboxRecipient")
   inboxActed        InboxItem[] @relation("InboxActor")
+  avatarImage       AvatarImage?
   // آخرین رتبه هفتگی شناخته‌شده (برای نوتیف «فلانی ازت جلو زد»)
   lastWeeklyRank   Int?
 
   @@index([xp])
   @@index([level])
+}
+
+// عکس پروفایل آپلودیِ کاربر — به‌صورت bytes داخل دیتابیس نگه داشته می‌شود
+// (پروداکشن VPS بدون object storage/volume پایدار است؛ ذخیره در DB با dump/restore
+//  هنگام مهاجرت سرور خودکار همراه می‌آید). تصویر در کلاینت به مربعِ کوچک فشرده می‌شود.
+// در جدول جدا نگه داشته شده تا کوئری‌های سنگینِ User (فید/لیدربورد) بایت‌ها را لود نکنند.
+model AvatarImage {
+  userId      String   @id
+  data        Bytes
+  contentType String
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 // باز کردن مشاهده لاگ مطالعه یک کاربر دیگر با پرداخت سکه (تا ۱ روز)

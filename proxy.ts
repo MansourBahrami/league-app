@@ -10,6 +10,7 @@ const PUBLIC_PATHS = [
   "/api/auth/magic", // مصرف Magic Link ربات (توکن یکبارمصرف Redis)
   "/api/cron/",
   "/api/bot/", // webhook و API ربات‌ها (با توکن خودشان احراز می‌شوند)
+  "/api/avatar/", // سروِ عکس پروفایلِ آپلودی — عمومی مثل آواتارهای آماده (در فید/لیدربورد دیده می‌شود)
 ];
 
 export async function proxy(request: NextRequest) {
