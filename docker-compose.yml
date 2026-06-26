@@ -5,6 +5,9 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    # منطق تاریخ/ساعت اپ (زمان‌بندی نوتیف، مرز «امروز»، ساعت سکوت) بر اساس این TZ کار می‌کند
+    environment:
+      - TZ=Asia/Tehran
     env_file: .env.production
     depends_on:
       postgres:

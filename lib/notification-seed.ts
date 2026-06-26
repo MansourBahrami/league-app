@@ -44,8 +44,8 @@ export const DEFAULT_RULES: SeedRule[] = [
     name: "خطر سوختن زنجیره",
     channels: ["bale", "push"],
     triggerType: "scheduled",
-    // ساعت بر اساس UTC ارزیابی می‌شود (سرور UTC است)؛ 17:30 UTC = 21:00 به وقت ایران
-    triggerConfig: { hour: 17, minute: 30, weekdays: [0, 1, 2, 3, 4, 5, 6] },
+    // ساعت‌ها به وقت محلی سرور ارزیابی می‌شوند؛ سرور روی Asia/Tehran است → 21:00 ایران
+    triggerConfig: { hour: 21, minute: 0, weekdays: [0, 1, 2, 3, 4, 5, 6] },
     segment: "streakHolders",
     conditions: [{ field: "studiedToday", op: "eq", value: false }],
     title: "🔥 زنجیره‌ات در خطره!",
@@ -75,8 +75,8 @@ export const DEFAULT_RULES: SeedRule[] = [
     name: "دلتنگی سه‌روزه",
     channels: ["bale", "push"],
     triggerType: "scheduled",
-    // 14:30 UTC = 18:00 به وقت ایران
-    triggerConfig: { hour: 14, minute: 30, weekdays: [0, 1, 2, 3, 4, 5, 6] },
+    // وقت محلی سرور (Asia/Tehran) → 18:00 ایران
+    triggerConfig: { hour: 18, minute: 0, weekdays: [0, 1, 2, 3, 4, 5, 6] },
     segment: "all",
     conditions: [{ field: "daysInactive", op: "between", value: [3, 6] }],
     title: "دلمون برات تنگ شده 🥺",
@@ -91,8 +91,8 @@ export const DEFAULT_RULES: SeedRule[] = [
     name: "بازگشت بعد از یک هفته",
     channels: ["bale", "push"],
     triggerType: "scheduled",
-    // 14:30 UTC = 18:00 به وقت ایران
-    triggerConfig: { hour: 14, minute: 30, weekdays: [0, 1, 2, 3, 4, 5, 6] },
+    // وقت محلی سرور (Asia/Tehran) → 18:00 ایران
+    triggerConfig: { hour: 18, minute: 0, weekdays: [0, 1, 2, 3, 4, 5, 6] },
     segment: "all",
     conditions: [{ field: "daysInactive", op: "gte", value: 7 }],
     title: "هنوز جات سر جاشه ✨",
