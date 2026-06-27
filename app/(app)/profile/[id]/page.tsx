@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { PROFILE_UNLOCK_COST, effectiveStreak } from "@/lib/gamification";
+import { tehranDayStartDaysAgo, formatJalaliLong, tehranParts } from "@/lib/date";
 import { formatDistanceToNow } from "date-fns";
 import { faIR } from "date-fns/locale";
 import MedalsSection from "@/components/profile/MedalsSection";
@@ -48,11 +49,11 @@ export default async function PublicProfilePage({ params }: Props) {
 
   // داده‌های مطالعه فقط در صورت آنلاک واکشی می‌شوند (جلوگیری از نشت اطلاعات)
   const streak = isUnlocked ? effectiveStreak(target.streak, target.lastStudyDate) : 0;
+  // سشن‌های مطالعه‌ی ۷ روز اخیر (به وقت تهران) — تک‌تکِ جلسه‌ها، نه جمعِ روزانه
   const studyLog = isUnlocked
     ? await prisma.studySession.findMany({
-        where: { userId: id, endTime: { not: null } },
+        where: { userId: id, endTime: { not: null }, startTime: { gte: tehranDayStartDaysAgo(6) } },
         orderBy: { startTime: "desc" },
-        take: 20,
         select: { id: true, startTime: true, durationMin: true },
       })
     : [];
@@ -139,26 +140,31 @@ export default async function PublicProfilePage({ params }: Props) {
           {/* مجموع و نمودار ۷ روز اخیر */}
           <StudyReportCard userId={id} maxDays={7} />
 
-          {/* لاگ مطالعه */}
+          {/* سشن‌های مطالعه‌ی ۷ روز اخیر — تک‌تکِ جلسه‌ها با تاریخ و ساعت شروع */}
           <section className="glass-card rounded-xl p-6">
             <div className="flex items-center gap-2 mb-4">
               <span className="material-symbols-outlined text-[#006c49]" style={{ fontVariationSettings: "'FILL' 1" }}>history</span>
-              <h3 className="text-[16px] font-bold text-[#0b1c30]">لاگ مطالعه اخیر</h3>
+              <h3 className="text-[16px] font-bold text-[#0b1c30]">سشن‌های مطالعه ۷ روز اخیر</h3>
             </div>
             {studyLog.length === 0 ? (
-              <p className="text-[14px] text-[#464554] text-center py-4">هنوز جلسه مطالعه‌ای ثبت نشده.</p>
+              <p className="text-[14px] text-[#464554] text-center py-4">در ۷ روز اخیر جلسه‌ای ثبت نشده.</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {studyLog.map((s) => {
                   const h = Math.floor(s.durationMin / 60);
                   const m = s.durationMin % 60;
+                  const { hour, minute } = tehranParts(new Date(s.startTime));
+                  const clock = `${hour}:${minute.toString().padStart(2, "0")}`.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
                   return (
                     <div key={s.id} className="flex justify-between items-center bg-white/60 rounded-lg p-3">
-                      <span className="text-[13px] text-[#767586]">
-                        {formatDistanceToNow(new Date(s.startTime), { addSuffix: true, locale: faIR })}
-                      </span>
+                      <div className="flex flex-col">
+                        <span className="text-[13px] font-semibold text-[#0b1c30]">
+                          {formatJalaliLong(new Date(s.startTime), true)}
+                        </span>
+                        <span className="text-[11px] text-[#767586]">شروع ساعت {clock}</span>
+                      </div>
                       <span className="text-[14px] font-bold text-[#4648d4]">
-                        {h > 0 ? `${h} ساعت ` : ""}{m > 0 ? `${m} دقیقه` : h > 0 ? "" : "۰ دقیقه"}
+                        {h > 0 ? `${h.toLocaleString("fa-IR")} ساعت ` : ""}{m > 0 ? `${m.toLocaleString("fa-IR")} دقیقه` : h > 0 ? "" : "۰ دقیقه"}
                       </span>
                     </div>
                   );
