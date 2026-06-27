@@ -26,6 +26,7 @@ export default function LeaderboardList({ entries }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   const rowsRef = useRef<(HTMLAnchorElement | null)[]>([]);
   const [rolling, setRolling] = useState(false);
+  const centeredRef = useRef(false); // فقط یک‌بار روی جایگاه کاربر اسکرول می‌کنیم
 
   useEffect(() => {
     const box = boxRef.current;
@@ -72,6 +73,19 @@ export default function LeaderboardList({ entries }: Props) {
       ticking = true;
       requestAnimationFrame(apply);
     };
+
+    // یک‌بار (پس از فعال‌شدن حالت غلتکی و چیدمانِ padding) باکس را طوری اسکرول
+    // کن که ردیفِ «شما» در مرکزِ باکس قرار بگیرد، نه از بالای لیست.
+    if (rolling && !centeredRef.current) {
+      const meIdx = entries.findIndex((e) => e.isCurrentUser);
+      const el = meIdx >= 0 ? rowsRef.current[meIdx] : null;
+      if (el) {
+        const boxRect = box.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        box.scrollTop += (elRect.top + elRect.height / 2) - (boxRect.top + boxRect.height / 2);
+        centeredRef.current = true;
+      }
+    }
 
     apply();
     requestAnimationFrame(apply);
