@@ -18,14 +18,27 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 }
 
 export async function enablePush(): Promise<{ ok: boolean; reason?: string }> {
-  if (typeof window === "undefined" || !("serviceWorker" in navigator) || !("PushManager" in window)) {
+  if (typeof window === "undefined" || !("Notification" in window)) {
     return { ok: false, reason: "مرورگر از نوتیفیکیشن پشتیبانی نمی‌کند" };
+  }
+
+  // مهم: اجازه را اول و مستقیم (همان لحظه‌ی کلیک) بگیر تا prompt مرورگر حتماً
+  // ظاهر شود. قبلاً اگر PushManager پشتیبانی نمی‌شد، پیش از درخواست اجازه return
+  // می‌کرد و prompt اصلاً نمی‌آمد.
+  let permission: NotificationPermission;
+  try {
+    permission = await Notification.requestPermission();
+  } catch {
+    return { ok: false, reason: "درخواست اجازه ناموفق بود" };
+  }
+  if (permission !== "granted") return { ok: false, reason: "اجازه داده نشد" };
+
+  // اشتراک Web Push فقط روی مرورگرهایی که پشتیبانی می‌کنند
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    return { ok: false, reason: "مرورگر از Web Push پشتیبانی نمی‌کند" };
   }
   const vapid = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!vapid) return { ok: false, reason: "کلید نوتیفیکیشن پیکربندی نشده" };
-
-  const permission = await Notification.requestPermission();
-  if (permission !== "granted") return { ok: false, reason: "اجازه داده نشد" };
 
   const reg = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;

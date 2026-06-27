@@ -146,6 +146,7 @@ export default function GuidedTour() {
   const [located, setLocated] = useState(false); // جست‌وجوی عنصر spotlight تمام شد (پیدا یا منقضی)
   const [pastHours, setPastHours] = useState<number | null>(null);
   const [busyPush, setBusyPush] = useState(false);
+  const [pushMsg, setPushMsg] = useState<string | null>(null); // بازخورد نتیجه‌ی درخواست نوتیف
   const [saving, setSaving] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const [cardH, setCardH] = useState(0); // ارتفاع واقعی کارت توضیح (برای clamp داخل صفحه)
@@ -247,8 +248,14 @@ export default function GuidedTour() {
   const next = useCallback(async () => {
     if (step.action === "push") {
       setBusyPush(true);
-      await enablePush().catch(() => {});
+      setPushMsg(null);
+      const res = await enablePush().catch(() => ({ ok: false as const, reason: "خطای ناشناخته" }));
       setBusyPush(false);
+      // در صورت رد/عدم‌پشتیبانی، جلو نرو تا کاربر پیام را ببیند و بتواند «بعداً» را بزند
+      if (!res.ok) {
+        setPushMsg(res.reason ?? "نوتیفیکیشن فعال نشد");
+        return;
+      }
     }
     if (index === STEPS.length - 1) {
       await finish();
@@ -256,6 +263,13 @@ export default function GuidedTour() {
     }
     goTo(index + 1);
   }, [step.action, index, finish, goTo]);
+
+  // رد کردنِ گامِ نوتیف (وقتی اجازه داده نشد یا پشتیبانی نمی‌شود) و رفتن به گام بعد
+  const skipPush = useCallback(() => {
+    setPushMsg(null);
+    if (index === STEPS.length - 1) { finish(); return; }
+    goTo(index + 1);
+  }, [index, finish, goTo]);
 
   const isLast = index === STEPS.length - 1;
   const isQuestion = step.kind === "question";
@@ -396,6 +410,16 @@ export default function GuidedTour() {
                     </>
                   )}
                 </button>
+              )}
+
+              {/* بازخورد نتیجه‌ی درخواست نوتیف + امکان رد کردن */}
+              {step.action === "push" && pushMsg && (
+                <div className="flex flex-col items-center gap-1.5 -mt-1">
+                  <p className="text-[12px] text-error text-center">{pushMsg}</p>
+                  <button onClick={skipPush} className="text-[13px] font-semibold text-on-surface-variant hover:text-primary">
+                    بعداً فعالش می‌کنم →
+                  </button>
+                </div>
               )}
             </div>
           </div>
