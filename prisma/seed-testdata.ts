@@ -276,6 +276,38 @@ async function main() {
   console.log("✅ کاربر «وسط آنبوردینگ» ساخته شد (روز ۳ از ۶، پیشرفت امروز ناتمام)");
 
   // ===================================================================
+  // کاربرانِ پرکننده برای تستِ لیدربوردِ شلوغ (افکت غلتکی + نمایش ساعت).
+  // همه «تازه‌نفس» تا یک لیگِ هم‌سطحِ پرجمعیت بسازند؛ مطالعه‌ی هفتگیِ نزولی
+  // تا رتبه‌بندی و ساعت‌ها متنوع باشد.
+  // ===================================================================
+  const fillerNames = [
+    "نیما رادمنش", "سارا کریمی", "رضا عابدی", "مینا حسینی", "حامد یوسفی", "الناز رستمی",
+    "کاوه نادری", "شیما فلاح", "بردیا اکبری", "پریا صادقی", "آرمین جلالی", "تینا موسوی",
+  ];
+  for (let i = 0; i < fillerNames.length; i++) {
+    const phone = "091200000" + (13 + i); // 09120000013 .. 09120000024
+    const weeklyMin = 540 - i * 38;       // نزولی برای رتبه‌بندی متنوع
+    const xp = Math.floor(weeklyMin / 15);
+    const { level, stars } = calcLevel(xp, []);
+    const f = await prisma.user.create({
+      data: {
+        phone, name: fillerNames[i],
+        grade: ["دهم", "یازدهم", "دوازدهم"][i % 3], field: ["ریاضی", "تجربی", "انسانی"][i % 3],
+        xp, coins: Math.floor(xp / 2), level, stars,
+        onboardingDay: 6, hasSeenIntro: true, isLeadComplete: true, videoAccess: "free",
+        streak: (i % 5) + 1, lastStudyDate: day0, avatarUrl: `/avatars/a${(i % 8) + 1}.svg`,
+      },
+    });
+    // ۳ جلسه در ۷ روز اخیر که جمعشان ~weeklyMin شود (هم XP هفتگی، هم ساعت)
+    sessions.push(
+      session(f.id, 0, Math.round(weeklyMin * 0.4)),
+      session(f.id, 2, Math.round(weeklyMin * 0.35)),
+      session(f.id, 4, Math.round(weeklyMin * 0.25)),
+    );
+  }
+  console.log(`✅ ${fillerNames.length} کاربر پرکننده برای لیدربورد ساخته شد`);
+
+  // ===================================================================
   // شبکه‌ی دوستی (یک رکورد برای هر جفت؛ اپ با OR روی دو ستون کوئری می‌کند)
   // ===================================================================
   const pairs: [string, string][] = [
@@ -340,7 +372,8 @@ async function main() {
 
   await prisma.studySession.createMany({ data: sessions });
 
-  console.log(`✅ ۱۲ یوزر تستی ساخته شد + ${sessions.length} جلسه‌ی مطالعه`);
+  const totalTestUsers = await prisma.user.count({ where: { phone: { startsWith: "091200000" } } });
+  console.log(`✅ ${totalTestUsers} یوزر تستی ساخته شد + ${sessions.length} جلسه‌ی مطالعه`);
   console.log("شماره‌ها برای ورود (کد OTP در dev توی پاسخ/کنسول نشان داده می‌شود):");
   console.log("  09120000001 آرش — آنبوردینگ از صفر (اسلایدها + لید اجباری بعد روز۱)");
   console.log("  09120000002 بهار — وسط آنبوردینگ روز ۳");

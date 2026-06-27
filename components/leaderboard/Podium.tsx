@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatStudyMinutes } from "@/lib/gamification";
 
 interface Entry {
   rank: number;
@@ -6,6 +7,7 @@ interface Entry {
   name: string;
   avatarUrl: string | null;
   weeklyXp: number;
+  weeklyMinutes: number;
   isCurrentUser: boolean;
 }
 
@@ -37,6 +39,7 @@ export default function Podium({ top3 }: Props) {
             </div>
             <span className="text-[14px] font-bold mt-4 text-on-surface truncate w-full text-center">{second.name}</span>
             <span className="text-[12px] text-primary/80 font-bold">{second.weeklyXp.toLocaleString("fa-IR")} XP</span>
+            <span className="text-[10px] text-on-surface-variant">{formatStudyMinutes(second.weeklyMinutes)}</span>
           </Link>
         )}
         {/* Rank 1 */}
@@ -55,6 +58,7 @@ export default function Podium({ top3 }: Props) {
             </div>
             <span className="text-[16px] font-bold mt-5 text-on-surface truncate w-full text-center">{first.name}</span>
             <span className="text-[14px] text-tertiary font-bold">{first.weeklyXp.toLocaleString("fa-IR")} XP</span>
+            <span className="text-[11px] text-on-surface-variant">{formatStudyMinutes(first.weeklyMinutes)}</span>
           </Link>
         )}
         {/* Rank 3 */}
@@ -70,6 +74,7 @@ export default function Podium({ top3 }: Props) {
             </div>
             <span className="text-[14px] font-bold mt-4 text-on-surface truncate w-full text-center">{third.name}</span>
             <span className="text-[12px] text-primary/80 font-bold">{third.weeklyXp.toLocaleString("fa-IR")} XP</span>
+            <span className="text-[10px] text-on-surface-variant">{formatStudyMinutes(third.weeklyMinutes)}</span>
           </Link>
         )}
       </div>

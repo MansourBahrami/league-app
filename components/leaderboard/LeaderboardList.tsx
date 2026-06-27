@@ -1,13 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { formatStudyMinutes } from "@/lib/gamification";
 
 interface Entry {
   rank: number;
   name: string;
   avatarUrl: string | null;
   weeklyXp: number;
+  weeklyMinutes: number;
   isCurrentUser: boolean;
   userId: string;
 }
@@ -18,11 +20,12 @@ interface Props {
 }
 
 export default function LeaderboardList({ entries }: Props) {
-  // لیست داخل یک باکسِ با ارتفاع ثابت اسکرول می‌خورد (نه کلِ صفحه). ردیف‌های نزدیک
-  // مرکزِ باکس صاف و شفاف‌اند و هرچه به بالا/پایینِ باکس می‌روند دور محور افقی
-  // می‌چرخند و محو می‌شوند — اثرِ غلتک/استوانه.
+  // باکس فقط وقتی به حالت «غلتکِ اسکرولی» می‌رود که محتوا از ارتفاع باکس بیشتر باشد
+  // (لیست پرنفر). با چند کاربر، باکس به‌اندازه‌ی محتوا کوتاه می‌شود و ردیف‌ها صاف و
+  // بدون فاصله‌ی خالی نشان داده می‌شوند.
   const boxRef = useRef<HTMLDivElement>(null);
   const rowsRef = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [rolling, setRolling] = useState(false);
 
   useEffect(() => {
     const box = boxRef.current;
@@ -31,6 +34,19 @@ export default function LeaderboardList({ entries }: Props) {
 
     const apply = () => {
       ticking = false;
+      const scrollable = box.scrollHeight > box.clientHeight + 4;
+      setRolling(scrollable);
+
+      if (!scrollable) {
+        // لیست کوتاه: همه‌چیز صاف و شفاف
+        for (const el of rowsRef.current) {
+          if (!el) continue;
+          el.style.transform = "";
+          el.style.opacity = "";
+        }
+        return;
+      }
+
       const boxRect = box.getBoundingClientRect();
       const center = boxRect.top + boxRect.height / 2;
       const radius = boxRect.height / 2; // فاصله‌ی لبه‌ی باکس تا مرکز = خمِ کامل
@@ -65,7 +81,7 @@ export default function LeaderboardList({ entries }: Props) {
       box.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [entries.length]);
+  }, [entries.length, rolling]);
 
   return (
     <section className="flex flex-col gap-2">
@@ -73,17 +89,18 @@ export default function LeaderboardList({ entries }: Props) {
         <span className="text-[14px] text-on-surface-variant">موقعیت سایر کاربران</span>
       </div>
 
-      {/* باکسِ غلتکی: ارتفاع ثابت، اسکرول داخلی، لبه‌های محو با ماسک */}
+      {/* باکس تا سقفِ ارتفاع رشد می‌کند؛ از آن بیشتر شد، اسکرولِ غلتکی فعال می‌شود.
+          ماسکِ لبه‌ها فقط در حالت غلتکی اعمال می‌شود تا لیست کوتاه محو نشود. */}
       <div
         ref={boxRef}
-        className="h-[336px] overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        style={{
+        className="max-h-[336px] overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        style={rolling ? {
           WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%)",
           maskImage: "linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%)",
-        }}
+        } : undefined}
       >
-        {/* فاصله‌ی بالا/پایین تا ردیف‌های ابتدا و انتها هم بتوانند به مرکزِ باکس برسند */}
-        <div className="space-y-3 py-[96px] [transform-style:preserve-3d]">
+        {/* در حالت غلتکی، فاصله‌ی بالا/پایین تا نفر اول و آخر هم به مرکزِ باکس برسند */}
+        <div className={`space-y-3 [transform-style:preserve-3d] ${rolling ? "py-[88px]" : ""}`}>
           {entries.map((entry, i) => (
             <Link
               key={entry.userId}
@@ -122,9 +139,12 @@ export default function LeaderboardList({ entries }: Props) {
                   </div>
                 )}
               </div>
-              <div className={`font-bold flex items-end gap-1 ${entry.isCurrentUser ? "text-[17px] text-primary" : "text-[14px] text-on-surface-variant"}`}>
-                {entry.weeklyXp.toLocaleString("fa-IR")}
-                <span className={`font-normal mb-0.5 ${entry.isCurrentUser ? "text-[12px] text-primary-fixed-dim" : "text-[10px] text-outline"}`}>XP</span>
+              <div className="flex flex-col items-end shrink-0">
+                <div className={`font-bold flex items-end gap-1 ${entry.isCurrentUser ? "text-[17px] text-primary" : "text-[14px] text-on-surface-variant"}`}>
+                  {entry.weeklyXp.toLocaleString("fa-IR")}
+                  <span className={`font-normal mb-0.5 ${entry.isCurrentUser ? "text-[12px] text-primary-fixed-dim" : "text-[10px] text-outline"}`}>XP</span>
+                </div>
+                <span className="text-[10px] text-outline whitespace-nowrap mt-0.5">{formatStudyMinutes(entry.weeklyMinutes)}</span>
               </div>
             </Link>
           ))}

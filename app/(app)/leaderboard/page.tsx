@@ -6,6 +6,7 @@ import Podium from "@/components/leaderboard/Podium";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
 import InviteFriends from "@/components/social/InviteFriends";
 import { ensureReferralCode, getFriendIds } from "@/lib/referral";
+import { formatStudyMinutes } from "@/lib/gamification";
 
 export const dynamic = "force-dynamic";
 
@@ -18,11 +19,12 @@ interface Entry {
   avatarUrl: string | null;
   level: string;
   weeklyXp: number;
+  weeklyMinutes: number; // ساعت مطالعه‌ی همان بازه‌ی هفتگی که این XP را ساخته
   isCurrentUser: boolean;
 }
 
 function buildLeaderboard(
-  weekly: { userId: string; _sum: { xpEarned: number | null } }[],
+  weekly: { userId: string; _sum: { xpEarned: number | null; durationMin: number | null } }[],
   userMap: Map<string, { name: string | null; avatarUrl: string | null; level: string }>,
   meId: string,
   meLevel: string
@@ -36,6 +38,7 @@ function buildLeaderboard(
       avatarUrl: u?.avatarUrl ?? null,
       level: u?.level ?? meLevel,
       weeklyXp: d._sum.xpEarned ?? 0,
+      weeklyMinutes: d._sum.durationMin ?? 0,
       isCurrentUser: d.userId === meId,
     };
   });
@@ -48,6 +51,7 @@ function buildLeaderboard(
       avatarUrl: me?.avatarUrl ?? null,
       level: me?.level ?? meLevel,
       weeklyXp: 0,
+      weeklyMinutes: 0,
       isCurrentUser: true,
     });
   }
@@ -109,7 +113,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const weekly = await prisma.studySession.groupBy({
     by: ["userId"],
     where: { userId: { in: poolIds }, startTime: { gte: sevenDaysAgo } },
-    _sum: { xpEarned: true },
+    _sum: { xpEarned: true, durationMin: true },
     orderBy: { _sum: { xpEarned: "desc" } },
     take: 50,
   });
@@ -180,7 +184,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
           {currentUserEntry && currentUserEntry.rank <= 3 && (
             <div className="bg-primary-fixed rounded-xl px-4 py-2 text-center">
               <span className="text-[14px] text-primary font-bold">
-                رتبه شما: #{currentUserEntry.rank.toLocaleString("fa-IR")} با {currentUserEntry.weeklyXp.toLocaleString("fa-IR")} XP این هفته
+                رتبه شما: #{currentUserEntry.rank.toLocaleString("fa-IR")} با {currentUserEntry.weeklyXp.toLocaleString("fa-IR")} XP ({formatStudyMinutes(currentUserEntry.weeklyMinutes)}) این هفته
               </span>
             </div>
           )}
