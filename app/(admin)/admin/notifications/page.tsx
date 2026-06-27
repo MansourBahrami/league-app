@@ -22,13 +22,13 @@ export default async function AdminNotificationsPage() {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-[22px] font-extrabold text-[#0b1c30]">قانون‌های نوتیفیکیشن</h1>
-        <Link href="/admin/notifications/new" className="bg-[#4648d4] text-white font-bold text-[14px] px-4 py-2 rounded-xl flex items-center gap-1">
+        <h1 className="text-[22px] font-extrabold text-on-surface">قانون‌های نوتیفیکیشن</h1>
+        <Link href="/admin/notifications/new" className="bg-primary text-white font-bold text-[14px] px-4 py-2 rounded-xl flex items-center gap-1">
           <span className="material-symbols-outlined text-[18px]">add</span>
           قانون جدید
         </Link>
       </div>
-      <p className="text-[13px] text-[#767586] -mt-1">
+      <p className="text-[13px] text-outline -mt-1">
         ربات بله فقط به کاربرانی پیام می‌دهد که آن را استارت کرده‌اند؛ بقیه از طریق اعلان مرورگر (در صورت فعال‌بودن) پیام می‌گیرند.
       </p>
       <NotificationList rules={items} />

@@ -88,21 +88,21 @@ export default function LeadCaptureModal({ onComplete, hasPhone = false }: Props
     }
   }
 
-  const inputCls = "w-full rounded-xl border border-[#c7c4d7] bg-white/80 px-4 py-3 text-[16px] text-[#0b1c30] placeholder:text-[#767586] focus:outline-none focus:border-[#4648d4] focus:ring-2 focus:ring-[#4648d4]/20 transition-all text-right";
+  const inputCls = "w-full rounded-xl border border-outline-variant bg-white/80 px-4 py-3 text-[16px] text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-right";
 
   return (
     <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
       <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8 relative">
         <div className="flex flex-col items-center mb-6">
-          <div className="w-16 h-16 rounded-2xl bg-[#4648d4] flex items-center justify-center shadow-lg shadow-[#4648d4]/30 mb-3">
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 mb-3">
             <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               {stage === "otp" ? "sms" : "emoji_events"}
             </span>
           </div>
-          <h2 className="text-[22px] font-extrabold text-[#0b1c30] text-center">
+          <h2 className="text-[22px] font-extrabold text-on-surface text-center">
             {stage === "otp" ? "تأیید شماره موبایل" : "اولین جلسه‌ات تموم شد!"}
           </h2>
-          <p className="text-[14px] text-[#464554] text-center mt-1">
+          <p className="text-[14px] text-on-surface-variant text-center mt-1">
             {stage === "otp"
               ? `کد ۶ رقمی به ${phone} ارسال شد`
               : "برای ادامه، این اطلاعات رو کامل کن"}
@@ -112,16 +112,16 @@ export default function LeadCaptureModal({ onComplete, hasPhone = false }: Props
         {stage === "info" ? (
           <form onSubmit={handleInfoSubmit} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-[14px] font-semibold text-[#0b1c30]">اسمت چیه؟</label>
+              <label className="text-[14px] font-semibold text-on-surface">اسمت چیه؟</label>
               <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثلاً: علی" className={inputCls} required />
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[14px] font-semibold text-[#0b1c30]">چه پایه‌ای هستی؟</label>
+              <label className="text-[14px] font-semibold text-on-surface">چه پایه‌ای هستی؟</label>
               <div className="grid grid-cols-4 gap-2">
                 {GRADES.map((g) => (
                   <button key={g} type="button" onClick={() => setGrade(g)}
-                    className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${grade === g ? "bg-[#4648d4] text-white border-[#4648d4] shadow-md scale-[1.03]" : "border-[#c7c4d7] text-[#464554] hover:bg-[#e1e0ff]"}`}>
+                    className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${grade === g ? "bg-primary text-white border-primary shadow-md scale-[1.03]" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"}`}>
                     {g}
                   </button>
                 ))}
@@ -129,11 +129,11 @@ export default function LeadCaptureModal({ onComplete, hasPhone = false }: Props
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label className="text-[14px] font-semibold text-[#0b1c30]">رشته‌ات؟</label>
+              <label className="text-[14px] font-semibold text-on-surface">رشته‌ات؟</label>
               <div className="grid grid-cols-3 gap-2">
                 {FIELDS.map((f) => (
                   <button key={f} type="button" onClick={() => setField(f)}
-                    className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${field === f ? "bg-[#4648d4] text-white border-[#4648d4] shadow-md scale-[1.03]" : "border-[#c7c4d7] text-[#464554] hover:bg-[#e1e0ff]"}`}>
+                    className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${field === f ? "bg-primary text-white border-primary shadow-md scale-[1.03]" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"}`}>
                     {f}
                   </button>
                 ))}
@@ -142,14 +142,14 @@ export default function LeadCaptureModal({ onComplete, hasPhone = false }: Props
 
             {!hasPhone && (
               <div className="flex flex-col gap-1.5">
-                <label className="text-[14px] font-semibold text-[#0b1c30]">شماره موبایل (با تأیید پیامکی)</label>
+                <label className="text-[14px] font-semibold text-on-surface">شماره موبایل (با تأیید پیامکی)</label>
                 <input type="tel" inputMode="numeric" value={phone} onChange={(e) => setPhone(normalizeDigits(e.target.value))} placeholder="09123456789" dir="ltr" className={`${inputCls} text-center`} required />
               </div>
             )}
 
-            {error && <p className="text-[#ba1a1a] text-[13px] text-center">{error}</p>}
+            {error && <p className="text-error text-[13px] text-center">{error}</p>}
 
-            <button type="submit" disabled={loading} className="gamified-btn w-full bg-[#4648d4] text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 mt-2 shadow-lg shadow-[#4648d4]/20 disabled:opacity-60">
+            <button type="submit" disabled={loading} className="gamified-btn w-full bg-primary text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 mt-2 shadow-lg shadow-primary/20 disabled:opacity-60">
               {loading ? (
                 <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
               ) : (
@@ -166,11 +166,11 @@ export default function LeadCaptureModal({ onComplete, hasPhone = false }: Props
               type="text" inputMode="numeric" value={code}
               onChange={(e) => setCode(normalizeDigits(e.target.value))}
               placeholder="------" maxLength={6} dir="ltr"
-              className="w-full rounded-xl border border-[#c7c4d7] bg-white/80 px-4 py-3 text-[24px] font-mono text-[#4648d4] placeholder:text-[#767586] focus:outline-none focus:border-[#4648d4] focus:ring-2 focus:ring-[#4648d4]/20 transition-all text-center tracking-[0.5rem]"
+              className="w-full rounded-xl border border-outline-variant bg-white/80 px-4 py-3 text-[24px] font-mono text-primary placeholder:text-outline focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-center tracking-[0.5rem]"
               required
             />
-            {error && <p className="text-[#ba1a1a] text-[13px] text-center">{error}</p>}
-            <button type="submit" disabled={loading} className="gamified-btn w-full bg-[#4648d4] text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[#4648d4]/20 disabled:opacity-60">
+            {error && <p className="text-error text-[13px] text-center">{error}</p>}
+            <button type="submit" disabled={loading} className="gamified-btn w-full bg-primary text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-60">
               {loading ? (
                 <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
               ) : (
@@ -180,7 +180,7 @@ export default function LeadCaptureModal({ onComplete, hasPhone = false }: Props
                 </>
               )}
             </button>
-            <button type="button" onClick={() => { setStage("info"); setError(""); }} className="text-[13px] text-[#4648d4] hover:underline text-center">
+            <button type="button" onClick={() => { setStage("info"); setError(""); }} className="text-[13px] text-primary hover:underline text-center">
               ویرایش شماره موبایل
             </button>
           </form>

@@ -58,7 +58,7 @@ export default function StreakBar({ streak, studiedToday, canFreeze, freezeCost,
           <p className="text-[14px] font-bold text-on-surface leading-tight">
             <span className="text-tertiary text-[16px]">{streak.toLocaleString("fa-IR")} روز</span> پشت سر هم
             {studiedToday ? (
-              <span className="text-secondary"> · امروز ثبت شد ✓</span>
+              <span className="text-tertiary"> · امروز ثبت شد ✓</span>
             ) : (
               <span className="text-on-surface-variant/80"> · امروز هنوز نه</span>
             )}

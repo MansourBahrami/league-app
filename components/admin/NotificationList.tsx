@@ -78,19 +78,19 @@ export default function NotificationList({ rules }: { rules: RuleListItem[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {msg && <p className="text-[13px] text-[#006c49] bg-[#d4f5e6] rounded-xl px-3 py-2">{msg}</p>}
+      {msg && <p className="text-[13px] text-tertiary bg-[#d4f5e6] rounded-xl px-3 py-2">{msg}</p>}
       {rules.length === 0 ? (
-        <p className="text-[#767586] text-center py-10">هنوز قانونی تعریف نشده.</p>
+        <p className="text-outline text-center py-10">هنوز قانونی تعریف نشده.</p>
       ) : (
         rules.map((r) => (
-          <div key={r.id} className="bg-white rounded-xl p-4 border border-[#c7c4d7]/30 flex flex-col gap-2">
+          <div key={r.id} className="bg-white rounded-xl p-4 border border-outline-variant/30 flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
               <div className="text-right">
                 <div className="flex items-center gap-2">
-                  <p className="font-bold text-[15px] text-[#0b1c30]">{r.name}</p>
-                  {!r.enabled && <span className="text-[11px] text-[#ba1a1a] bg-[#ffe5e5] px-2 py-0.5 rounded-full">غیرفعال</span>}
+                  <p className="font-bold text-[15px] text-on-surface">{r.name}</p>
+                  {!r.enabled && <span className="text-[11px] text-error bg-[#ffe5e5] px-2 py-0.5 rounded-full">غیرفعال</span>}
                 </div>
-                <p className="text-[12px] text-[#767586] mt-0.5">
+                <p className="text-[12px] text-outline mt-0.5">
                   {TRIGGER_LABELS[r.triggerType]} · {triggerSummary(r)} · {r.segment ? SEGMENT_MAP[r.segment]?.label ?? r.segment : "همه"}
                 </p>
                 <p className="text-[11px] text-[#a09eb0] mt-0.5">
@@ -98,18 +98,18 @@ export default function NotificationList({ rules }: { rules: RuleListItem[] }) {
                 </p>
               </div>
               <button onClick={() => toggle(r)} disabled={busy === r.id}
-                className={`shrink-0 w-11 h-6 rounded-full transition-colors relative ${r.enabled ? "bg-[#4648d4]" : "bg-[#c7c4d7]"}`}>
+                className={`shrink-0 w-11 h-6 rounded-full transition-colors relative ${r.enabled ? "bg-primary" : "bg-outline-variant"}`}>
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ${r.enabled ? "left-0.5" : "right-0.5"}`} />
               </button>
             </div>
             <div className="flex items-center gap-2 pt-1">
-              <Link href={`/admin/notifications/${r.id}`} className="text-[12px] font-semibold text-[#4648d4] flex items-center gap-1">
+              <Link href={`/admin/notifications/${r.id}`} className="text-[12px] font-semibold text-primary flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px]">edit</span> ویرایش
               </Link>
-              <button onClick={() => runNow(r)} disabled={busy === r.id} className="text-[12px] font-semibold text-[#006c49] flex items-center gap-1">
+              <button onClick={() => runNow(r)} disabled={busy === r.id} className="text-[12px] font-semibold text-tertiary flex items-center gap-1">
                 <span className="material-symbols-outlined text-[16px]">play_arrow</span> اجرای فوری
               </button>
-              <button onClick={() => remove(r)} disabled={busy === r.id} className="text-[12px] font-semibold text-[#ba1a1a] flex items-center gap-1 mr-auto">
+              <button onClick={() => remove(r)} disabled={busy === r.id} className="text-[12px] font-semibold text-error flex items-center gap-1 mr-auto">
                 <span className="material-symbols-outlined text-[16px]">delete</span> حذف
               </button>
             </div>

@@ -75,12 +75,12 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
     }
   }
 
-  const inputCls = "w-full rounded-xl border border-[#c7c4d7] bg-white px-4 py-2.5 text-[15px] text-[#0b1c30] focus:outline-none focus:border-[#4648d4] focus:ring-2 focus:ring-[#4648d4]/20 transition-all";
-  const labelCls = "text-[13px] font-semibold text-[#0b1c30]";
+  const inputCls = "w-full rounded-xl border border-outline-variant bg-white px-4 py-2.5 text-[15px] text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all";
+  const labelCls = "text-[13px] font-semibold text-on-surface";
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 bg-white rounded-2xl p-6 border border-[#c7c4d7]/30">
-      <h1 className="text-[20px] font-extrabold text-[#0b1c30]">{isEdit ? "ویرایش ویدیو" : "ویدیوی جدید"}</h1>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 bg-white rounded-2xl p-6 border border-outline-variant/30">
+      <h1 className="text-[20px] font-extrabold text-on-surface">{isEdit ? "ویرایش ویدیو" : "ویدیوی جدید"}</h1>
 
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>عنوان *</label>
@@ -95,7 +95,7 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>روز مسیر آنبوردینگ</label>
         <input type="number" min={1} className={inputCls} value={form.day} onChange={(e) => set("day", parseInt(e.target.value) || 1)} />
-        <p className="text-[12px] text-[#767586]">طول مسیر آنبوردینگ = بزرگ‌ترین شماره روزی که ویدیوی فعال دارد. برای بلندتر کردن مسیر، ویدیوی روزِ بالاتر اضافه کنید.</p>
+        <p className="text-[12px] text-outline">طول مسیر آنبوردینگ = بزرگ‌ترین شماره روزی که ویدیوی فعال دارد. برای بلندتر کردن مسیر، ویدیوی روزِ بالاتر اضافه کنید.</p>
       </div>
 
       {/* پایه تحصیلی — چندانتخابی */}
@@ -108,7 +108,7 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
               type="button"
               onClick={() => toggleGrade(g)}
               className={`px-3 py-2 rounded-xl text-[13px] font-semibold border transition-all flex items-center gap-1 ${
-                form.grades.includes(g) ? "bg-[#4648d4] text-white border-[#4648d4]" : "border-[#c7c4d7] text-[#464554] hover:bg-[#e1e0ff]"
+                form.grades.includes(g) ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
               }`}
             >
               {form.grades.includes(g) && <span className="material-symbols-outlined text-[14px]">check</span>}
@@ -116,7 +116,7 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
             </button>
           ))}
         </div>
-        <p className="text-[12px] text-[#767586]">
+        <p className="text-[12px] text-outline">
           {form.grades.length === 0 ? "هیچ پایه‌ای انتخاب نشده → برای همه پایه‌ها نمایش داده می‌شود." : `برای: ${form.grades.join("، ")}`}
         </p>
       </div>
@@ -129,7 +129,7 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
         <div className="flex flex-col gap-1.5">
           <label className={labelCls}>وضعیت</label>
           <button type="button" onClick={() => set("isActive", !form.isActive)}
-            className={`py-2.5 rounded-xl text-[14px] font-semibold border ${form.isActive ? "bg-[#d4f5e6] text-[#006c49] border-[#006c49]/30" : "bg-[#f3f3f3] text-[#767586] border-[#c7c4d7]"}`}>
+            className={`py-2.5 rounded-xl text-[14px] font-semibold border ${form.isActive ? "bg-[#d4f5e6] text-tertiary border-tertiary/30" : "bg-[#f3f3f3] text-outline border-outline-variant"}`}>
             {form.isActive ? "فعال" : "غیرفعال"}
           </button>
         </div>
@@ -156,15 +156,15 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
           <input dir="ltr" className={inputCls} value={form.ctaUrl ?? ""} onChange={(e) => set("ctaUrl", e.target.value)} placeholder="https://..." />
         </div>
       </div>
-      <p className="text-[12px] text-[#767586] -mt-2">هر دو فیلد را پر کنید تا دکمه زیر ویدیو نمایش داده شود.</p>
+      <p className="text-[12px] text-outline -mt-2">هر دو فیلد را پر کنید تا دکمه زیر ویدیو نمایش داده شود.</p>
 
-      {error && <p className="text-[#ba1a1a] text-[13px]">{error}</p>}
+      {error && <p className="text-error text-[13px]">{error}</p>}
 
       <div className="flex gap-3 pt-2">
-        <button type="button" onClick={() => router.back()} className="flex-1 py-3 rounded-xl border border-[#c7c4d7] text-[#464554] text-[14px] font-semibold">
+        <button type="button" onClick={() => router.back()} className="flex-1 py-3 rounded-xl border border-outline-variant text-on-surface-variant text-[14px] font-semibold">
           انصراف
         </button>
-        <button type="submit" disabled={saving} className="flex-grow bg-[#4648d4] text-white font-bold text-[15px] py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
+        <button type="submit" disabled={saving} className="flex-grow bg-primary text-white font-bold text-[15px] py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
           {saving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : (isEdit ? "ذخیره تغییرات" : "ایجاد ویدیو")}
         </button>
       </div>

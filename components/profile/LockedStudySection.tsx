@@ -45,18 +45,18 @@ export default function LockedStudySection({ targetUserId, cost, userCoins }: Pr
           {/* کارت‌های زنجیره + مجموع ۷ روز */}
           <div className="grid grid-cols-2 gap-2">
             <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-[#a36700]/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#825100] text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
+              <div className="w-12 h-12 rounded-full bg-tertiary-container/20 flex items-center justify-center">
+                <span className="material-symbols-outlined text-tertiary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
               </div>
-              <h3 className="text-[14px] font-semibold text-[#464554]">زنجیره مطالعه</h3>
-              <p className="text-[18px] font-bold text-[#0b1c30]">۱۲ روز</p>
+              <h3 className="text-[14px] font-semibold text-on-surface-variant">زنجیره مطالعه</h3>
+              <p className="text-[18px] font-bold text-on-surface">۱۲ روز</p>
             </div>
             <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-[#e1e0ff]/40 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[#4648d4] text-3xl">schedule</span>
+              <div className="w-12 h-12 rounded-full bg-primary-fixed/40 flex items-center justify-center">
+                <span className="material-symbols-outlined text-primary text-3xl">schedule</span>
               </div>
-              <h3 className="text-[14px] font-semibold text-[#464554]">مجموع ۷ روز</h3>
-              <p className="text-[18px] font-bold text-[#0b1c30]">۱۸ ساعت</p>
+              <h3 className="text-[14px] font-semibold text-on-surface-variant">مجموع ۷ روز</h3>
+              <p className="text-[18px] font-bold text-on-surface">۱۸ ساعت</p>
             </div>
           </div>
 
@@ -64,7 +64,7 @@ export default function LockedStudySection({ targetUserId, cost, userCoins }: Pr
           <div className="glass-card rounded-xl p-4">
             <div className="flex items-end justify-between gap-1.5 h-[104px]" dir="rtl">
               {MOCK_BARS.map((h, i) => (
-                <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-[#4648d4]/70 to-[#4648d4]/30" style={{ height: `${h}%` }} />
+                <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-primary/70 to-primary/30" style={{ height: `${h}%` }} />
               ))}
             </div>
           </div>
@@ -73,8 +73,8 @@ export default function LockedStudySection({ targetUserId, cost, userCoins }: Pr
           <div className="glass-card rounded-xl p-4 flex flex-col gap-2">
             {[0, 1, 2].map((i) => (
               <div key={i} className="flex justify-between items-center bg-white/60 rounded-lg p-3">
-                <span className="text-[13px] text-[#767586]">چند ساعت پیش</span>
-                <span className="text-[14px] font-bold text-[#4648d4]">۲ ساعت و ۱۵ دقیقه</span>
+                <span className="text-[13px] text-outline">چند ساعت پیش</span>
+                <span className="text-[14px] font-bold text-primary">۲ ساعت و ۱۵ دقیقه</span>
               </div>
             ))}
           </div>
@@ -83,20 +83,20 @@ export default function LockedStudySection({ targetUserId, cost, userCoins }: Pr
 
       {/* لایه‌ی قفل روی نما */}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/40 backdrop-blur-[1px] text-center px-6">
-        <div className="w-14 h-14 rounded-full bg-[#e1e0ff] flex items-center justify-center shadow-md">
-          <span className="material-symbols-outlined text-[#4648d4] text-[28px]">lock</span>
+        <div className="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center shadow-md">
+          <span className="material-symbols-outlined text-primary text-[28px]">lock</span>
         </div>
-        <h3 className="text-[16px] font-bold text-[#0b1c30]">بخش مطالعه قفل است</h3>
-        <p className="text-[13px] text-[#464554] max-w-[280px]">
+        <h3 className="text-[16px] font-bold text-on-surface">بخش مطالعه قفل است</h3>
+        <p className="text-[13px] text-on-surface-variant max-w-[280px]">
           زنجیره، مجموع و نمودار ۷ روز اخیر و لاگ مطالعه‌ی این کاربر را با پرداخت{" "}
           {cost.toLocaleString("fa-IR")} سکه تا ۱ ساعت ببین.
         </p>
-        {error && <p className="text-[#ba1a1a] text-[13px]">{error}</p>}
+        {error && <p className="text-error text-[13px]">{error}</p>}
         <button
           onClick={handleUnlock}
           disabled={!canAfford || loading}
           className={`gamified-btn w-full max-w-[300px] py-3 rounded-xl text-[15px] font-bold flex items-center justify-center gap-2 ${
-            canAfford ? "bg-[#4648d4] text-white shadow-lg shadow-[#4648d4]/20" : "bg-[#c7c4d7] text-[#767586] cursor-not-allowed"
+            canAfford ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-outline-variant text-outline cursor-not-allowed"
           }`}
         >
           {loading ? (

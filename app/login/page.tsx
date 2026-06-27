@@ -79,11 +79,11 @@ export default function LoginPage() {
       <div
         className="fixed inset-0 opacity-[0.03] pointer-events-none"
         style={{
-          backgroundImage: "linear-gradient(to right, #4648d4 1px, transparent 1px), linear-gradient(to bottom, #4648d4 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(to right, var(--color-primary) 1px, transparent 1px), linear-gradient(to bottom, var(--color-primary) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
         }}
       />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#4648d4]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* اسکریپت WebApp تلگرام/بله برای احراز خودکار مینی‌اپ */}
       <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
@@ -94,34 +94,34 @@ export default function LoginPage() {
       <div className="glass-card w-full max-w-sm rounded-2xl p-8 relative z-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-16 h-16 rounded-2xl bg-[#4648d4] flex items-center justify-center shadow-lg shadow-[#4648d4]/30 mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/30 mb-4">
             <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>
               school
             </span>
           </div>
-          <h1 className="text-[24px] font-extrabold text-[#4648d4]">اپ G-camp</h1>
-          <p className="text-[14px] text-[#464554] mt-1">درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن</p>
+          <h1 className="text-[24px] font-extrabold text-primary">اپ G-camp</h1>
+          <p className="text-[14px] text-on-surface-variant mt-1">درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن</p>
         </div>
 
         {step === "phone" ? (
           <form onSubmit={handleSendOtp} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <label className="text-[14px] font-semibold text-[#0b1c30]">شماره موبایل</label>
+              <label className="text-[14px] font-semibold text-on-surface">شماره موبایل</label>
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(normalizeDigits(e.target.value))}
                 placeholder="09123456789"
                 dir="ltr"
-                className="w-full rounded-xl border border-[#c7c4d7] bg-white/80 px-4 py-3 text-[16px] text-[#0b1c30] placeholder:text-[#767586] focus:outline-none focus:border-[#4648d4] focus:ring-2 focus:ring-[#4648d4]/20 transition-all text-center"
+                className="w-full rounded-xl border border-outline-variant bg-white/80 px-4 py-3 text-[16px] text-on-surface placeholder:text-outline focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-center"
                 required
               />
             </div>
-            {error && <p className="text-[#ba1a1a] text-[14px] text-center">{error}</p>}
+            {error && <p className="text-error text-[14px] text-center">{error}</p>}
             <button
               type="submit"
               disabled={loading}
-              className="gamified-btn w-full bg-[#4648d4] text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-[#4648d4]/20"
+              className="gamified-btn w-full bg-primary text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
             >
               {loading ? (
                 <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
@@ -136,8 +136,8 @@ export default function LoginPage() {
         ) : (
           <form onSubmit={handleVerifyOtp} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <label className="text-[14px] font-semibold text-[#0b1c30]">کد تأیید ۶ رقمی</label>
-              <p className="text-[13px] text-[#464554]">کد به شماره {phone} ارسال شد</p>
+              <label className="text-[14px] font-semibold text-on-surface">کد تأیید ۶ رقمی</label>
+              <p className="text-[13px] text-on-surface-variant">کد به شماره {phone} ارسال شد</p>
               <input
                 type="text"
                 value={otp}
@@ -145,15 +145,15 @@ export default function LoginPage() {
                 placeholder="------"
                 maxLength={6}
                 dir="ltr"
-                className="w-full rounded-xl border border-[#c7c4d7] bg-white/80 px-4 py-3 text-[24px] font-mono text-[#4648d4] placeholder:text-[#767586] focus:outline-none focus:border-[#4648d4] focus:ring-2 focus:ring-[#4648d4]/20 transition-all text-center tracking-[0.5rem]"
+                className="w-full rounded-xl border border-outline-variant bg-white/80 px-4 py-3 text-[24px] font-mono text-primary placeholder:text-outline focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all text-center tracking-[0.5rem]"
                 required
               />
             </div>
-            {error && <p className="text-[#ba1a1a] text-[14px] text-center">{error}</p>}
+            {error && <p className="text-error text-[14px] text-center">{error}</p>}
             <button
               type="submit"
               disabled={loading}
-              className="gamified-btn w-full bg-[#4648d4] text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-[#4648d4]/20"
+              className="gamified-btn w-full bg-primary text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
             >
               {loading ? (
                 <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
@@ -169,7 +169,7 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => { setStep("phone"); setOtp(""); setError(""); }}
-              className="text-[14px] text-[#4648d4] hover:underline text-center"
+              className="text-[14px] text-primary hover:underline text-center"
             >
               تغییر شماره موبایل
             </button>

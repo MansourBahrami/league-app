@@ -1,55 +1,74 @@
 @import "tailwindcss";
 
-@theme inline {
-  /* === Colors from UI.html design tokens === */
-  --color-surface-bright: #f8f9ff;
-  --color-inverse-primary: #c0c1ff;
-  --color-on-secondary-fixed: #002113;
-  --color-tertiary-fixed-dim: #ffb95f;
-  --color-surface-container-highest: #d3e4fe;
-  --color-surface: #f8f9ff;
+/* =============================================================================
+ * === رنگ‌ها (Design Tokens) ==================================================
+ * عمداً بدونِ `inline` تعریف شده‌اند تا کلاس‌های Tailwind (bg-primary و…) به‌جای
+ * هگزِ baked شده، از var() استفاده کنند. در نتیجه سوییچِ کلِ تمِ اپ = فقط عوض‌کردنِ
+ * مقادیرِ این متغیرها در یک‌جا (تکْ‌منبعِ حقیقت). تمِ پیش‌فرض = برند.
+ * برای بازگشت به تمِ قبلی: <html data-theme="legacy"> (پایینِ همین فایل).
+ * نام‌ها (نقش‌ها) ثابت‌اند؛ فقط مقدارشان عوض می‌شود — کامپوننت‌ها دست‌نخورده می‌مانند.
+ * ===========================================================================*/
+@theme {
+  /* --- primary → سورمه‌ای --- */
+  --color-primary: #1f3056;
+  --color-primary-container: #34507f;
+  --color-primary-fixed: #dbe3f1;
+  --color-primary-fixed-dim: #b3c4e0;
   --color-on-primary: #ffffff;
-  --color-error-container: #ffdad6;
-  --color-outline: #767586;
-  --color-on-primary-fixed-variant: #2f2ebe;
-  --color-primary: #4648d4;
-  --color-primary-fixed-dim: #c0c1ff;
-  --color-secondary-fixed: #6ffbbe;
-  --color-primary-fixed: #e1e0ff;
-  --color-surface-container-low: #eff4ff;
-  --color-primary-container: #6063ee;
-  --color-background: #f8f9ff;
-  --color-on-secondary-fixed-variant: #005236;
-  --color-inverse-on-surface: #eaf1ff;
-  --color-on-tertiary-fixed: #2a1700;
-  --color-outline-variant: #c7c4d7;
-  --color-on-primary-fixed: #07006c;
-  --color-tertiary-fixed: #ffddb8;
-  --color-on-secondary: #ffffff;
-  --color-on-primary-container: #fffbff;
-  --color-on-tertiary: #ffffff;
-  --color-surface-tint: #494bd6;
-  --color-error: #ba1a1a;
-  --color-on-tertiary-container: #fffbff;
-  --color-on-surface: #0b1c30;
-  --color-on-error-container: #93000a;
-  --color-surface-variant: #d3e4fe;
-  --color-on-secondary-container: #00714d;
-  --color-secondary-fixed-dim: #4edea3;
-  --color-tertiary: #825100;
-  --color-surface-dim: #cbdbf5;
-  --color-on-surface-variant: #464554;
-  --color-secondary: #006c49;
-  --color-on-background: #0b1c30;
-  --color-inverse-surface: #213145;
-  --color-surface-container-high: #dce9ff;
-  --color-on-error: #ffffff;
-  --color-tertiary-container: #a36700;
-  --color-surface-container: #e5eeff;
-  --color-secondary-container: #6cf8bb;
-  --color-surface-container-lowest: #ffffff;
-  --color-on-tertiary-fixed-variant: #653e00;
+  --color-on-primary-container: #ffffff;
+  --color-on-primary-fixed: #0c1733;
+  --color-on-primary-fixed-variant: #2a3f6b;
+  --color-surface-tint: #1f3056;
+  --color-inverse-primary: #b3c4e0;
 
+  /* --- secondary → زرشکی --- */
+  --color-secondary: #962d3e;
+  --color-secondary-container: #f3d9dd;
+  --color-secondary-fixed: #f3d9dd;
+  --color-secondary-fixed-dim: #c75d6e;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #6e1422;
+  --color-on-secondary-fixed: #3a0a12;
+  --color-on-secondary-fixed-variant: #6e1422;
+
+  /* --- tertiary → طلایی --- */
+  --color-tertiary: #9a6a05;
+  --color-tertiary-container: #b07d12;
+  --color-tertiary-fixed: #f6e2bc;
+  --color-tertiary-fixed-dim: #cf9206;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #ffffff;
+  --color-on-tertiary-fixed: #3a2600;
+  --color-on-tertiary-fixed-variant: #6b4a05;
+
+  /* --- سطوح/خنثی → کرمِ گرم --- */
+  --color-surface: #fef9ef;
+  --color-surface-bright: #fffdf7;
+  --color-background: #fef9ef;
+  --color-surface-dim: #ece1c8;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #faf3e4;
+  --color-surface-container: #f6edda;
+  --color-surface-container-high: #efe3c9;
+  --color-surface-container-highest: #e8dabc;
+  --color-surface-variant: #ece1c8;
+  --color-on-surface: #2a2419;
+  --color-on-surface-variant: #6b5f49;
+  --color-on-background: #2a2419;
+  --color-inverse-surface: #2a2419;
+  --color-inverse-on-surface: #fef9ef;
+  --color-outline: #9c8e72;
+  --color-outline-variant: #ddd0b4;
+
+  /* --- خطا (مجزا از زرشکی) --- */
+  --color-error: #b3261e;
+  --color-error-container: #f7d9d6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #7a1510;
+}
+
+@theme inline {
+  /* === توکن‌های غیررنگی (تم‌مستقل) === */
   /* === Border Radius === */
   --radius: 1rem;
   --radius-lg: 2rem;
@@ -76,6 +95,65 @@
   --text-body-md--line-height: 24px;
 }
 
+/* =============================================================================
+ * === تمِ قبلی (بازگشت) =======================================================
+ * با گذاشتنِ data-theme="legacy" روی <html> کلِ اپ به پالتِ آبی/بنفشِ قبلی برمی‌گردد.
+ * چون هگزهای هاردکدِ سابق هم به همین نقش‌ها نگاشت شده‌اند، بازگشت دقیق و کامل است.
+ * ===========================================================================*/
+[data-theme="legacy"] {
+  --color-primary: #4648d4;
+  --color-primary-container: #6063ee;
+  --color-primary-fixed: #e1e0ff;
+  --color-primary-fixed-dim: #c0c1ff;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #fffbff;
+  --color-on-primary-fixed: #07006c;
+  --color-on-primary-fixed-variant: #2f2ebe;
+  --color-surface-tint: #494bd6;
+  --color-inverse-primary: #c0c1ff;
+
+  --color-secondary: #006c49;
+  --color-secondary-container: #6cf8bb;
+  --color-secondary-fixed: #6ffbbe;
+  --color-secondary-fixed-dim: #4edea3;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #00714d;
+  --color-on-secondary-fixed: #002113;
+  --color-on-secondary-fixed-variant: #005236;
+
+  --color-tertiary: #825100;
+  --color-tertiary-container: #a36700;
+  --color-tertiary-fixed: #ffddb8;
+  --color-tertiary-fixed-dim: #ffb95f;
+  --color-on-tertiary: #ffffff;
+  --color-on-tertiary-container: #fffbff;
+  --color-on-tertiary-fixed: #2a1700;
+  --color-on-tertiary-fixed-variant: #653e00;
+
+  --color-surface: #f8f9ff;
+  --color-surface-bright: #f8f9ff;
+  --color-background: #f8f9ff;
+  --color-surface-dim: #cbdbf5;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-high: #dce9ff;
+  --color-surface-container-highest: #d3e4fe;
+  --color-surface-variant: #d3e4fe;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #464554;
+  --color-on-background: #0b1c30;
+  --color-inverse-surface: #213145;
+  --color-inverse-on-surface: #eaf1ff;
+  --color-outline: #767586;
+  --color-outline-variant: #c7c4d7;
+
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-on-error: #ffffff;
+  --color-on-error-container: #93000a;
+}
+
 /* === Base === */
 *, *::before, *::after { box-sizing: border-box; }
 
@@ -91,8 +169,8 @@ html {
 
 body {
   font-family: "Vazirmatn", sans-serif;
-  background-color: #f8f9ff;
-  color: #0b1c30;
+  background-color: var(--color-background);
+  color: var(--color-on-surface);
   min-height: 100dvh;
   direction: rtl;
 }
@@ -103,12 +181,12 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 4px 14px rgba(70, 72, 212, 0.07);
+  box-shadow: 0 4px 14px color-mix(in oklab, var(--color-primary) 8%, transparent);
 }
 
 /* === Gamified Button === */
 .gamified-btn {
-  border-bottom: 4px solid #2f2ebe;
+  border-bottom: 4px solid var(--color-on-primary-fixed-variant);
   transition: all 0.1s ease;
   cursor: pointer;
 }
@@ -120,7 +198,7 @@ body {
 
 /* === Progress Glow === */
 .progress-glow {
-  box-shadow: 0 0 10px rgba(70, 72, 212, 0.6);
+  box-shadow: 0 0 10px color-mix(in oklab, var(--color-primary) 60%, transparent);
 }
 
 .focus-mask {

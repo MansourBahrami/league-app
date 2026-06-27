@@ -123,7 +123,7 @@ export default function LeaderboardList({ entries }: Props) {
               style={{ willChange: "transform, opacity", transformOrigin: "center center" }}
               className={`flex items-center gap-3 p-3 rounded-xl border transition-[border-color] ${
                 entry.isCurrentUser
-                  ? "bg-gradient-to-l from-surface-container to-primary-fixed border-2 border-primary/40 shadow-[0_8px_20px_rgba(70,72,212,0.12)] relative"
+                  ? "bg-gradient-to-l from-surface-container to-primary-fixed border-2 border-primary/40 shadow-[0_8px_20px_color-mix(in_oklab,var(--color-primary)_12%,transparent)] relative"
                   : "bg-surface-container-lowest/80 border-outline-variant/30 hover:border-primary/30 cursor-pointer"
               }`}
             >

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-const COLORS = ["#4648d4", "#ffb95f", "#6cf8bb", "#006c49", "#c0c1ff", "#825100"];
+const COLORS = ["var(--color-primary)", "var(--color-tertiary-fixed-dim)", "var(--color-secondary-container)", "var(--color-secondary)", "var(--color-primary-fixed-dim)", "var(--color-tertiary)"];
 
 /**
  * انفجار کانفتی برای لحظه‌های جشن (تکمیل روز، گرفتن مدال، ارتقا).

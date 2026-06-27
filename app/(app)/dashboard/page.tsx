@@ -158,10 +158,10 @@ export default async function DashboardPage() {
         const pct = Math.min(100, Math.round((activeDaily.studiedMin / activeDaily.goalMin) * 100));
         const done = activeDaily.studiedMin >= activeDaily.goalMin;
         return (
-          <section className="glass-card rounded-xl p-3.5 border-r-4 border-r-secondary">
+          <section className="glass-card rounded-xl p-3.5 border-r-4 border-r-tertiary-fixed-dim">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[14px] font-bold text-on-surface flex items-center gap-1.5">
-                <span className={`material-symbols-outlined text-[18px] ${done ? "text-secondary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}>
+                <span className={`material-symbols-outlined text-[18px] ${done ? "text-tertiary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}>
                   {done ? "check_circle" : "today"}
                 </span>
                 ماموریت روزانه: {activeDaily.targetHours.toLocaleString("fa-IR")} ساعت
@@ -169,7 +169,7 @@ export default async function DashboardPage() {
               <span className="text-[12px] font-bold text-tertiary">+{activeDaily.coinReward.toLocaleString("fa-IR")} سکه</span>
             </div>
             <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden mb-1.5">
-              <div className="h-full bg-gradient-to-l from-secondary to-secondary-fixed-dim rounded-full transition-all" style={{ width: `${pct}%` }} />
+              <div className="h-full bg-gradient-to-l from-tertiary to-tertiary-fixed-dim rounded-full transition-all" style={{ width: `${pct}%` }} />
             </div>
             <p className="text-[12px] text-on-surface-variant text-right">
               {formatStudyMinutes(activeDaily.studiedMin)} از {formatStudyMinutes(activeDaily.goalMin)}

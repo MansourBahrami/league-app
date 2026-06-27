@@ -25,7 +25,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
   const badge = `روز ${video.day.toLocaleString("fa-IR")}`;
 
   const inner = (
-    <div className={`relative bg-white/80 rounded-xl p-1 shadow-[0_10px_25px_rgba(70,72,212,0.1)] border border-primary/20 backdrop-blur-xl group overflow-hidden transition-all duration-300 ${isLocked ? "opacity-80" : "hover:shadow-[0_15px_30px_rgba(70,72,212,0.15)] cursor-pointer"}`}>
+    <div className={`relative bg-white/80 rounded-xl p-1 shadow-[0_10px_25px_color-mix(in_oklab,var(--color-primary)_10%,transparent)] border border-primary/20 backdrop-blur-xl group overflow-hidden transition-all duration-300 ${isLocked ? "opacity-80" : "hover:shadow-[0_15px_30px_color-mix(in_oklab,var(--color-primary)_15%,transparent)] cursor-pointer"}`}>
       <div className="flex gap-4 bg-white rounded-xl p-3 items-center">
         <div className="w-24 h-24 rounded-xl overflow-hidden relative shrink-0 bg-primary-fixed flex items-center justify-center">
           {video.thumbnailUrl ? (
@@ -69,7 +69,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
                 {video.durationMin.toLocaleString("fa-IR")} دقیقه
               </span>
               {watchPct > 0 && !isCompleted && <span className="text-primary">{watchPct.toLocaleString("fa-IR")}٪ دیده شده</span>}
-              {isCompleted && <span className="text-secondary">تکمیل شده ✓</span>}
+              {isCompleted && <span className="text-tertiary">تکمیل شده ✓</span>}
             </div>
           )}
         </div>

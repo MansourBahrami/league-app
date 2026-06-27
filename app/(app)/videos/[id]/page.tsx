@@ -37,7 +37,7 @@ export default async function VideoPlayerPage({ params }: Props) {
     const price = getVideoPrice(video.day);
     return (
       <div className="flex flex-col gap-6 px-5 pb-6">
-        <Link href="/videos" className="flex items-center gap-2 text-[#464554] hover:text-[#4648d4] transition-colors mt-2">
+        <Link href="/videos" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mt-2">
           <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_back</span>
           <span className="text-[14px] font-semibold">بازگشت به لیست ویدیوها</span>
         </Link>
@@ -71,7 +71,7 @@ export default async function VideoPlayerPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-6 px-5 pb-6">
       {/* Back button */}
-      <Link href="/videos" className="flex items-center gap-2 text-[#464554] hover:text-[#4648d4] transition-colors mt-2">
+      <Link href="/videos" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mt-2">
         <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_back</span>
         <span className="text-[14px] font-semibold">بازگشت به لیست ویدیوها</span>
       </Link>
@@ -88,9 +88,9 @@ export default async function VideoPlayerPage({ params }: Props) {
 
       {/* Video Info */}
       <section className="flex flex-col gap-4">
-        <h1 className="text-[20px] font-bold text-[#0b1c30]">{video.title}</h1>
+        <h1 className="text-[20px] font-bold text-on-surface">{video.title}</h1>
         <div className="flex gap-2 items-center">
-          <span className="bg-[#dce9ff] text-[#4648d4] px-3 py-1 rounded-full text-[14px] font-semibold flex items-center gap-1">
+          <span className="bg-surface-container-high text-primary px-3 py-1 rounded-full text-[14px] font-semibold flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">calendar_today</span>روز {video.day.toLocaleString("fa-IR")}
           </span>
           <span className="text-on-surface-variant text-[16px] flex items-center gap-1">

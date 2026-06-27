@@ -299,7 +299,7 @@ export default function GuidedTour() {
     // root کلیک‌ها را عبور می‌دهد (pointer-events-none)؛ فقط لایه‌های لازم آن را می‌گیرند
     <div className="fixed inset-0 z-[60] pointer-events-none">
       {/* پس‌زمینه‌ی تیره: برای گام مرکزی/سوال یا وقتی عنصر پیدا نشد — جلوی کلیکِ صفحه را می‌گیرد */}
-      {!hasSpotlight && <div className="absolute inset-0 pointer-events-auto bg-[#0b1c30]/75 backdrop-blur-[2px]" />}
+      {!hasSpotlight && <div className="absolute inset-0 pointer-events-auto bg-on-surface/75 backdrop-blur-[2px]" />}
 
       {/* گامِ spotlight غیرِ nav: یک بلاکرِ شفاف تا صفحه‌ی پشت کلیک‌پذیر نباشد.
           گامِ nav این بلاکر را ندارد تا کاربر بتواند روی دکمه‌ی واقعیِ نوار پایین بزند. */}

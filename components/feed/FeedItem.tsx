@@ -33,24 +33,24 @@ export default function FeedItem({ activity, config, index }: Props) {
       style={{ animationDelay: `${index * 0.05}s` }}
     >
       {activity.user.avatarUrl ? (
-        <img src={activity.user.avatarUrl} className="w-12 h-12 rounded-full object-cover border border-[#c7c4d7] shrink-0" alt={name} />
+        <img src={activity.user.avatarUrl} className="w-12 h-12 rounded-full object-cover border border-outline-variant shrink-0" alt={name} />
       ) : (
-        <div className="w-12 h-12 rounded-full bg-[#e1e0ff] flex items-center justify-center shrink-0 border border-[#4648d4]/20 text-[18px] font-bold text-[#4648d4]">
+        <div className="w-12 h-12 rounded-full bg-primary-fixed flex items-center justify-center shrink-0 border border-primary/20 text-[18px] font-bold text-primary">
           {name[0]}
         </div>
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-[16px] text-[#0b1c30] truncate">
-          <span className="font-bold text-[#4648d4]">{name}</span> {label}
+        <p className="text-[16px] text-on-surface truncate">
+          <span className="font-bold text-primary">{name}</span> {label}
         </p>
         <div className="flex items-center gap-1 mt-1">
-          <span className="material-symbols-outlined text-[14px] text-[#767586]">schedule</span>
-          <span className="text-[12px] text-[#767586]">
+          <span className="material-symbols-outlined text-[14px] text-outline">schedule</span>
+          <span className="text-[12px] text-outline">
             {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true, locale: faIR })}
           </span>
         </div>
       </div>
-      <div className="w-10 h-10 rounded-full bg-[#e5eeff] flex items-center justify-center shrink-0">
+      <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0">
         <span className={`material-symbols-outlined ${config.color}`} style={{ fontVariationSettings: "'FILL' 1" }}>
           {config.icon}
         </span>

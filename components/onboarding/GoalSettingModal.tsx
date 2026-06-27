@@ -146,11 +146,11 @@ export default function GoalSettingModal({
           </div>
           <div className="mb-5">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[13px] font-semibold text-secondary">ماموریت روز {(onboardingDay + 1).toLocaleString("fa-IR")}</span>
+              <span className="text-[13px] font-semibold text-tertiary">ماموریت روز {(onboardingDay + 1).toLocaleString("fa-IR")}</span>
               <span className="text-[13px] text-on-surface-variant">{fmt(dailyGoalMinutes - remainingMinutes)} / {fmt(dailyGoalMinutes)}</span>
             </div>
             <div className="h-3 w-full bg-surface-container rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-l from-secondary to-secondary-fixed-dim rounded-full transition-all" style={{ width: `${progressPct}%` }} />
+              <div className="h-full bg-gradient-to-l from-tertiary to-tertiary-fixed-dim rounded-full transition-all" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
           <button
@@ -180,10 +180,10 @@ export default function GoalSettingModal({
             {fmt(durationMin)} مطالعه{inOnboarding ? ` — روز ${onboardingDay.toLocaleString("fa-IR")}` : ""}
           </p>
           {dayCompleted && inOnboarding && (
-            <div className="mt-3 bg-secondary-container/40 rounded-xl p-2.5">
+            <div className="mt-3 bg-tertiary-fixed/40 rounded-xl p-2.5">
               <p className="text-[13px] font-semibold text-on-surface leading-relaxed">
                 ماموریت امروزت تموم شد! 🎉 فردا ماموریت جدیدت شروع می‌شه —
-                <span className="text-secondary font-bold"> ولی می‌تونی همین امروز هم ادامه بدی و جلوتر بزنی.</span>
+                <span className="text-tertiary font-bold"> ولی می‌تونی همین امروز هم ادامه بدی و جلوتر بزنی.</span>
               </p>
             </div>
           )}

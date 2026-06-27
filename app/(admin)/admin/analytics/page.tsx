@@ -84,32 +84,32 @@ export default async function AnalyticsPage() {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-extrabold text-[#0b1c30]">A/B تست: مدل دسترسی به ویدیو</h1>
-        <p className="text-[14px] text-[#464554] mt-1">
+        <h1 className="text-[22px] font-extrabold text-on-surface">A/B تست: مدل دسترسی به ویدیو</h1>
+        <p className="text-[14px] text-on-surface-variant mt-1">
           مقایسه‌ی دو گروه: <b>free</b> (ویدیو رایگان و باز با پیشرفت روز) در برابر <b>paid</b> (خرید ویدیو با سکه).
           گروهی که نرخ بازدید ویدیو و فعال‌بودن بالاتری داشته باشد برنده است.
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#c7c4d7]/40 overflow-hidden">
-        <div className="grid grid-cols-[1.6fr_1fr_1fr] bg-[#0b1c30] text-white text-[13px] font-bold">
+      <div className="bg-white rounded-2xl border border-outline-variant/40 overflow-hidden">
+        <div className="grid grid-cols-[1.6fr_1fr_1fr] bg-on-surface text-white text-[13px] font-bold">
           <div className="p-3">معیار</div>
           <div className="p-3 text-center border-r border-white/10">گروه free</div>
           <div className="p-3 text-center border-r border-white/10">گروه paid</div>
         </div>
         {rows.map((r, i) => (
-          <div key={r.label} className={`grid grid-cols-[1.6fr_1fr_1fr] items-center ${i % 2 ? "bg-[#f8f9ff]" : "bg-white"}`}>
+          <div key={r.label} className={`grid grid-cols-[1.6fr_1fr_1fr] items-center ${i % 2 ? "bg-surface" : "bg-white"}`}>
             <div className="p-3 text-right">
-              <div className="text-[14px] font-semibold text-[#0b1c30]">{r.label}</div>
-              {r.hint && <div className="text-[11px] text-[#767586] mt-0.5">{r.hint}</div>}
+              <div className="text-[14px] font-semibold text-on-surface">{r.label}</div>
+              {r.hint && <div className="text-[11px] text-outline mt-0.5">{r.hint}</div>}
             </div>
-            <div className="p-3 text-center text-[16px] font-bold text-[#4648d4] border-r border-[#c7c4d7]/30">{r.free}</div>
-            <div className="p-3 text-center text-[16px] font-bold text-[#825100] border-r border-[#c7c4d7]/30">{r.paid}</div>
+            <div className="p-3 text-center text-[16px] font-bold text-primary border-r border-outline-variant/30">{r.free}</div>
+            <div className="p-3 text-center text-[16px] font-bold text-tertiary border-r border-outline-variant/30">{r.paid}</div>
           </div>
         ))}
       </div>
 
-      <p className="text-[12px] text-[#767586] leading-relaxed">
+      <p className="text-[12px] text-outline leading-relaxed">
         ⚠️ برای نتیجه‌گیری معنادار آماری به چند ده تا چند صد کاربر در هر گروه نیاز است. تخصیص گروه به‌صورت تصادفی ۵۰/۵۰ در اولین ورود هر کاربر انجام می‌شود.
       </p>
     </div>

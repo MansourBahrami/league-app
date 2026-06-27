@@ -149,18 +149,18 @@ export default function DailyMissionCard({
       {/* ماموریت امروز */}
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[15px] font-bold text-on-surface flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-secondary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+          <span className="material-symbols-outlined text-tertiary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
             target
           </span>
           {inOnboarding ? "ماموریت امروزت:" : isDay1 ? "ماموریت روز اول" : "ماموریت روزانه"}
         </h3>
-        <span className="text-[13px] font-bold text-secondary">{progress.toLocaleString("fa-IR")}٪</span>
+        <span className="text-[13px] font-bold text-tertiary">{progress.toLocaleString("fa-IR")}٪</span>
       </div>
 
       {/* بخش ۱: مطالعه — جمله هدف + نوار پیشرفت */}
       <div className="flex items-center gap-2 mb-1.5">
         <span
-          className={`material-symbols-outlined text-[18px] ${minutesDone ? "text-secondary" : "text-on-surface-variant"}`}
+          className={`material-symbols-outlined text-[18px] ${minutesDone ? "text-tertiary" : "text-on-surface-variant"}`}
           style={{ fontVariationSettings: minutesDone ? "'FILL' 1" : "'FILL' 0" }}
         >
           {minutesDone ? "check_circle" : "timer"}
@@ -171,7 +171,7 @@ export default function DailyMissionCard({
       </div>
       <div className="w-full bg-surface-container h-2.5 rounded-full overflow-hidden relative">
         <div
-          className="bg-gradient-to-l from-secondary to-secondary-fixed-dim h-full rounded-full relative transition-all duration-500"
+          className="bg-gradient-to-l from-tertiary to-tertiary-fixed-dim h-full rounded-full relative transition-all duration-500"
           style={{ width: `${progress}%` }}
         >
           <div className="absolute left-0 top-0 w-3 h-full bg-white/50 blur-[2px] rounded-full" />
@@ -190,7 +190,7 @@ export default function DailyMissionCard({
         <div className="mt-4">
           <div className="flex items-center gap-2 mb-2">
             <span
-              className={`material-symbols-outlined text-[18px] ${video.watched ? "text-secondary" : "text-on-surface-variant"}`}
+              className={`material-symbols-outlined text-[18px] ${video.watched ? "text-tertiary" : "text-on-surface-variant"}`}
               style={{ fontVariationSettings: video.watched ? "'FILL' 1" : "'FILL' 0" }}
             >
               {video.watched ? "check_circle" : "play_circle"}
@@ -203,7 +203,7 @@ export default function DailyMissionCard({
           </div>
 
           {video.watched ? (
-            <p className="text-[13px] font-semibold text-secondary text-right">ویدیوی امروز رو دیدی ✓</p>
+            <p className="text-[13px] font-semibold text-tertiary text-right">ویدیوی امروز رو دیدی ✓</p>
           ) : variant === "paid" && !video.purchased ? (
             // گروه paid: ابتدا باید با سکه خریده شود
             <>

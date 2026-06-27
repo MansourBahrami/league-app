@@ -40,20 +40,20 @@ function renderContent(it: InboxItem): { text: string; icon: string; bg: string;
       return {
         text: `به ${faNum(meta.targets ?? 5)} نفر واکنش دادی و ${faNum(meta.coins ?? 5)} سکه گرفتی! 🎉`,
         icon: "generating_tokens",
-        bg: "#ffddb8",
-        color: "#825100",
+        bg: "var(--color-tertiary-fixed)",
+        color: "var(--color-tertiary)",
         href: "/feed",
       };
     case "message":
       return {
         text: it.body ?? `${actorName} برات پیام فرستاد`,
         icon: "chat_bubble",
-        bg: "#e1e0ff",
-        color: "#4648d4",
+        bg: "var(--color-primary-fixed)",
+        color: "var(--color-primary)",
         href: it.actor ? `/profile/${it.actor.id}` : "/inbox",
       };
     default:
-      return { text: it.body ?? it.type, icon: "notifications", bg: "#eef0f4", color: "#464554", href: "/inbox" };
+      return { text: it.body ?? it.type, icon: "notifications", bg: "#eef0f4", color: "var(--color-on-surface-variant)", href: "/inbox" };
   }
 }
 
@@ -94,10 +94,10 @@ export default function InboxClient({ initialItems }: Props) {
               </span>
             </div>
             <div className="flex-1 min-w-0 text-right">
-              <p className="text-[14px] text-[#0b1c30] leading-snug">{c.text}</p>
+              <p className="text-[14px] text-on-surface leading-snug">{c.text}</p>
               <div className="flex items-center gap-1 mt-1">
-                <span className="material-symbols-outlined text-[13px] text-[#767586]">schedule</span>
-                <span className="text-[11px] text-[#767586]">
+                <span className="material-symbols-outlined text-[13px] text-outline">schedule</span>
+                <span className="text-[11px] text-outline">
                   {formatDistanceToNow(new Date(it.createdAt), { addSuffix: true, locale: faIR })}
                 </span>
               </div>

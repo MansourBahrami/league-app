@@ -80,7 +80,7 @@ export default async function MissionsPage() {
       </p>
 
       {activeDaily && (
-        <div className="glass-card rounded-xl p-4 border-r-4 border-r-secondary">
+        <div className="glass-card rounded-xl p-4 border-r-4 border-r-tertiary-fixed-dim">
           {(() => {
             const goal = activeDaily.mission.targetHours * 60;
             const pct = Math.min(100, Math.round((dailyStudiedMin / goal) * 100));
@@ -88,14 +88,14 @@ export default async function MissionsPage() {
             return (
               <>
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-[15px] font-bold text-secondary flex items-center gap-1.5">
+                  <h3 className="text-[15px] font-bold text-tertiary flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>{done ? "check_circle" : "timer"}</span>
                     ماموریت امروز: {activeDaily.mission.targetHours.toLocaleString("fa-IR")} ساعت
                   </h3>
                   <span className="text-[12px] font-bold text-tertiary">جایزه: {activeDaily.mission.coinReward.toLocaleString("fa-IR")} سکه</span>
                 </div>
                 <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden mb-1.5">
-                  <div className="h-full bg-gradient-to-l from-secondary to-secondary-fixed-dim rounded-full transition-all" style={{ width: `${pct}%` }} />
+                  <div className="h-full bg-gradient-to-l from-tertiary to-tertiary-fixed-dim rounded-full transition-all" style={{ width: `${pct}%` }} />
                 </div>
                 <p className="text-[12px] text-on-surface-variant text-right">
                   {formatStudyMinutes(dailyStudiedMin)} از {formatStudyMinutes(goal)}
@@ -109,7 +109,7 @@ export default async function MissionsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {dailyMissions.length === 0 ? (
-          <p className="text-[#464554] text-center col-span-2 py-8">فعلاً ماموریت روزانه‌ای موجود نیست.</p>
+          <p className="text-on-surface-variant text-center col-span-2 py-8">فعلاً ماموریت روزانه‌ای موجود نیست.</p>
         ) : (
           dailyMissions.map((m) => (
             <DailyMissionCard
@@ -133,42 +133,42 @@ export default async function MissionsPage() {
       </p>
 
       {isWeek1 && (
-        <div className="bg-[#e1e0ff] border border-[#4648d4]/30 rounded-xl p-4 text-center">
-          <p className="text-[14px] text-[#4648d4] font-semibold">
+        <div className="bg-primary-fixed border border-primary/30 rounded-xl p-4 text-center">
+          <p className="text-[14px] text-primary font-semibold">
             ماموریت‌های هفتگی از روز ششم باز می‌شوند. مسیر آنبوردینگ را کامل کن!
           </p>
         </div>
       )}
 
       {currentMission?.status === "pending" && (
-        <div className="glass-card rounded-xl p-4 border-r-4 border-r-[#ffb95f]">
+        <div className="glass-card rounded-xl p-4 border-r-4 border-r-tertiary-fixed-dim">
           <div className="flex items-center gap-2 mb-1">
-            <span className="material-symbols-outlined text-[#825100] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>schedule</span>
-            <h3 className="text-[16px] font-bold text-[#825100]">ماموریت در انتظار فعال‌سازی</h3>
+            <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>schedule</span>
+            <h3 className="text-[16px] font-bold text-tertiary">ماموریت در انتظار فعال‌سازی</h3>
           </div>
-          <p className="text-[14px] text-[#0b1c30]">{currentMission.mission.targetHours} ساعت در ۷ روز</p>
-          <p className="text-[12px] text-[#464554]">
+          <p className="text-[14px] text-on-surface">{currentMission.mission.targetHours} ساعت در ۷ روز</p>
+          <p className="text-[12px] text-on-surface-variant">
             از فردا ({new Date(currentMission.activatesAt).toLocaleDateString("fa-IR")}) فعال می‌شود.
           </p>
         </div>
       )}
 
       {currentMission?.status === "active" && (
-        <div className="glass-card rounded-xl p-4 border-r-4 border-r-[#006c49]">
-          <h3 className="text-[16px] font-bold text-[#006c49] mb-2">ماموریت فعال</h3>
+        <div className="glass-card rounded-xl p-4 border-r-4 border-r-tertiary-fixed-dim">
+          <h3 className="text-[16px] font-bold text-tertiary mb-2">ماموریت فعال</h3>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[14px] text-[#0b1c30]">{currentMission.mission.targetHours} ساعت در ۷ روز</span>
-            <span className="text-[13px] font-bold text-[#006c49]">
+            <span className="text-[14px] text-on-surface">{currentMission.mission.targetHours} ساعت در ۷ روز</span>
+            <span className="text-[13px] font-bold text-tertiary">
               {missionProgressHours.toLocaleString("fa-IR")} / {currentMission.mission.targetHours.toLocaleString("fa-IR")} ساعت
             </span>
           </div>
-          <div className="h-2.5 w-full bg-[#e5eeff] rounded-full overflow-hidden mb-2">
+          <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden mb-2">
             <div
-              className="h-full bg-gradient-to-l from-[#006c49] to-[#6cf8bb] rounded-full transition-all"
+              className="h-full bg-gradient-to-l from-tertiary to-tertiary-container rounded-full transition-all"
               style={{ width: `${Math.min(100, (missionProgressHours / currentMission.mission.targetHours) * 100)}%` }}
             />
           </div>
-          <p className="text-[12px] text-[#464554]">
+          <p className="text-[12px] text-on-surface-variant">
             مهلت تا: {new Date(currentMission.expiresAt).toLocaleDateString("fa-IR")} — جایزه: {currentMission.mission.xpReward.toLocaleString("fa-IR")} XP + مدال
           </p>
         </div>
@@ -176,7 +176,7 @@ export default async function MissionsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {missions.length === 0 ? (
-          <p className="text-[#464554] text-center col-span-2 py-8">هنوز ماموریتی موجود نیست. بیشتر مطالعه کن!</p>
+          <p className="text-on-surface-variant text-center col-span-2 py-8">هنوز ماموریتی موجود نیست. بیشتر مطالعه کن!</p>
         ) : (
           missions.map((m) => (
             <MissionCard
@@ -196,8 +196,8 @@ export default async function MissionsPage() {
   return (
     <div className="flex flex-col px-5">
       <section className="mb-6 mt-2 text-center">
-        <h1 className="text-[20px] font-extrabold text-[#4648d4] mb-1">بازارچه ماموریت‌ها</h1>
-        <p className="text-[14px] text-[#464554]">ماموریت بخر، درس بخون، جایزه بگیر!</p>
+        <h1 className="text-[20px] font-extrabold text-primary mb-1">بازارچه ماموریت‌ها</h1>
+        <p className="text-[14px] text-on-surface-variant">ماموریت بخر، درس بخون، جایزه بگیر!</p>
       </section>
 
       <MissionTabs

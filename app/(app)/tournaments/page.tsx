@@ -68,7 +68,7 @@ export default async function TournamentsPage() {
 
                 <div className="flex items-center justify-between">
                   {joined ? (
-                    <span className="text-[13px] font-bold text-secondary flex items-center gap-1">
+                    <span className="text-[13px] font-bold text-tertiary flex items-center gap-1">
                       <span className="material-symbols-outlined text-[16px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
                       عضو شدی
                     </span>

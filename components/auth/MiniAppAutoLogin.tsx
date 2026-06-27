@@ -65,17 +65,17 @@ export default function MiniAppAutoLogin() {
 
   if (status === "trying") {
     return (
-      <div className="fixed inset-0 z-[70] bg-[#f8f9ff] flex flex-col items-center justify-center gap-3">
-        <span className="material-symbols-outlined animate-spin text-[#4648d4] text-[40px]">progress_activity</span>
-        <p className="text-[15px] text-[#464554]">در حال ورود خودکار…</p>
+      <div className="fixed inset-0 z-[70] bg-surface flex flex-col items-center justify-center gap-3">
+        <span className="material-symbols-outlined animate-spin text-primary text-[40px]">progress_activity</span>
+        <p className="text-[15px] text-on-surface-variant">در حال ورود خودکار…</p>
       </div>
     );
   }
 
   if (status === "failed") {
     return (
-      <div className="mb-4 bg-[#ffddb8]/30 border border-[#a36700]/20 rounded-xl p-3 text-center">
-        <p className="text-[13px] text-[#825100]">ورود خودکار ناموفق بود. با شماره موبایل وارد شو.</p>
+      <div className="mb-4 bg-tertiary-fixed/30 border border-tertiary-container/20 rounded-xl p-3 text-center">
+        <p className="text-[13px] text-tertiary">ورود خودکار ناموفق بود. با شماره موبایل وارد شو.</p>
       </div>
     );
   }

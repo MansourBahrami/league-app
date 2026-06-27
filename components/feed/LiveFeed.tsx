@@ -10,16 +10,16 @@ const REACTION_EMOJIS = ["🔥", "👏", "💪", "❤️", "🎯"];
 
 // هر نوع فعالیت: آیکون + رنگ آیکون + رنگ پس‌زمینه‌ی نشان + رنگ نوار کناری (تمایز بصری)
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string; accent: string }> = {
-  timer_start: { icon: "timer", color: "#4648d4", bg: "#e1e0ff", accent: "#4648d4" },
-  session_complete: { icon: "menu_book", color: "#006c49", bg: "#d4f5e6", accent: "#006c49" },
-  mission_buy: { icon: "shopping_cart", color: "#825100", bg: "#ffddb8", accent: "#ffb95f" },
-  medal_earn: { icon: "workspace_premium", color: "#b45309", bg: "#fff7eb", accent: "#ffb95f" },
-  level_up: { icon: "trending_up", color: "#4648d4", bg: "#dce9ff", accent: "#6063ee" },
+  timer_start: { icon: "timer", color: "var(--color-primary)", bg: "var(--color-primary-fixed)", accent: "var(--color-primary)" },
+  session_complete: { icon: "menu_book", color: "var(--color-secondary)", bg: "#d4f5e6", accent: "var(--color-secondary)" },
+  mission_buy: { icon: "shopping_cart", color: "var(--color-tertiary)", bg: "var(--color-tertiary-fixed)", accent: "var(--color-tertiary-fixed-dim)" },
+  medal_earn: { icon: "workspace_premium", color: "#b45309", bg: "#fff7eb", accent: "var(--color-tertiary-fixed-dim)" },
+  level_up: { icon: "trending_up", color: "var(--color-primary)", bg: "var(--color-surface-container-high)", accent: "var(--color-primary-container)" },
   streak: { icon: "local_fire_department", color: "#c2410c", bg: "#ffedd5", accent: "#fb923c" },
-  video_complete: { icon: "smart_display", color: "#006c49", bg: "#d4f5e6", accent: "#006c49" },
-  video_buy: { icon: "play_circle", color: "#825100", bg: "#ffddb8", accent: "#ffb95f" },
+  video_complete: { icon: "smart_display", color: "var(--color-secondary)", bg: "#d4f5e6", accent: "var(--color-secondary)" },
+  video_buy: { icon: "play_circle", color: "var(--color-tertiary)", bg: "var(--color-tertiary-fixed)", accent: "var(--color-tertiary-fixed-dim)" },
 };
-const DEFAULT_CONFIG = { icon: "bolt", color: "#464554", bg: "#eef0f4", accent: "#c7c4d7" };
+const DEFAULT_CONFIG = { icon: "bolt", color: "var(--color-on-surface-variant)", bg: "#eef0f4", accent: "var(--color-outline-variant)" };
 
 function faNum(v: unknown): string {
   return Number(v ?? 0).toLocaleString("fa-IR");
@@ -133,13 +133,13 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
   }
 
   if (activities.length === 0) {
-    return <p className="text-[#464554] text-center py-8">هنوز فعالیتی ثبت نشده. اول شروع کن!</p>;
+    return <p className="text-on-surface-variant text-center py-8">هنوز فعالیتی ثبت نشده. اول شروع کن!</p>;
   }
 
   return (
     <div className="w-full space-y-3">
       {toast && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] bg-[#006c49] text-white text-[13px] font-bold px-4 py-2 rounded-full shadow-lg">
+        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] bg-secondary text-white text-[13px] font-bold px-4 py-2 rounded-full shadow-lg">
           {toast}
         </div>
       )}
@@ -167,9 +167,9 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
               {/* آواتار + نشان نوع فعالیت (سمت راست در RTL) */}
               <Link href={`/profile/${a.userId}`} className="relative shrink-0 hover:scale-105 transition-transform">
                 {a.user.avatarUrl ? (
-                  <img src={a.user.avatarUrl} className="w-10 h-10 rounded-full object-cover border border-[#c7c4d7]" alt={name} />
+                  <img src={a.user.avatarUrl} className="w-10 h-10 rounded-full object-cover border border-outline-variant" alt={name} />
                 ) : (
-                  <div className="w-10 h-10 rounded-full bg-[#e1e0ff] flex items-center justify-center border border-[#4648d4]/20 text-[16px] font-bold text-[#4648d4]">
+                  <div className="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center border border-primary/20 text-[16px] font-bold text-primary">
                     {name[0]}
                   </div>
                 )}
@@ -185,14 +185,14 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
 
               {/* متن + خط متادیتا (زمان سمت راست، واکنش‌ها سمت چپ) */}
               <div className="flex-1 min-w-0 text-right">
-                <p className="text-[13.5px] text-[#0b1c30] leading-snug">
-                  <Link href={`/profile/${a.userId}`} className="font-bold text-[#4648d4] hover:underline">{name}</Link>{" "}
+                <p className="text-[13.5px] text-on-surface leading-snug">
+                  <Link href={`/profile/${a.userId}`} className="font-bold text-primary hover:underline">{name}</Link>{" "}
                   {label}
                 </p>
                 <div className="flex items-center justify-between gap-2 mt-1">
                   <div className="flex items-center gap-1 shrink-0">
-                    <span className="material-symbols-outlined text-[12px] text-[#767586]">schedule</span>
-                    <span className="text-[11px] text-[#767586]">
+                    <span className="material-symbols-outlined text-[12px] text-outline">schedule</span>
+                    <span className="text-[11px] text-outline">
                       {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true, locale: faIR })}
                     </span>
                   </div>
@@ -205,15 +205,15 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
                           onClick={() => setPickerFor((p) => (p === a.id ? null : a.id))}
                           className={`flex items-center justify-center w-7 h-7 rounded-full border shrink-0 transition-colors ${
                             myEmoji || isPicking
-                              ? "bg-[#e1e0ff] border-[#4648d4]/30"
-                              : "bg-surface-container border-outline-variant/40 hover:bg-[#e1e0ff]"
+                              ? "bg-primary-fixed border-primary/30"
+                              : "bg-surface-container border-outline-variant/40 hover:bg-primary-fixed"
                           }`}
                           aria-label="افزودن واکنش"
                         >
                           {myEmoji ? (
                             <span className="text-[15px] leading-none">{myEmoji}</span>
                           ) : (
-                            <span className="material-symbols-outlined text-[16px] text-[#767586]">add_reaction</span>
+                            <span className="material-symbols-outlined text-[16px] text-outline">add_reaction</span>
                           )}
                         </button>
                       )}
@@ -224,9 +224,9 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
                           disabled={isMine}
                           className={`flex items-center gap-0.5 px-1.5 h-7 rounded-full border shrink-0 text-[12px] font-semibold transition-colors ${
                             myEmoji === e
-                              ? "bg-[#e1e0ff] border-[#4648d4]/40 text-[#4648d4]"
-                              : "bg-surface-container border-outline-variant/30 text-[#464554]"
-                          } ${isMine ? "cursor-default" : "hover:bg-[#e1e0ff]"}`}
+                              ? "bg-primary-fixed border-primary/40 text-primary"
+                              : "bg-surface-container border-outline-variant/30 text-on-surface-variant"
+                          } ${isMine ? "cursor-default" : "hover:bg-primary-fixed"}`}
                         >
                           <span className="text-[13px] leading-none">{e}</span>
                           <span>{faNum(itemCounts[e])}</span>
@@ -247,7 +247,7 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
                     onClick={() => react(a.id, e)}
                     className={`text-[19px] leading-none w-9 h-9 rounded-full border transition-transform hover:scale-110 ${
                       myEmoji === e
-                        ? "bg-[#e1e0ff] border-[#4648d4]/40"
+                        ? "bg-primary-fixed border-primary/40"
                         : "bg-surface-container border-outline-variant/30"
                     }`}
                   >

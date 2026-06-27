@@ -19,8 +19,8 @@ export default async function AdminLeadsPage() {
     <div className="flex flex-col gap-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-[22px] font-extrabold text-[#0b1c30]">لیدها</h1>
-          <p className="text-[13px] text-[#767586]">{users.length.toLocaleString("fa-IR")} لید · {hotCount.toLocaleString("fa-IR")} داغ 🔥</p>
+          <h1 className="text-[22px] font-extrabold text-on-surface">لیدها</h1>
+          <p className="text-[13px] text-outline">{users.length.toLocaleString("fa-IR")} لید · {hotCount.toLocaleString("fa-IR")} داغ 🔥</p>
         </div>
         <div className="flex gap-2">
           <ExportLeadsButton />
@@ -28,10 +28,10 @@ export default async function AdminLeadsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-[#c7c4d7]/30 overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-outline-variant/30 overflow-x-auto">
         <table className="w-full text-right text-[13px]">
           <thead>
-            <tr className="border-b border-[#c7c4d7]/30 text-[#767586]">
+            <tr className="border-b border-outline-variant/30 text-outline">
               <th className="p-3 font-semibold">نام</th>
               <th className="p-3 font-semibold">موبایل</th>
               <th className="p-3 font-semibold">پایه</th>
@@ -44,22 +44,22 @@ export default async function AdminLeadsPage() {
           </thead>
           <tbody>
             {users.length === 0 ? (
-              <tr><td colSpan={8} className="p-8 text-center text-[#767586]">هنوز لیدی ثبت نشده.</td></tr>
+              <tr><td colSpan={8} className="p-8 text-center text-outline">هنوز لیدی ثبت نشده.</td></tr>
             ) : (
               users.map((u) => (
-                <tr key={u.id} className="border-b border-[#c7c4d7]/15 hover:bg-[#eff4ff]">
-                  <td className="p-3 font-semibold text-[#0b1c30]">{u.name ?? "—"}</td>
-                  <td className="p-3 text-[#464554]" dir="ltr">{u.phone}</td>
-                  <td className="p-3 text-[#464554]">{u.grade ?? "—"}</td>
-                  <td className="p-3 text-[#464554]">{u.field ?? "—"}</td>
-                  <td className="p-3 text-[#4648d4] font-bold">{u.xp.toLocaleString("fa-IR")}</td>
-                  <td className="p-3 text-[#464554]">{u.level}</td>
-                  <td className="p-3 text-[#464554]">{u.onboardingDay.toLocaleString("fa-IR")}</td>
+                <tr key={u.id} className="border-b border-outline-variant/15 hover:bg-surface-container-low">
+                  <td className="p-3 font-semibold text-on-surface">{u.name ?? "—"}</td>
+                  <td className="p-3 text-on-surface-variant" dir="ltr">{u.phone}</td>
+                  <td className="p-3 text-on-surface-variant">{u.grade ?? "—"}</td>
+                  <td className="p-3 text-on-surface-variant">{u.field ?? "—"}</td>
+                  <td className="p-3 text-primary font-bold">{u.xp.toLocaleString("fa-IR")}</td>
+                  <td className="p-3 text-on-surface-variant">{u.level}</td>
+                  <td className="p-3 text-on-surface-variant">{u.onboardingDay.toLocaleString("fa-IR")}</td>
                   <td className="p-3">
                     {isHot(u.onboardingDay) ? (
-                      <span className="bg-[#ffddb8]/50 text-[#a36700] px-2 py-0.5 rounded-full text-[11px] font-bold">داغ 🔥</span>
+                      <span className="bg-tertiary-fixed/50 text-tertiary-container px-2 py-0.5 rounded-full text-[11px] font-bold">داغ 🔥</span>
                     ) : (
-                      <span className="text-[#767586] text-[11px]">عادی</span>
+                      <span className="text-outline text-[11px]">عادی</span>
                     )}
                   </td>
                 </tr>
@@ -69,7 +69,7 @@ export default async function AdminLeadsPage() {
         </table>
       </div>
 
-      <p className="text-[12px] text-[#767586] text-center">
+      <p className="text-[12px] text-outline text-center">
         لید داغ = پروفایل کامل + رسیدن به روز ۳ آنبوردینگ. این لیدها بهترین کاندید تماس تیم مشاوره هستند.
       </p>
     </div>

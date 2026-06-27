@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#4648d4",
+  themeColor: "#1f3056",
 };
 
 export default function RootLayout({
@@ -26,14 +26,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="fa" dir="rtl" className={vazirmatn.variable}>
+    <html
+      lang="fa"
+      dir="rtl"
+      // تمِ فعال: «brand» (پیش‌فرض). برای بازگشت به تمِ قبلی مقدار را "legacy" کنید
+      // یا متغیرِ محیطی NEXT_PUBLIC_THEME=legacy را تنظیم کنید (بدون تغییر کد).
+      data-theme={process.env.NEXT_PUBLIC_THEME ?? "brand"}
+      className={vazirmatn.variable}
+    >
       <head>
         <link
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-[#f8f9ff] text-[#0b1c30] font-sans antialiased">
+      <body className="min-h-screen bg-background text-on-surface font-sans antialiased">
         {children}
       </body>
     </html>

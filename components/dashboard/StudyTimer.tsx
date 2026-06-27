@@ -253,7 +253,7 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
           {isActive && (
             <div className="text-center mb-3 relative">
               {floats.map((f) => (
-                <span key={f.id} className="reward-float absolute -top-2 right-1/2 translate-x-1/2 text-[13px] font-extrabold text-secondary whitespace-nowrap">
+                <span key={f.id} className="reward-float absolute -top-2 right-1/2 translate-x-1/2 text-[13px] font-extrabold text-tertiary whitespace-nowrap">
                   +۱ XP · +۱ سکه
                 </span>
               ))}

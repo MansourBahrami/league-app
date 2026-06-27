@@ -8,7 +8,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
   if (!state) {
     return (
       <section className="glass-card rounded-xl p-4 text-center">
-        <span className="material-symbols-outlined text-secondary text-[32px] mb-1.5 block" style={{ fontVariationSettings: "'FILL' 1" }}>
+        <span className="material-symbols-outlined text-tertiary text-[32px] mb-1.5 block" style={{ fontVariationSettings: "'FILL' 1" }}>
           flag
         </span>
         <h3 className="text-[15px] font-bold text-on-surface mb-1">ماموریت هفتگی فعالی نداری</h3>
@@ -31,7 +31,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
     return (
       <section className="glass-card rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
-          <span className="material-symbols-outlined text-secondary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
           <h3 className="text-[15px] font-bold text-on-surface flex-1 text-right">ماموریت هفتگی انتخاب شد! ✅</h3>
         </div>
         <div className="bg-primary-fixed/60 rounded-xl p-4 text-center">
@@ -57,7 +57,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
     <section className="glass-card rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-[15px] font-bold text-on-surface flex items-center gap-1.5">
-          <span className="material-symbols-outlined text-secondary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>target</span>
+          <span className="material-symbols-outlined text-tertiary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>target</span>
           ماموریت امروز (روز {state.dayIndex.toLocaleString("fa-IR")} از ۷)
         </h3>
         <span className="text-[12px] font-bold text-primary bg-primary-fixed px-2 py-0.5 rounded-full">
@@ -66,8 +66,8 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
       </div>
 
       {state.isRestDay ? (
-        <div className="bg-secondary-container/40 rounded-xl p-4 text-center">
-          <span className="material-symbols-outlined text-secondary text-[28px] mb-1 block" style={{ fontVariationSettings: "'FILL' 1" }}>celebration</span>
+        <div className="bg-tertiary-fixed/40 rounded-xl p-4 text-center">
+          <span className="material-symbols-outlined text-tertiary text-[28px] mb-1 block" style={{ fontVariationSettings: "'FILL' 1" }}>celebration</span>
           <p className="text-[14px] font-bold text-on-surface">امروز روز استراحته! 🎉</p>
           <p className="text-[13px] text-on-surface-variant mt-1">ماموریت هفتگی‌ت رو کامل کردی. می‌تونی استراحت کنی یا جلوتر بزنی.</p>
         </div>
@@ -75,7 +75,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
         <>
           {/* پیشرفت روزانه */}
           <div className="flex items-center gap-2 mb-1.5">
-            <span className={`material-symbols-outlined text-[18px] ${dailyDone ? "text-secondary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: dailyDone ? "'FILL' 1" : "'FILL' 0" }}>
+            <span className={`material-symbols-outlined text-[18px] ${dailyDone ? "text-tertiary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: dailyDone ? "'FILL' 1" : "'FILL' 0" }}>
               {dailyDone ? "check_circle" : "timer"}
             </span>
             <p className="text-[15px] font-bold text-on-surface flex-1 text-right">
@@ -83,7 +83,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
             </p>
           </div>
           <div className="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
-            <div className="bg-gradient-to-l from-secondary to-secondary-fixed-dim h-full rounded-full transition-all duration-500" style={{ width: `${dailyPct}%` }} />
+            <div className="bg-gradient-to-l from-tertiary to-tertiary-fixed-dim h-full rounded-full transition-all duration-500" style={{ width: `${dailyPct}%` }} />
           </div>
           <p className="text-[12px] font-medium text-on-surface-variant mt-1.5 text-right">
             {formatStudyMinutes(state.dailyStudiedMin)} از {formatStudyMinutes(state.dailyGoalMin)} امروز

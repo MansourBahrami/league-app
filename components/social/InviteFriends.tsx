@@ -97,7 +97,7 @@ export default function InviteFriends({ referralCode, appUrl }: Props) {
       </div>
 
       {msg && (
-        <p className={`text-[13px] text-center ${msg.ok ? "text-secondary" : "text-error"}`}>{msg.text}</p>
+        <p className={`text-[13px] text-center ${msg.ok ? "text-tertiary" : "text-error"}`}>{msg.text}</p>
       )}
     </section>
   );

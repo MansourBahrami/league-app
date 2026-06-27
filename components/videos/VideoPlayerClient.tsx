@@ -89,7 +89,7 @@ export default function VideoPlayerClient({ videoId, hlsUrl, title, durationMin,
 
   return (
     <section className="flex flex-col gap-3">
-      <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-[#c7c4d7]/20 bg-black aspect-video">
+      <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-outline-variant/20 bg-black aspect-video">
         {hlsUrl ? (
           <video ref={videoRef} className="w-full h-full" controls playsInline />
         ) : (
@@ -98,8 +98,8 @@ export default function VideoPlayerClient({ videoId, hlsUrl, title, durationMin,
           </div>
         )}
         {completed && (
-          <div className="absolute inset-0 bg-[#006c49]/20 flex items-center justify-center pointer-events-none">
-            <div className="bg-[#006c49] text-white px-4 py-2 rounded-full flex items-center gap-2">
+          <div className="absolute inset-0 bg-secondary/20 flex items-center justify-center pointer-events-none">
+            <div className="bg-secondary text-white px-4 py-2 rounded-full flex items-center gap-2">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
               تکمیل شده
             </div>
@@ -109,15 +109,15 @@ export default function VideoPlayerClient({ videoId, hlsUrl, title, durationMin,
 
       {/* Watch progress */}
       <div className="flex items-center gap-3">
-        <span className="text-[12px] text-[#464554]">{watchPct}٪ مشاهده شده</span>
-        <div className="flex-1 h-1.5 bg-[#e5eeff] rounded-full overflow-hidden">
-          <div className="h-full bg-[#4648d4] rounded-full transition-all" style={{ width: `${watchPct}%` }} />
+        <span className="text-[12px] text-on-surface-variant">{watchPct}٪ مشاهده شده</span>
+        <div className="flex-1 h-1.5 bg-surface-container rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${watchPct}%` }} />
         </div>
-        <span className="text-[12px] text-[#767586]">{durationMin} دقیقه</span>
+        <span className="text-[12px] text-outline">{durationMin} دقیقه</span>
       </div>
 
       {watchPct < 90 && (
-        <p className="text-[12px] text-[#767586] text-center">
+        <p className="text-[12px] text-outline text-center">
           ۹۰٪ ویدیو را تماشا کن تا جایزه بگیری ({90 - watchPct}٪ مانده)
         </p>
       )}

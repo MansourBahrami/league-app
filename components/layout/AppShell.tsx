@@ -44,7 +44,7 @@ export default function AppShell({ user, children, showWelcome = false, needsLea
       <div
         className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
         style={{
-          backgroundImage: "linear-gradient(to right, #4648d4 1px, transparent 1px), linear-gradient(to bottom, #4648d4 1px, transparent 1px)",
+          backgroundImage: "linear-gradient(to right, var(--color-primary) 1px, transparent 1px), linear-gradient(to bottom, var(--color-primary) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
         }}
       />

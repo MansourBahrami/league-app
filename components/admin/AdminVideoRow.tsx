@@ -30,23 +30,23 @@ export default function AdminVideoRow({ video }: { video: Video }) {
   }
 
   return (
-    <div className="bg-white rounded-xl p-3 flex items-center gap-3 border border-[#c7c4d7]/30">
-      <div className="w-10 h-10 rounded-lg bg-[#e1e0ff] flex items-center justify-center shrink-0">
-        <span className="material-symbols-outlined text-[#4648d4] text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
+    <div className="bg-white rounded-xl p-3 flex items-center gap-3 border border-outline-variant/30">
+      <div className="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center shrink-0">
+        <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[14px] font-bold text-[#0b1c30] truncate">{video.title}</p>
-        <div className="flex items-center gap-2 text-[11px] text-[#767586] mt-0.5 flex-wrap">
-          <span className="bg-[#e1e0ff] text-[#4648d4] px-1.5 py-0.5 rounded">روز {video.day.toLocaleString("fa-IR")}</span>
+        <p className="text-[14px] font-bold text-on-surface truncate">{video.title}</p>
+        <div className="flex items-center gap-2 text-[11px] text-outline mt-0.5 flex-wrap">
+          <span className="bg-primary-fixed text-primary px-1.5 py-0.5 rounded">روز {video.day.toLocaleString("fa-IR")}</span>
           <span>{video.grades.length === 0 ? "همه پایه‌ها" : video.grades.join("، ")}</span>
           <span>· {video.durationMin.toLocaleString("fa-IR")} دقیقه</span>
-          {!video.isActive && <span className="text-[#ba1a1a]">· غیرفعال</span>}
+          {!video.isActive && <span className="text-error">· غیرفعال</span>}
         </div>
       </div>
-      <Link href={`/admin/videos/${video.id}`} className="text-[#4648d4] hover:bg-[#e1e0ff] p-2 rounded-lg transition-colors">
+      <Link href={`/admin/videos/${video.id}`} className="text-primary hover:bg-primary-fixed p-2 rounded-lg transition-colors">
         <span className="material-symbols-outlined text-[20px]">edit</span>
       </Link>
-      <button onClick={handleDelete} disabled={deleting} className="text-[#ba1a1a] hover:bg-[#ba1a1a]/10 p-2 rounded-lg transition-colors disabled:opacity-50">
+      <button onClick={handleDelete} disabled={deleting} className="text-error hover:bg-error/10 p-2 rounded-lg transition-colors disabled:opacity-50">
         <span className="material-symbols-outlined text-[20px]">{deleting ? "progress_activity" : "delete"}</span>
       </button>
     </div>

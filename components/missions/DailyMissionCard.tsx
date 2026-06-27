@@ -48,7 +48,7 @@ export default function DailyMissionCard({ mission, userCoins, isLocked, hasActi
     <div className="glass-card rounded-2xl p-4 flex flex-col">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="bg-secondary-container/50 text-secondary rounded-full w-11 h-11 flex items-center justify-center shrink-0">
+          <div className="bg-tertiary-fixed/50 text-tertiary rounded-full w-11 h-11 flex items-center justify-center shrink-0">
             <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>today</span>
           </div>
           <div className="text-right">
@@ -57,7 +57,7 @@ export default function DailyMissionCard({ mission, userCoins, isLocked, hasActi
           </div>
         </div>
         {isFree ? (
-          <span className="text-[12px] font-bold text-secondary bg-secondary-container/60 px-2.5 py-1 rounded-full">رایگان</span>
+          <span className="text-[12px] font-bold text-tertiary bg-tertiary-fixed/60 px-2.5 py-1 rounded-full">رایگان</span>
         ) : (
           <div className="flex items-center gap-1 text-primary text-[15px] font-bold">
             <span>{mission.entryCost.toLocaleString("fa-IR")}</span>

@@ -48,7 +48,7 @@ export default async function VideosPage() {
           <span className="text-[14px] font-bold text-primary">{progress.toLocaleString("fa-IR")}٪ پیشرفت</span>
         </div>
         <div className="h-3 w-full bg-outline-variant/40 rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-l from-primary to-primary-container rounded-full shadow-[0_0_10px_rgba(70,72,212,0.5)]" style={{ width: `${progress}%` }} />
+          <div className="h-full bg-gradient-to-l from-primary to-primary-container rounded-full shadow-[0_0_10px_color-mix(in_oklab,var(--color-primary)_50%,transparent)]" style={{ width: `${progress}%` }} />
         </div>
       </div>
 

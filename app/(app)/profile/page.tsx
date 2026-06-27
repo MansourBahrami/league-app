@@ -62,7 +62,7 @@ export default async function ProfilePage() {
     <div className="flex flex-col gap-4 px-5 pb-6">
       {/* Profile Header */}
       <section className="glass-card rounded-xl p-6 flex flex-col items-center relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-full h-24 bg-gradient-to-b from-primary-fixed to-transparent opacity-50 z-0" />
+        <div className="absolute top-0 right-0 w-full h-24 bg-gradient-to-b from-tertiary-fixed to-transparent opacity-50 z-0" />
         <div className="relative z-10 flex flex-col items-center w-full">
           <AvatarPicker currentUrl={user.avatarUrl} name={user.name} />
           <h2 className="text-[20px] font-bold text-on-surface mb-1">{user.name ?? "نام وارد نشده"}</h2>
@@ -92,7 +92,7 @@ export default async function ProfilePage() {
                   تا {nextReq.level} ({nextReq.stars.toLocaleString("fa-IR")} ستاره): {xpToNext > 0 ? `${formatStudyMinutes(xpToStudyMinutes(xpToNext))} مطالعه` : "آماده ارتقا"}
                 </span>
               ) : (
-                <span className="text-[13px] text-secondary font-bold">بالاترین سطح! 🏆</span>
+                <span className="text-[13px] text-tertiary font-bold">بالاترین سطح! 🏆</span>
               )}
             </div>
             <div className="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
@@ -142,8 +142,8 @@ export default async function ProfilePage() {
 
       {/* Admin panel link (admins only) */}
       {user.role === "admin" && (
-        <a href="/admin" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-secondary hover:bg-secondary-container/30 transition-colors">
-          <span className="material-symbols-outlined text-secondary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
+        <a href="/admin" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/30 transition-colors">
+          <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
           <div className="text-right flex-1">
             <p className="text-[15px] font-bold text-on-surface">پنل مدیریت</p>
             <p className="text-[12px] text-on-surface-variant">مدیریت ویدیوها و محتوا</p>
