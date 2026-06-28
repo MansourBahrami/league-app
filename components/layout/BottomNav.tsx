@@ -15,8 +15,8 @@ export default function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] z-50 flex justify-around items-center px-4 pt-2 bg-surface/70 backdrop-blur-xl border-t border-outline-variant/20 shadow-[0_-10px_40px_rgba(0,0,0,0.05)] rounded-t-2xl"
-      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 0.75rem)" }}
+      className="liquid-glass fixed bottom-0 left-1/2 -translate-x-1/2 z-50 flex justify-around items-center gap-1 w-[calc(100%-1.5rem)] max-w-[480px] px-2 py-2 rounded-[28px]"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
     >
       {NAV_ITEMS.map((item) => {
         const isActive = pathname === item.href;
@@ -25,19 +25,19 @@ export default function BottomNav() {
             key={item.href}
             href={item.href}
             data-tour={item.tour}
-            className={`flex flex-col items-center justify-center px-3 py-1.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-2 rounded-[20px] transition-all duration-200 ${
               isActive
-                ? "bg-primary-fixed text-primary scale-95"
-                : "text-on-surface-variant hover:bg-surface-container-high"
+                ? "bg-primary text-on-primary shadow-[0_3px_10px_color-mix(in_oklab,var(--color-primary)_40%,transparent)]"
+                : "text-on-surface-variant hover:text-primary active:scale-95"
             }`}
           >
             <span
-              className="material-symbols-outlined mb-0.5 text-[22px]"
+              className="material-symbols-outlined text-[22px]"
               style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
             >
               {item.icon}
             </span>
-            <span className="text-[12px] font-semibold">{item.label}</span>
+            <span className="text-[11px] font-semibold leading-none">{item.label}</span>
           </Link>
         );
       })}

@@ -184,6 +184,21 @@ body {
   box-shadow: 0 4px 14px color-mix(in oklab, var(--color-primary) 8%, transparent);
 }
 
+/* === Liquid Glass (الهام از iOS / نویگیشنِ شناورِ اینستاگرام) ===
+ * شیشه‌ی شناور: بلورِ بالا + اشباعِ رنگِ پس‌زمینه + های‌لایتِ لبه‌ی بالایی (specular)
+ * + سایه‌ی نرمِ شناور. روی تمِ کرمی ته‌رنگِ گرم می‌گیرد.
+ */
+.liquid-glass {
+  background: color-mix(in oklab, var(--color-surface) 30%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  box-shadow:
+    0 8px 30px color-mix(in oklab, var(--color-primary) 14%, transparent),
+    0 2px 8px color-mix(in oklab, var(--color-primary) 8%, transparent),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
+}
+
 /* === Gamified Button === */
 .gamified-btn {
   border-bottom: 4px solid var(--color-on-primary-fixed-variant);

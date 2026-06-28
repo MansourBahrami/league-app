@@ -33,7 +33,7 @@ export default function AppShell({ user, children, showWelcome = false, needsLea
   const router = useRouter();
   // مقادیر مستقیم از prop سرور؛ با router.refresh() (بعد از خرید/پایان جلسه) به‌روز می‌شوند
   return (
-    <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-24 md:pb-8">
+    <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-28 md:pb-12">
       <PushRegister />
       {showWelcome && <GuidedTour />}
       {/* قفل اجباری لید بعد از روز اول — تا تکمیل نشود کل اپ مسدود است */}
@@ -51,7 +51,7 @@ export default function AppShell({ user, children, showWelcome = false, needsLea
 
       <Header user={user} xp={user.xp} coins={user.coins} unreadCount={unreadCount} />
 
-      <main className="w-full max-w-[600px] mt-20 mb-6 relative z-10">
+      <main className="w-full max-w-[600px] mt-24 mb-6 relative z-10">
         {children}
       </main>
 

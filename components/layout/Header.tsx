@@ -29,7 +29,7 @@ const LEVEL_LABELS: Record<string, string> = {
 
 export default function Header({ user, xp, coins, unreadCount = 0 }: HeaderProps) {
   return (
-    <header className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-[600px] z-50 flex justify-between items-center px-5 py-2 bg-surface/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_2px_12px_color-mix(in_oklab,var(--color-primary)_6%,transparent)]">
+    <header className="liquid-glass fixed top-3 left-1/2 -translate-x-1/2 z-50 flex justify-between items-center w-[calc(100%-1.5rem)] max-w-[576px] px-4 py-2 rounded-[24px]">
       {/* Leading: Avatar + level */}
       <Link href="/profile" className="flex items-center gap-2.5 cursor-pointer hover:scale-105 transition-transform">
         <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20 p-0.5">
