@@ -71,6 +71,7 @@ async function main() {
       onboardingDay: 0, hasSeenIntro: false, isLeadComplete: false, videoAccess: "free",
     },
   });
+  sessions.push(session(u1.id, 0, 30));
 
   // ۲) بهار — وسط آنبوردینگ (روز ۳)، لید کامل، free، استریک ۲
   const u2 = await prisma.user.create({
@@ -92,6 +93,7 @@ async function main() {
       onboardingDay: 0, hasSeenIntro: true, isLeadComplete: true, videoAccess: "paid",
     },
   });
+  sessions.push(session(u3.id, 0, 45));
 
   // ۴) ترانه — آنبوردینگ تمام‌شده، بدون ماموریت فعال (تست دکمه‌ی انتخاب ماموریت)، استریک ۴
   const u4 = await prisma.user.create({
@@ -145,7 +147,7 @@ async function main() {
   }
 
   // ۷) مدیر تست — دسترسی به پنل ادمین محلی
-  await prisma.user.create({
+  const admin = await prisma.user.create({
     data: {
       phone: "09120000009", name: "مدیر تست", grade: "دوازدهم", field: "ریاضی",
       xp: 300, coins: 200, level: "ثابت‌قدم", stars: 1,
@@ -153,6 +155,7 @@ async function main() {
       role: "admin",
     },
   });
+  sessions.push(session(admin.id, 0, 60));
 
   // ===================================================================
   // کاربران پیشرفته‌تر: مدال‌های متنوع + سطح بالا + جلسه‌های زیاد (لیدربورد)
