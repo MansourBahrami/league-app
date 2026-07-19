@@ -1,7 +1,7 @@
 # راهنمای استقرار (Production Deployment)
 
 > وضعیت زنده، معماری، و کارهای انجام‌شده برای استقرار اپ روی سرور.
-> **آخرین به‌روزرسانی:** خرداد ۱۴۰۵ — اتصال ربات بله، HTTPS واقعی، و پیامک OTP کاوه‌نگار.
+> **آخرین به‌روزرسانی:** تیر ۱۴۰۵ — اتصال ربات بله، HTTPS واقعی، پیامک OTP کاوه‌نگار و cron موتور قانون اعلان.
 
 ---
 
@@ -24,11 +24,11 @@
 
 - **سرور:** VPS لیارا، Ubuntu 24.04، IP `62.60.198.110` (hostname `ubuntu-league-vps`).
 - **مسیر پروژه روی سرور:** `/app/league/`
-- **اجرا:** Docker Compose با ۴ سرویس (شبکهٔ `league-net`):
+- **اجرا:** فایل `docker-compose.yml` داخل repo سه سرویس اصلی را تعریف می‌کند:
   - `app` — ایمیج `mansourbahrami/league-app:latest` (Next.js، expose پورت 3000)
   - `postgres` — `postgres:17-alpine` (دیتابیس `league_db`)
   - `redis` — `redis:7-alpine` (OTP + توکن magic، با پسورد)
-  - `caddy` — `caddy:2-alpine` (reverse proxy، پورت‌های 80 و 443)
+- **Reverse proxy production:** Caddy کنار این سه سرویس روی سرور پیکربندی شده است، اما تعریف آن در compose فعلی repo وجود ندارد. بنابراین compose سرور/پیکربندی Caddy یک لایهٔ استقرار جدا از فایل tracked پروژه است.
 - **رجیستری:** Docker Hub (با mirror آروان روی سرور به‌خاطر تحریم).
 
 ---
@@ -119,7 +119,7 @@ BALE_BOT_TOKEN=<...>
 BALE_BOT_USERNAME=gcamp_bot
 BOT_WEBHOOK_SECRET=<...>
 TELEGRAM_BOT_TOKEN=<...>
-# اختیاری (هنوز ست نشده): VAPID_*، CRON_SECRET، BOT_API_SECRET
+# اختیاری/وابسته به قابلیت: VAPID_* و BOT_API_SECRET
 ```
 
 > مقادیر واقعی فقط روی سرور و در GitHub Secrets نگهداری می‌شوند، نه در گیت.
@@ -188,8 +188,7 @@ curl -sI https://app.ayandetalayee.ir | head -1
 `POST /api/cron/run` اجرا می‌شوند که با `Authorization: Bearer $CRON_SECRET`
 محافظت شده است. روی سرور یک **crontab** این endpoint را صدا می‌زند.
 
-اپ پورت ۳۰۰۰ را روی هاست منتشر **نمی‌کند** (فقط Caddy روی ۸۰/۴۴۳)، پس cron
-اسکریپتِ `/app/league/run-cron.sh` را اجرا می‌کند که از داخل کانتینرِ اپ با
+در پیکربندی production، cron اسکریپتِ `/app/league/run-cron.sh` را اجرا می‌کند که از داخل کانتینرِ اپ با
 `node fetch` به `localhost:3000` می‌زند (بدون مشکل گواهی/شبکه). `CRON_SECRET`
 از env خود کانتینر (`env_file: .env.production`) خوانده می‌شود.
 
@@ -220,7 +219,7 @@ crontab نصب‌شده (`crontab -l`):
 ## ۱۰. کارهای باقی‌مانده در استقرار
 
 - [ ] تست واقعی ورود با پیامک OTP (مصرف اعتبار کاوه‌نگار).
-- [ ] تنظیم کلیدهای VAPID (`npx web-push generate-vapid-keys`) برای فعال‌سازی Web Push.
+- [ ] تنظیم/تأیید کلیدهای VAPID (`npx web-push generate-vapid-keys`) برای فعال‌سازی Web Push در همهٔ محیط‌ها.
 - [x] اتصال cron واقعی به `POST /api/cron/run` با `CRON_SECRET` (بخش ۹).
 - [ ] (در صورت نیاز تلگرام) استقرار سرویس `bot/` روی یک سرور خارج از ایران به‌عنوان relay.
 - [ ] جابه‌جایی دامنهٔ نهایی به `Gcamp.ir` و به‌روزرسانی `NEXT_PUBLIC_APP_URL`/`APP_PUBLIC_URL` + build-arg + webhook بله.

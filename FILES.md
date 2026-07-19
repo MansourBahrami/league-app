@@ -42,7 +42,7 @@
 | `eslint.config.mjs`, `postcss.config.mjs` | لینت و PostCSS (Tailwind v4). |
 | `prisma.config.ts` | پیکربندی Prisma 7 (مسیر schema و seed). |
 | `Dockerfile` 🟢 | بیلد دو مرحله‌ای ایمیج production (Node 22-slim، خروجی `.next`). |
-| `docker-compose.yml` 🟢 | استک سرور: `app` + `postgres` + `redis` + `caddy`. |
+| `docker-compose.yml` 🟢 | استک داخل repo: `app` + `postgres` + `redis`. Caddy در پیکربندی production سرور نگهداری می‌شود. |
 | `liara.json` | پیکربندی استقرار روی پلتفرم لیارا (PaaS). |
 | `.dockerignore`, `.gitignore` | استثناهای build/git (شامل `.next`, `node_modules`, `.env*`). |
 | `.env.example`, `.env.local`, `.env.production.example` | الگو و مقادیر متغیرهای محیطی (local و production). |
@@ -55,7 +55,7 @@
 | `DEPLOYMENT.md` | راهنمای استقرار production (CDN/HTTPS، بله، کاوه‌نگار، redeploy). |
 | `ROADMAP.md` | فازها و کارهای آینده. |
 | `AGENTS.md` / `CLAUDE.md` | راهنمای ایجنت‌ها (`CLAUDE.md` فقط به `AGENTS.md` اشاره می‌کند). |
-| `README.md` | (در حال حاضر boilerplate پیش‌فرض create-next-app). |
+| `README.md` | معرفی واقعی محصول، اجرای محلی، فرمان‌ها و لینک مستندات. |
 
 ---
 
@@ -82,7 +82,9 @@
 |------|-------|
 | `lib/gamification.ts` 🟢 | قلب منطق: `calcRewards`, `calcLevel` (جدول سطوح + شرط مدال)، پیشنهاد ماموریت، پیام لیدربورد، قوانین هدف روزانه/آنبوردینگ، استریک مؤثر. |
 | `lib/mission.ts` 🟢 | چرخهٔ عمر ماموریت (`processUserMissions`) + محاسبهٔ مجدد سطح (`recalcUserLevel`) + شمارش مدال. |
-| `lib/onboarding.ts` 🟢 | مسیر آنبوردینگ دوبخشی (دقیقه + ویدیو): وضعیت روز جاری، تکمیل روز، باز کردن ویدیوی پاداش. |
+| `lib/onboarding.ts` 🟢 | وضعیت روز جاری آنبوردینگ، هدف دقیقه و ویدیوی اختیاری free/paid؛ تکمیل روز بر اساس دقیقه‌های مطالعه. |
+| `lib/ab.ts` 🟢 | تخصیص ۵۰/۵۰ مدل دسترسی ویدیو، سکهٔ اولیهٔ paid و جدول قیمت روزها. |
+| `lib/weekly-mission.ts` 🟢 | شکستن هدف هفتگی به ۶ روز + روز هفتم استراحت/جبران. |
 | `lib/streak.ts` 🟢 | محاسبهٔ زنجیرهٔ روزهای متوالی مطالعه و ثبت رویداد فید روی نقاط عطف ۳/۶ روزه. |
 | `lib/referral.ts` 🟢 | دعوت دوستان: کد یکتا، دوستی دوطرفه، فهرست دوستان. |
 
@@ -97,7 +99,7 @@
 | `lib/notification-rules.ts` 🟢 | **کاتالوگ موتور قانون**: فیلدها/عملگرها/سگمنت‌ها/رویدادها + ارزیابی شرط (`userMatches`) + رندر متن (`renderTemplate`). خالص و قابل‌import در کلاینت. |
 | `lib/notification-engine.ts` 🟢 | **موتور ارسال**: غنی‌سازی کاربر، ایمنی (cooldown/quiet/maxPerDay)، کانال بله/Push، لاگ. `runScheduledRules` (cron)، `fireEvent` (hook رویدادی)، `runRuleManually` (تست). |
 | `lib/notification-admin.ts` 🟢 | پارس/اعتبارسنجی فرم قانون نوتیفیکیشن (مشترک بین POST/PATCH ادمین). |
-| `lib/notification-seed.ts` 🟢 | سه قانون پیش‌فرض (یادآور هدف، خطر زنجیره، افت رتبه)؛ idempotent بر اساس `name`. از `prisma/seed.ts` صدا زده می‌شود. |
+| `lib/notification-seed.ts` 🟢 | قانون‌های پیش‌فرض یادآور، بازگشت، استریک، رتبه، سطح و مدال؛ idempotent بر اساس `name`. |
 | `lib/jobs.ts` 🟢 | اجرای کارهای زمان‌بندی‌شده (`runScheduledJobs`): ماموریت‌ها، تسویهٔ تورنومنت، `notifRules` (موتور قانون)، `ranks` (افت رتبه). با پارامتر `tasks` فرکانس‌پذیر. |
 | `lib/socket.ts` ⚪️ | سرور Socket.io — **میراث**؛ فید زنده با SSE کار می‌کند (استفاده نمی‌شود). |
 
@@ -116,8 +118,8 @@
 ### گروه کاربر `(app)/` — همه پشت احراز هویت + `AppShell`
 | فایل | فیچر |
 |------|------|
-| `app/(app)/layout.tsx` 🟢 | واکشی user، AppShell (Header + BottomNav)، WelcomeSlides، PushRegister. |
-| `app/(app)/dashboard/page.tsx` 🟢 | داشبورد: تایمر، پیشرفت ماموریت روزانه، مینی‌لیدربورد، رقبای نزدیک، مسیر آنبوردینگ. |
+| `app/(app)/layout.tsx` 🟢 | واکشی user، تخصیص A/B، AppShell، GuidedTour، قفل lead و PushRegister. |
+| `app/(app)/dashboard/page.tsx` 🟢 | داشبورد: تایمر، ماموریت روزانه/هفتگی، استریک، رقبای نزدیک و گزارش مطالعه. |
 | `app/(app)/missions/page.tsx` 🟢 | بازارچهٔ ماموریت‌ها (قفل تا پایان آنبوردینگ، خرید با سکه). |
 | `app/(app)/feed/page.tsx` 🟢 | بورد زندهٔ فعالیت‌ها (SSE). |
 | `app/(app)/leaderboard/page.tsx` 🟢 | لیدربورد هفتگی هم‌سطح + تب «لیگ آزاد» برای cold start. |
@@ -127,12 +129,15 @@
 | `app/(app)/videos/[id]/page.tsx` 🟢 | پخش‌کنندهٔ ویدیو (anti-seek + پاداش ۹۰٪). |
 | `app/(app)/tournaments/page.tsx` 🟢 | فهرست تورنومنت‌های فعال/آینده. |
 | `app/(app)/tournaments/[id]/page.tsx` 🟢 | اتاق تورنومنت + لیدربورد اختصاصی + دکمهٔ شرکت. |
+| `app/(app)/inbox/page.tsx` 🟢 | صندوق اعلان، واکنش و جایزه‌های کاربر. |
 
 ### گروه ادمین `(admin)/` — محافظت دولایه (proxy + `getAdminSession`)
 | فایل | فیچر |
 |------|------|
 | `app/(admin)/admin/layout.tsx` 🟢 | layout ادمین + بررسی نقش `admin` از DB. |
 | `app/(admin)/admin/page.tsx` 🟢 | داشبورد ادمین. |
+| `app/(admin)/admin/analytics/page.tsx` 🟢 | تحلیل A/B مدل free/paid ویدیو. |
+| `app/(admin)/admin/notifications/*` 🟢 | فهرست، ساخت و ویرایش قانون‌های اعلان. |
 | `app/(admin)/admin/videos/{page,new/page,[id]/page}.tsx` 🟢 | CRUD ویدیو (پایهٔ چندگانه، CTA). |
 | `app/(admin)/admin/tournaments/{page,new/page,[id]/page}.tsx` 🟢 | CRUD تورنومنت. |
 | `app/(admin)/admin/leaderboard/page.tsx` 🟢 | نمای لیدربورد برای ادمین. |
@@ -166,11 +171,16 @@
 | `study/pause` / `study/resume` 🟢 | مدیریت pause سمت سرور (`pausedSec`). |
 | `study/end` 🟢 | پایان جلسه (idempotent) + محاسبهٔ نهایی، سطح، استریک، آنبوردینگ. |
 | `missions/buy` 🟢 | خرید ماموریت (کسر سکه، وضعیت `pending`). |
+| `streak/freeze` 🟢 | خرید مرخصی استریک با ۵۰ سکه. |
+| `videos/[id]/buy` 🟢 | خرید ویدیو برای گروه A/B `paid`. |
 | `videos/[id]/progress` 🟢 | ثبت پیشرفت ویدیو + پاداش ۹۰٪ (۲× در ۲۴ ساعت اول). |
 | `profile` 🟢 | `GET` اطلاعات کامل / `PATCH` به‌روزرسانی پروفایل (snapshot هدف روز اول). |
-| `profile/[id]/unlock` 🟢 | باز کردن لاگ مطالعهٔ دیگران (۱۰ سکه، ۱ روز). |
+| `profile/[id]/unlock` 🟢 | باز کردن بخش مطالعهٔ دیگران (۲۰ سکه، ۱ ساعت). |
+| `profile/avatar` + `avatar/[id]` 🟢 | ذخیره/حذف آواتار آپلودی و سرو عمومی تصویر. |
 | `friends` 🟢 | `GET` کد دعوت + دوستان / `POST` افزودن دوست با کد. |
 | `feed/stream` 🟢 | استریم SSE فعالیت‌ها (`broadcastActivity`). |
+| `feed/[id]/react` 🟢 | افزودن/تغییر/حذف واکنش و بررسی جایزهٔ تشویق. |
+| `inbox` + `inbox/read` 🟢 | فهرست صندوق و علامت‌گذاری آیتم‌ها به‌عنوان خوانده‌شده. |
 | `push/subscribe` 🟡 | ثبت/حذف subscription مرورگر برای Web Push. |
 | `tournaments/[id]/join` 🟢 | شرکت در تورنومنت (کسر هزینه). |
 | `cron/run` 🟢 | اجرای کارهای زمان‌بندی‌شده (محافظت با `Bearer CRON_SECRET`، پارامتر `?tasks=`). |
@@ -180,6 +190,7 @@
 |------|-------|
 | `admin/videos` + `admin/videos/[id]` 🟢 | CRUD ویدیو (فقط ادمین → ۴۰۳). |
 | `admin/tournaments` + `admin/tournaments/[id]` 🟢 | CRUD تورنومنت. |
+| `admin/notifications` + زیرمسیرها 🟢 | CRUD و اجرای دستی قانون‌های اعلان. |
 | `admin/leads/export` 🟢 | خروجی CSV از leadها. |
 
 ---
@@ -188,19 +199,19 @@
 
 | گروه | فایل‌ها | فیچر |
 |------|---------|------|
-| `layout/` 🟢 | `AppShell`, `Header`, `BottomNav` | پوستهٔ اپ، نوار بالا (XP/سکه/آواتار)، ناوبری پایین ۵ تب. |
-| `dashboard/` 🟢 | `StudyTimer`, `MissionProgress`, `CloseCompetitors` | تایمر مقاوم آفلاین، نوار پیشرفت روزانه، رقبای نزدیک. |
-| `onboarding/` 🟢 | `WelcomeSlides`, `OnboardingPath`, `LeadCaptureModal`, `GoalSettingModal` | اسلایدهای خوش‌آمد، مسیر روزانه، فرم اطلاعات اجباری، هدف فردا. |
+| `layout/` 🟢 | `AppShell`, `Header`, `BottomNav` | پوستهٔ اپ، نوار بالا و ناوبری پایین ۴ تب. |
+| `dashboard/` 🟢 | `StudyTimer`, `DailyMissionCard`, `WeeklyMissionCard`, `StreakBar`, `StudyReport*`, `CloseCompetitors` | تایمر، ماموریت، استریک، نمودار و رقبا. |
+| `onboarding/` 🟢 | `GuidedTour`, `LeadCaptureModal`, `GoalSettingModal` | تور درون‌اپ، فرم اطلاعات/موبایل و هدف فردا. |
 | `missions/` 🟢 | `MissionCard` | کارت ماموریت با دکمهٔ خرید. |
 | `leaderboard/` 🟢 | `Podium`, `LeaderboardList` | سکوی تاپ ۳ + فهرست با focus روی کاربر. |
 | `feed/` | `LiveFeed` 🟢, `FeedItem` ⚪️ | فید زنده SSE (`FeedItem` میراث/بلااستفاده). |
-| `profile/` 🟢 | `StatsGrid`, `MedalsSection`, `ProfileActions`, `UnlockLogButton` | آمار، مدال‌ها، اکشن‌ها (ویرایش/خروج)، باز کردن لاگ. |
+| `profile/` 🟢 | `StatsGrid`, `MedalsSection`, `ProfileActions`, `AvatarPicker`, `LockedStudySection`, `LevelInfoButton` | آمار، مدال، آواتار، ویرایش/خروج و قفل گزارش. |
 | `videos/` 🟢 | `VideoPlayerClient`, `VideoCard` | پخش HLS با anti-seek + کارت ویدیو. |
 | `social/` 🟢 | `InviteFriends` | اشتراک کد دعوت. |
 | `tournament/` 🟢 | `JoinButton` | دکمهٔ شرکت در تورنومنت. |
 | `push/` 🟡 | `PushRegister`, `NotificationToggle` | ثبت Service Worker و کلید subscription Web Push. |
 | `auth/` 🟡 | `MiniAppAutoLogin` | ورود خودکار وقتی اپ داخل مینی‌اپ باز می‌شود. |
-| `admin/` 🟢 | `VideoForm`, `AdminVideoRow`, `TournamentForm`, `ExportLeadsButton` | فرم‌ها و ابزار پنل ادمین. |
+| `admin/` 🟢 | فرم/فهرست ویدیو، تورنومنت و قانون اعلان + خروجی لید | ابزارهای پنل ادمین. |
 | `ui/` 🟢 | `Confetti` | انیمیشن کانفتی (level up / مدال). |
 
 ---
@@ -211,7 +222,7 @@
 |------|-------|
 | `prisma/schema.prisma` 🟢 | تعریف همهٔ مدل‌ها (User, StudySession, Mission, UserMission, Medal, UserMedal, Video, VideoProgress, ProfileUnlock, Friendship, ActivityLog, OtpToken, PushSubscription, Tournament و…). |
 | `prisma/seed.ts` 🟢 | داده‌های اولیه: مدال‌ها، ماموریت‌ها، ویدیوهای آنبوردینگ. |
-| `prisma/migrations/` 🟢 | تاریخچهٔ ۱۰ migration (از `init` تا `engagement_phase`, `push_and_tournament`, `telegram_bale_ids`). |
+| `prisma/migrations/` 🟢 | تاریخچهٔ ۱۵ migration از init تا اعلان، A/B، واکنش/صندوق، ماموریت روزانه و AvatarImage. |
 | `app/generated/prisma/` | کلاینت تولیدشدهٔ Prisma (در `.gitignore`؛ در build با `prisma generate` ساخته می‌شود). |
 
 ---
@@ -246,6 +257,9 @@
 | `scripts/setup-webhooks.ts` 🟢 | ثبت webhook تلگرام و بله از روی env (`APP_PUBLIC_URL`, `BOT_WEBHOOK_SECRET`). |
 | `scripts/test-gamification.ts`, `test-levels.ts`, `test-onboarding.ts` 🟢 | تست‌های منطق گیمیفیکیشن (بدون فریم‌ورک تست، اجرای مستقیم با tsx). |
 | `scripts/vps-setup.sh` 🟢 | اسکریپت آماده‌سازی سرور VPS (نصب Docker و وابستگی‌ها). |
+| `scripts/seed-notifications.ts` 🟢 | درج idempotent قانون‌های پیش‌فرض اعلان. |
+| `scripts/prod-db-studio.sh` 🟢 | تونل SSH و Prisma Studio روی دیتابیس production. |
+| `prisma/seed-testdata.ts` 🟢 | بازسازی کاربران و داده‌های نمایشی محلی؛ دیتابیس را تغییر می‌دهد. |
 
 ---
 
@@ -255,7 +269,7 @@
 |------|-------|
 | `.github/workflows/deploy.yml` 🟢 | GitHub Actions: build ایمیج `linux/amd64` و push به Docker Hub روی هر push به `main`. (build-arg: `NEXT_PUBLIC_APP_URL`). |
 | `Dockerfile` 🟢 | بیلد production. |
-| `docker-compose.yml` 🟢 | استک سرور (app + postgres + redis + caddy). |
+| `docker-compose.yml` 🟢 | استک repo (app + postgres + redis)؛ reverse proxy production جداگانه مدیریت می‌شود. |
 | `liara.json` | پیکربندی PaaS لیارا. |
 
 > جزئیات کامل معماری production، HTTPS از طریق CDN، اتصال بله و کاوه‌نگار، و فرایند redeploy در [DEPLOYMENT.md](DEPLOYMENT.md).

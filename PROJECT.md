@@ -2,7 +2,7 @@
 
 > سند فنی و محصولی پروژه. هرچیزی که برای ادامه توسعه لازم است اینجاست: استک، ساختار دیتابیس، یوزر فلو، فیچرها، و گام‌های بعدی.
 >
-> **آخرین به‌روزرسانی:** خرداد ۱۴۰۵ — **استقرار production زنده** (HTTPS با CDN پارس‌پک، ربات بله، پیامک کاوه‌نگار). فازهای ۱ تا ۲۸ تکمیل (۲۸: ری‌اکشن فید + صندوق نوتیف). نقشهٔ فایل‌ها: [FILES.md](FILES.md) · استقرار: [DEPLOYMENT.md](DEPLOYMENT.md) · کارهای آینده: [ROADMAP.md](ROADMAP.md).
+> **آخرین به‌روزرسانی:** تیر ۱۴۰۵ — **استقرار production زنده** (HTTPS با CDN پارس‌پک، ربات بله، پیامک کاوه‌نگار). علاوه بر فازهای ۱ تا ۲۸، موتور قانون نوتیفیکیشن، A/B دسترسی ویدیو، ماموریت روزانه، مرخصی استریک و آواتار آپلودی نیز در کد فعال‌اند. نقشهٔ فایل‌ها: [FILES.md](FILES.md) · استقرار: [DEPLOYMENT.md](DEPLOYMENT.md) · کارهای آینده: [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -34,9 +34,12 @@
 
 ### نکات مهم استک (تله‌های شناخته‌شده)
 
-- **Prisma v7** دیگر `url` را در `schema.prisma` نمی‌پذیرد. اتصال از طریق **driver adapter** (`@prisma/adapter-pg`) با pattern زیر انجام می‌شود:
+- **Prisma v7** دیگر `url` را در `schema.prisma` نمی‌پذیرد. اتصال از طریق **driver adapter** (`@prisma/adapter-pg`) انجام می‌شود. اپ اصلی برای تنظیم pool از object استفاده می‌کند؛ اسکریپت‌های کوتاه می‌توانند رشتهٔ اتصال را مستقیم بدهند:
   ```ts
-  const adapter = new PrismaPg(process.env.DATABASE_URL!); // رشته مستقیم، نه { connectionString }
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL!,
+    max: Number(process.env.DB_POOL_MAX ?? 10),
+  });
   const prisma = new PrismaClient({ adapter });
   ```
 - کلاینت Prisma به `app/generated/prisma/` تولید می‌شود؛ import از `@/app/generated/prisma/client`.
@@ -62,7 +65,6 @@
 DATABASE_URL="postgresql://postgres@localhost:5432/league_db"
 REDIS_URL="redis://localhost:6379"
 JWT_SECRET="league-gamification-super-secret-jwt-key-2024-change-me"
-JWT_EXPIRES_IN="7d"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
 OTP_EXPIRY_SECONDS=300
 ```
@@ -88,7 +90,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | فیلد | نوع | توضیح |
 |------|-----|-------|
 | `id` | String (cuid) | شناسه |
-| `phone` | String (unique) | شماره موبایل (فرمت `0XXXXXXXXXX`) |
+| `phone` | String? (unique) | شماره موبایل (فرمت `0XXXXXXXXXX`)؛ برای حساب ساخته‌شده از ربات ممکن است تا lead capture خالی باشد |
 | `name`, `grade`, `field` | String? | اطلاعات lead capture (نام، پایه، رشته) |
 | `avatarUrl` | String? | آواتار |
 | `xp` | Int | امتیاز تجربه |
@@ -106,6 +108,9 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | `lastStudyDate` | DateTime? | آخرین روز (۰۰:۰۰) با جلسه — مبنای محاسبه streak |
 | `referralCode` | String? (unique) | کد دعوت دوستان |
 | `role` | String | `user` یا `admin` (پیش‌فرض `user`) |
+| `videoAccess` | String? | گروه A/B ویدیو: `free` یا `paid` |
+| `telegramId`, `baleId` | String? | شناسهٔ حساب در پیام‌رسان‌ها |
+| `lastWeeklyRank` | Int? | snapshot رتبه برای اعلان افت رتبه |
 | ایندکس‌ها | `xp`, `level` | برای لیدربورد و رتبه‌بندی |
 
 #### `StudySession` — جلسه مطالعه
@@ -123,7 +128,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 - `VideoProgress`: `watchedSeconds`, `completed`, `rewardGiven`, `unlockedAt` (مبنای جایزه ۲× تماشای سریع در ۲۴ ساعت). یکتا بر `[userId, videoId]`.
 
 #### `ProfileUnlock` — باز کردن لاگ مطالعه دیگران
-`viewerId`, `targetUserId`, `expiresAt` (۱ روز). یکتا بر `[viewerId, targetUserId]`. هزینه ۱۰ سکه (`PROFILE_UNLOCK_COST`).
+`viewerId`, `targetUserId`, `expiresAt` (۱ ساعت). یکتا بر `[viewerId, targetUserId]`. هزینه ۲۰ سکه (`PROFILE_UNLOCK_COST`).
 
 #### `Friendship` — دوستی دوطرفه (رفرال)
 یک رکورد برای هر جفت با کلید مرتب‌شده `[userId, friendId]`. کوئری دوستان با `OR` روی دو ستون (`lib/referral.ts`).
@@ -139,6 +144,12 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 
 #### `OtpToken` — کد یکبارمصرف
 `phone` (PK)، `code`، `expiresAt`. (همچنین در Redis با TTL نگهداری می‌شود — Redis منبع اصلی اعتبارسنجی است.)
+
+#### مدل‌های زیرساخت و قابلیت‌های جدید
+- `AvatarImage`: تصویر فشردهٔ آواتار در جدول جداگانه، بدون سنگین‌کردن کوئری‌های `User`.
+- `PushSubscription`: اشتراک‌های Web Push هر کاربر.
+- `Tournament` / `TournamentParticipant`: رقابت بازه‌دار، شرکت‌کننده، امتیاز و تسویهٔ جایزه.
+- `NotificationRule` / `NotificationLog`: قانون‌های قابل‌مدیریت اعلان و لاگ ارسال برای cooldown و گزارش.
 
 ---
 
@@ -183,17 +194,20 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 - `getFullDay1Hours(pastAvg)` / `getDay1MissionHours(pastAvg, hourOfDay)` → هدف روز اول (قانون ساعت: <۱۷ کامل، ۱۷–۲۱ نصف، >۲۱ یک ساعت)
 - `getOnboardingDailyGoalMinutes(day, pastAvg, day1GoalMinutes)` → هدف روزانه (روز اول از snapshot، بعد +۳۰ دقیقه)
 - `effectiveStreak(streak, lastStudyDate)` → استریک با احتساب شکست (آخرین مطالعه قبل از دیروز = ۰)
-- `PROFILE_UNLOCK_COST` → هزینه باز کردن لاگ دیگران (۱۰ سکه)
+- `PROFILE_UNLOCK_COST` / `PROFILE_UNLOCK_HOURS` → باز کردن لاگ دیگران با ۲۰ سکه برای ۱ ساعت
+- `DAILY_MISSION_TABLE` → ماموریت‌های روزانهٔ ۳ تا ۱۰ ساعت با جایزهٔ سکه
+- `STREAK_FREEZE_COST` → هزینهٔ مرخصی استریک (۵۰ سکه)
 
 ### چرخه عمر ماموریت و سطح (`lib/mission.ts`)
 - `processUserMissions(userId)` → فعال‌سازی pendingها، بررسی تکمیل + اعطای XP/مدال، منقضی کردن.
 - `recalcUserLevel(userId)` → محاسبه مجدد سطح + ثبت `level_up` در فید هنگام ارتقا.
 - `getUserMedalCounts(userId)` → شمارش مدال‌ها برای `calcLevel`.
 
-### آنبوردینگ دوبخشی (`lib/onboarding.ts`)
+### آنبوردینگ و مدل A/B ویدیو (`lib/onboarding.ts` + `lib/ab.ts`)
 - `getOnboardingTotalDays()` → طول مسیر = بیشترین `day` ویدیوهای فعال (پیش‌فرض ۶).
-- `getOnboardingState(userId)` → وضعیت روز جاری: هدف دقیقه، ویدیوی روز، باز/دیده‌شدن.
-- `tryCompleteOnboardingDay(userId)` → روز را وقتی **هم دقیقه‌ها هم ویدیو** کامل شد جلو می‌برد؛ با پر شدن دقیقه‌ها ویدیوی روز را باز می‌کند (`unlockedAt`). بدون ویدیو برای آن روز/پایه، دقیقه‌ها کافی است.
+- `getOnboardingState(userId)` → هدف دقیقه، ویدیوی روز، گروه A/B، قیمت/خرید و موجودی.
+- `tryCompleteOnboardingDay(userId)` → تکمیل روز فقط با دقیقه‌های مطالعه؛ ویدیوی روز جایزه‌ای اختیاری است.
+- گروه `free` ویدیوی روز جاری را رایگان می‌بیند؛ گروه `paid` آن را با سکه می‌خرد. قیمت با شمارهٔ روز افزایش می‌یابد.
 
 ### استریک (`lib/streak.ts`)
 - `applyStreak(userId)` → در پایان هر جلسه: حفظ/+۱/ریست زنجیره؛ ثبت رویداد `streak` در فید روی نقاط عطف ۳ و ۶ روزه.
@@ -221,24 +235,29 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
   │  (در dev کد در پاسخ JSON برمی‌گردد: _dev_otp)
   ▼
 وارد کردن کد ──► POST /api/auth/verify-otp
-  │  upsert کاربر + ست شدن کوکی JWT (league_session, httpOnly, 7d)
+  │  upsert کاربر + ست شدن کوکی JWT (league_session، httpOnly، انقضای لغزان ۳۰ روزه)
   ▼
 داشبورد (/dashboard)
-  ├─ مسیر آنبوردینگ ۶ روزه (تا onboardingDay < 6)
+  ├─ مسیر آنبوردینگ با طول منعطف (پیش‌فرض ۶ روز)
   ├─ تایمر مطالعه (۳۰/۶۰/۹۰/۱۲۰ دقیقه)
   │    ├─ شروع → POST /api/study/start (ثبت startTime + localStorage)
   │    ├─ هر ۱۵ دقیقه → POST /api/study/tick (۱ XP + ۱ سکه فوری)
   │    └─ پایان → POST /api/study/end (محاسبه نهایی + بررسی سطح + لاگ فعالیت)
   │         │
-  │         ├─ اگر اولین جلسه → LeadCaptureModal (نام/پایه/رشته اجباری)
+  │         ├─ بعد از تکمیل روز اول → قفل LeadCaptureModal (نام/پایه/رشته/موبایل اجباری)
   │         └─ سپس → GoalSettingModal (فردا ساعت چند شروع می‌کنی؟)
   ▼
-سایر تب‌ها (BottomNav):
-  /missions    → بازارچه ماموریت (قفل تا روز ۶، خرید با سکه)
+ناوبری اصلی (BottomNav):
+  /dashboard   → تمرکز، ماموریت روز و گزارش مطالعه
   /feed        → بورد زنده فعالیت‌ها (SSE real-time)
   /leaderboard → لیدربورد هفتگی (XP هفت روز اخیر، سکوی تاپ ۳)
   /profile     → آمار، مدال‌ها، ویرایش پروفایل، خروج
-  /videos      → ویدیوهای آموزشی (باز شدن تدریجی بر اساس onboardingDay)
+
+مسیرهای تکمیلی:
+  /missions    → بازارچه ماموریت روزانه/هفتگی
+  /videos      → ویدیوهای آموزشی free/paid
+  /inbox       → صندوق اعلان و واکنش‌ها
+  /tournaments → رقابت‌های بازه‌دار
 ```
 
 ### محافظت از مسیرها (`proxy.ts`)
@@ -248,7 +267,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 
 ---
 
-## ۷. فیچرهای پیاده‌سازی‌شده (فاز ۱ تا ۱۷)
+## ۷. فیچرهای پیاده‌سازی‌شده
 
 | # | فیچر | وضعیت | فایل‌های کلیدی |
 |---|------|-------|----------------|
@@ -265,14 +284,20 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 | ۱۱ | صفحه پروفایل | ✅ | `ProfileActions.tsx`, `StatsGrid.tsx`, `MedalsSection.tsx` |
 | ۱۲ | PWA (manifest + icons) | ✅ | `public/manifest.json`, `public/icon-*.png` |
 | **۱۳** | **حلقه کامل گیمیفیکیشن** | ✅ | `lib/mission.ts` (تکمیل ماموریت، مدال، level_up) |
-| **۱۴** | **آنبوردینگ کامل + welcome** | ✅ | `WelcomeSlides.tsx`؛ تایید روز با تکمیل هدف کامل |
+| **۱۴** | **آنبوردینگ کامل + تور راهنما** | ✅ | `GuidedTour.tsx`؛ تایید روز با تکمیل هدف مطالعه |
 | **۱۵** | **لیدربورد هم‌سطح + فید ۲۰۰** | ✅ | `leaderboard/page.tsx` (فیلتر `level`) |
-| **۱۶** | **پروفایل عمومی + قفل لاگ** | ✅ | `profile/[id]/page.tsx`, `UnlockLogButton.tsx` |
+| **۱۶** | **پروفایل عمومی + قفل گزارش** | ✅ | `profile/[id]/page.tsx`, `LockedStudySection.tsx` |
 | **۱۷** | **ویدیوی چندپایه + پنل ادمین** | ✅ | `app/(admin)/*`, `VideoForm.tsx` (`grades[]`) |
+| **۱۸–۲۷** | cron، CRM، امنیت تایمر، استریک، دعوت، ربات، Push و تورنومنت | ✅ | `lib/jobs.ts`, `lib/streak.ts`, `lib/referral.ts`, `lib/tournament.ts` |
+| **۲۸** | واکنش فید + صندوق اعلان | ✅ | `lib/reaction.ts`, `lib/inbox.ts`, `LiveFeed.tsx` |
+| جدید | موتور قانون اعلان | ✅ | `lib/notification-*`, `/admin/notifications` |
+| جدید | A/B دسترسی ویدیو | ✅ | `lib/ab.ts`, `/admin/analytics` |
+| جدید | ماموریت روزانه + مرخصی استریک | ✅ | `DAILY_MISSION_TABLE`, `/api/streak/freeze` |
+| جدید | آپلود آواتار در DB | ✅ | `AvatarImage`, `/api/profile/avatar` |
 
 ### جزئیات قابل‌توجه پیاده‌سازی
 - **تایمر مقاوم آفلاین**: مدت زمان از `startTime` محاسبه می‌شود نه شمارنده؛ در `localStorage` ذخیره و در reload بازیابی می‌شود.
-- **تایید روز آنبوردینگ**: روز فقط وقتی پیش می‌رود که `onboardingStepMinutes` (انباشت پیوسته، نه تقویمی) به هدف آن روز برسد. ویدیوی پاداش فقط آن‌وقت باز می‌شود.
+- **تایید روز آنبوردینگ**: روز وقتی پیش می‌رود که `onboardingStepMinutes` همان روز تقویمی تهران به هدف برسد. ویدیوی روز اختیاری است و در گروه paid خریدنی است.
 - **حلقه ماموریت**: خرید (`pending`، سکه کسر) → فعال از روز بعد (`active`) → تکمیل با رسیدن به ساعت هدف (`completed` + XP + مدال + فید) → یا انقضا (`failed`، سکه سوخته). همه در `lib/mission.ts`.
 - **بورد زنده با SSE**: `broadcastActivity()` در `app/api/feed/stream/route.ts` به subscriberها push می‌کند. هنگام جلسه، خرید ماموریت، مدال، و ارتقای سطح فراخوانی می‌شود.
 - **لیدربورد هم‌سطح**: هرکس فقط با کاربران هم‌`level` خودش رقابت می‌کند (شامل تازه‌نفس).
@@ -287,15 +312,17 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 league_proj_new/
 ├── app/
 │   ├── (app)/                  # گروه احرازشده کاربر (با AppShell)
-│   │   ├── layout.tsx          # واکشی user + AppShell + WelcomeSlides
+│   │   ├── layout.tsx          # واکشی user + AppShell + GuidedTour + PushRegister
 │   │   ├── dashboard/page.tsx
 │   │   ├── missions/page.tsx
 │   │   ├── feed/page.tsx
 │   │   ├── leaderboard/page.tsx
 │   │   ├── profile/{page, [id]/page}.tsx   # پروفایل خود + عمومی دیگران
-│   │   └── videos/{page, [id]/page}.tsx
+│   │   ├── videos/{page, [id]/page}.tsx
+│   │   ├── inbox/page.tsx
+│   │   └── tournaments/{page, [id]/page}.tsx
 │   ├── (admin)/                # گروه ادمین (layout با getAdminSession)
-│   │   └── admin/{page, videos/{page, new/page, [id]/page}}.tsx
+│   │   └── admin/{page, analytics, leads, leaderboard, videos, tournaments, notifications}/...
 │   ├── api/
 │   │   ├── auth/{send-otp, verify-otp, logout}/route.ts
 │   │   ├── study/{start, end, tick}/route.ts
@@ -312,15 +339,15 @@ league_proj_new/
 │   └── globals.css             # توکن‌های Tailwind v4
 ├── components/
 │   ├── layout/{AppShell, Header, BottomNav}.tsx
-│   ├── dashboard/{StudyTimer, MissionProgress, CloseCompetitors}.tsx
-│   ├── onboarding/{WelcomeSlides, OnboardingPath, LeadCaptureModal, GoalSettingModal}.tsx
+│   ├── dashboard/{StudyTimer, DailyMissionCard, WeeklyMissionCard, StreakBar, StudyReport*, CloseCompetitors}.tsx
+│   ├── onboarding/{GuidedTour, LeadCaptureModal, GoalSettingModal}.tsx
 │   ├── missions/MissionCard.tsx
 │   ├── leaderboard/{Podium, LeaderboardList}.tsx
 │   ├── feed/{LiveFeed, FeedItem}.tsx
-│   ├── profile/{StatsGrid, MedalsSection, ProfileActions, UnlockLogButton}.tsx
+│   ├── profile/{StatsGrid, MedalsSection, ProfileActions, AvatarPicker, LockedStudySection, LevelInfoButton}.tsx
 │   ├── videos/{VideoPlayerClient, VideoCard}.tsx
-│   └── admin/{VideoForm, AdminVideoRow}.tsx
-├── lib/{db, redis, auth, gamification, mission, socket}.ts
+│   └── admin/{VideoForm, AdminVideoRow, TournamentForm, NotificationForm, NotificationList}.tsx
+├── lib/                         # منطق دامنه، اعلان، ربات و زیرساخت
 ├── prisma/{schema.prisma, seed.ts, migrations/}
 ├── scripts/{make-admin, test-gamification, test-levels, test-onboarding}.ts
 ├── public/{manifest.json, icon-192.png, icon-512.png}
@@ -341,13 +368,15 @@ league_proj_new/
 | POST | `/api/auth/logout` | — | پاک کردن کوکی |
 | GET | `/api/profile` | — | اطلاعات کامل کاربر |
 | PATCH | `/api/profile` | `{ name?, grade?, field?, nextStudyTarget?, hasSeenIntro?, pastAvgStudyHours? }` | به‌روزرسانی + ست `isLeadComplete`؛ با `pastAvgStudyHours` هدف روز اول snapshot می‌شود |
-| POST | `/api/profile/[id]/unlock` | — | باز کردن لاگ مطالعه کاربر (۱۰ سکه، ۱ روز) |
+| POST | `/api/profile/[id]/unlock` | — | باز کردن بخش مطالعه کاربر (۲۰ سکه، ۱ ساعت) |
 | POST | `/api/study/start` | `{ durationMin }` | شروع جلسه (بستن جلسات باز قبلی) + رویداد `timer_start` → `{ sessionId }` |
 | POST | `/api/study/tick` | `{ sessionId }` | پاداش هر ۱۵ دقیقه — **اعتبارسنجی سرور**: زمان واقعی منهای pause، سقف `plannedMin`، فقط مابه‌التفاوت → `{ granted }` |
 | POST | `/api/study/pause` | `{ sessionId }` | ثبت شروع pause سمت سرور |
 | POST | `/api/study/resume` | `{ sessionId }` | پایان pause → افزودن مدت به `pausedSec` |
 | POST | `/api/study/end` | `{ sessionId }` | پایان (idempotent، رد جلسه بسته) + نتیجه (XP، `dayCompleted`، `needsVideo`، `rewardVideo`، `streak`، `streakMilestone`، ...) |
 | POST | `/api/missions/buy` | `{ missionId }` | خرید ماموریت (وضعیت `pending`) |
+| POST | `/api/streak/freeze` | — | خرید مرخصی استریک با ۵۰ سکه |
+| POST | `/api/videos/[id]/buy` | — | خرید ویدیوی روز برای گروه `paid` |
 | POST | `/api/videos/[id]/progress` | `{ watchedSeconds, totalSeconds }` | ثبت پیشرفت + جایزه ۹۰٪ (۲× اگر در ۲۴ ساعت اول) + احتمال تکمیل روز آنبوردینگ |
 | GET | `/api/feed/stream` | — | SSE stream فعالیت‌ها |
 | POST | `/api/feed/[id]/react` | `{ emoji }` | افزودن/تغییر/برداشتن واکنش روی آیتم فید → `{ action, myEmoji, counts, rewardGranted }` |
@@ -355,6 +384,9 @@ league_proj_new/
 | POST | `/api/inbox/read` | — | علامت‌گذاری همه‌ی نخوانده‌ها به‌عنوان خوانده‌شده |
 | GET | `/api/friends` | — | کد دعوت من + فهرست دوستان |
 | POST | `/api/friends` | `{ code }` | افزودن دوست با کد دعوت |
+| GET/POST | `/api/inbox`, `/api/inbox/read` | — | فهرست صندوق و خوانده‌شدن همه |
+| POST | `/api/profile/avatar` | bytes تصویر | ذخیرهٔ آواتار فشرده در DB |
+| POST | `/api/tournaments/[id]/join` | — | عضویت در تورنومنت |
 | POST | `/api/admin/videos` | فیلدهای ویدیو + `grades[]` + `ctaLabel`/`ctaUrl` | ساخت ویدیو (فقط ادمین → ۴۰۳) |
 | PATCH/DELETE | `/api/admin/videos/[id]` | — | ویرایش/حذف ویدیو (فقط ادمین) |
 
@@ -380,7 +412,7 @@ league_proj_new/
 ### باقی‌مانده
 - **تست واقعی OTP پیامکی** (مصرف اعتبار کاوه‌نگار).
 - **کلیدهای VAPID**: `npx web-push generate-vapid-keys` و قرار دادن در env تا Web Push فعال شود.
-- **اتصال cron واقعی** به `POST /api/cron/run` (با `?tasks=...` برای فرکانس‌های مختلف: `reminders` هر چند دقیقه، `streakRisk` عصرها، `ranks` ساعتی).
+- پایش منظم cron متصل‌شده به `POST /api/cron/run` و لاگ‌های ارسال اعلان.
 - **تلگرام**: ارسال از سرور ایران بلاک است؛ نیازمند relay خارج از ایران یا سرویس `bot/`.
 - جابه‌جایی دامنهٔ نهایی به `Gcamp.ir`.
 - موارد کوچک معوق: فالوآپ زمان‌بندی‌شده ادمین (۱۹.۵)، انیمیشن‌های Framer Motion.
@@ -402,6 +434,9 @@ league_proj_new/
 
 - **`lib/socket.ts`** باقیمانده از تصمیم اولیه Socket.io است و استفاده نمی‌شود (فید با SSE کار می‌کند).
 - **`OtpToken` در دیتابیس**: Redis منبع اصلی اعتبارسنجی OTP است؛ جدول دیتابیس backup/audit است.
+- **تست سطح‌ها**: در وضعیت فعلی انتظار تست برای بازهٔ ۸ تا ۲۹ XP با `LEVEL_TABLE` یکسان نیست و باید تصمیم محصولی نهایی شود.
+- **ویدیوی anti-seek**: کنترل جلو زدن در کلاینت است؛ endpoint پیشرفت باید در آینده اعتبارسنجی سخت‌گیرانه‌تر سمت سرور داشته باشد.
+- **SSE درون‌حافظه‌ای**: برای یک process مناسب است؛ در چند replica به Redis Pub/Sub یا زیرساخت مشترک نیاز دارد.
 - **تب «لیگ آزاد» (cold start)**: وقتی پایگاه کاربر بزرگ شد، آستانه `MIN_LEAGUE_SIZE` در `leaderboard/page.tsx` بازبینی شود.
 - **هماهنگی env**: `.env` و `.env.local` باید همگام باشند (`.env.local` اولویت دارد). اسکریپت‌های مستقیم `tsx` ممکن است `.env` را بخوانند.
 - **`app/generated/prisma/`** بهتر است در `.gitignore` باشد و در CI با `prisma generate` ساخته شود.
