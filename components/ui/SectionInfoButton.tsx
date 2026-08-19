@@ -91,7 +91,7 @@ export default function SectionInfoButton({
               onClick={() => setOpen(false)}
               className="gamified-btn mt-4 w-full rounded-xl bg-primary py-2.5 text-[13px] font-bold text-on-primary shadow-md shadow-primary/20"
             >
-              متوجه شدم
+              حله، متوجه شدم
             </button>
           </div>
         </div>
