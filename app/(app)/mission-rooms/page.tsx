@@ -89,9 +89,9 @@ export default async function MissionRoomsPage() {
       <ContextualOnboardingCard
         hint={ONBOARDING_HINTS.MISSION_ROOMS_EXPLAINED}
         eyebrow="اولین ورود به اتاق مأموریت"
-        title={user.onboardingDay < 6 ? "فعلاً مسیر شروع رو جلو ببر" : "یک هدف انتخاب کن و با هم‌هدف‌هات جلو برو"}
-        description={user.onboardingDay < 6
-          ? "اتاق‌ها بعد از روز ششم مسیر شروع باز می‌شن. تا اون موقع، جلسه‌های تایمرت پیشرفت روزانه‌ات رو می‌سازن."
+        title={user.onboardingDay < 1 ? "فعلاً هدف روز اول رو کامل کن" : "یک هدف انتخاب کن و با هم‌هدف‌هات جلو برو"}
+        description={user.onboardingDay < 1
+          ? "اتاق‌های مأموریت بعد از روز اول باز می‌شوند. بعد از اتمام ۱ ساعت مطالعه امروز، می‌تونی برای روزهای بعد مأموریت انتخاب کنی."
           : "اینجا هدف روزانه یا هفتگی می‌خری، از شروع بازه کنار آدم‌های هم‌هدف قرار می‌گیری و پیشرفت جمع رو می‌بینی."}
         icon="meeting_room"
         points={[
@@ -104,7 +104,7 @@ export default async function MissionRoomsPage() {
         daily={dailyChoices}
         weekly={weeklyChoiceRows}
         userCoins={user.coins}
-        onboardingLocked={user.onboardingDay < 6}
+        onboardingLocked={user.onboardingDay < 1}
         weeklyEnrollmentOpen={weeklyWindow.enrollmentOpen}
         weeklyStartsLabel={formatJalaliLong(weeklyWindow.startsAt, true)}
       />

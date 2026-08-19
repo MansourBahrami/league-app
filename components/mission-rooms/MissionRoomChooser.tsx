@@ -95,8 +95,8 @@ export default function MissionRoomChooser({
       {onboardingLocked ? (
         <div className="rounded-2xl bg-primary-fixed/70 p-4 text-center">
           <span className="material-symbols-outlined text-[28px] text-primary">lock_clock</span>
-          <p className="mt-1 text-[13px] font-bold text-primary">اتاق‌های انتخابی بعد از مسیر شش‌روزه باز می‌شوند</p>
-          <p className="mt-1 text-[11.5px] text-on-surface-variant">فعلاً هدف شخصی امروزت را در صفحه مطالعه کامل کن.</p>
+          <p className="mt-1 text-[13px] font-bold text-primary">اتاق‌های مأموریت بعد از روز اول باز می‌شوند</p>
+          <p className="mt-1 text-[11.5px] text-on-surface-variant">فعلاً هدف ۱ ساعته امروزت را در صفحه مطالعه کامل کن.</p>
         </div>
       ) : (
         <div className="space-y-2.5">

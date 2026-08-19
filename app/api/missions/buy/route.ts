@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   if (mission.kind !== "daily" && mission.kind !== "weekly") {
     return NextResponse.json({ error: "نوع ماموریت پشتیبانی نمی‌شود" }, { status: 400 });
   }
-  if (user.onboardingDay < 6) return NextResponse.json({ error: "ماموریت‌ها از روز ششم فعال می‌شوند" }, { status: 403 });
+  if (user.onboardingDay < 1) return NextResponse.json({ error: "ماموریت‌ها پس از روز اول فعال می‌شوند" }, { status: 403 });
   if (user.coins < mission.entryCost) return NextResponse.json({ error: "سکه کافی نیست" }, { status: 400 });
 
   const isDaily = mission.kind === "daily";

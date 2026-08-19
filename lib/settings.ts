@@ -7,18 +7,28 @@ export const SETTING_KEYS = {
 export type VideoUnlockMode = "all" | "daily";
 
 export async function getAppSetting(key: string, defaultValue = ""): Promise<string> {
-  const setting = await prisma.appSetting.findUnique({
-    where: { key },
-  });
-  return setting?.value ?? defaultValue;
+  try {
+    if (!prisma.appSetting) return defaultValue;
+    const setting = await prisma.appSetting.findUnique({
+      where: { key },
+    });
+    return setting?.value ?? defaultValue;
+  } catch {
+    return defaultValue;
+  }
 }
 
 export async function setAppSetting(key: string, value: string): Promise<void> {
-  await prisma.appSetting.upsert({
-    where: { key },
-    create: { key, value },
-    update: { value },
-  });
+  try {
+    if (!prisma.appSetting) return;
+    await prisma.appSetting.upsert({
+      where: { key },
+      create: { key, value },
+      update: { value },
+    });
+  } catch (err) {
+    console.error("Failed to set app setting:", err);
+  }
 }
 
 export async function getVideoUnlockMode(): Promise<VideoUnlockMode> {
