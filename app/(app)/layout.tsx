@@ -22,24 +22,25 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     await ensureVariant(user.id, user.videoAccess);
   }
 
-  // قفل اپ تا تکمیل لید (بعد از روز اول، اطلاعات + موبایلِ تأییدشده اجباری است)
-  const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
-
   const hasMessenger = !!(user.telegramId || user.baleId);
-  const setupHandled = user.onboardingHints.includes(ONBOARDING_HINTS.PUSH_PROMPTED)
-    && user.onboardingHints.includes(ONBOARDING_HINTS.INSTALL_PROMPTED);
-  const needsSessionCount = !setupHandled || (!hasMessenger && !user.messengerPromptDismissedAt);
-  const completedSessions = needsSessionCount
-    ? await prisma.studySession.count({
-        where: { userId: user.id, endTime: { not: null }, durationMin: { gt: 0 } },
-      })
-    : 0;
+  const completedSessions = await prisma.studySession.count({
+    where: { userId: user.id, endTime: { not: null }, durationMin: { gte: 15 } },
+  });
   const botAvailability = {
     telegram: !!process.env.TELEGRAM_BOT_USERNAME,
     bale: !!process.env.BALE_BOT_USERNAME,
   };
   const hasAvailableBot = botAvailability.telegram || botAvailability.bale;
-  const showBotConnect = setupHandled && hasAvailableBot && completedSessions > 0 && !hasMessenger && !user.messengerPromptDismissedAt;
+  const showBotConnect = hasAvailableBot && completedSessions > 0 && !hasMessenger && !user.messengerPromptDismissedAt;
+
+  // روز دوم به بعد: اگر هنوز ماموریتی برای امروز فعال نکرده است
+  let showDay2Mission = false;
+  if (user.onboardingDay >= 1 && !showBotConnect) {
+    const activeMission = await prisma.userMission.findFirst({
+      where: { userId: user.id, status: "active" },
+    });
+    showDay2Mission = !activeMission;
+  }
 
   const unreadCount = await getUnreadCount(user.id);
 
@@ -48,10 +49,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       user={user}
       onboardingHints={user.onboardingHints}
       hasCompletedSession={completedSessions > 0}
-      needsLead={needsLead}
+      needsLead={false}
       hasPhone={!!user.phone}
       unreadCount={unreadCount}
       showBotConnect={showBotConnect}
+      showDay2Mission={showDay2Mission}
       botAvailability={botAvailability}
     >
       {children}

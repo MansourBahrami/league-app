@@ -8,6 +8,7 @@ import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnb
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
+const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
 
 type TimerState = "idle" | "running" | "paused" | "done";
 
@@ -50,6 +51,7 @@ interface SessionResult {
 interface Props {
   mission: FocusMission;
   userId: string;
+  hasPhone?: boolean;
 }
 
 const TIMER_OPTIONS = [30, 60, 90, 120];
@@ -170,7 +172,7 @@ function MissionContext({ mission }: { mission: FocusMission }) {
   );
 }
 
-export default function StudyTimer({ mission, userId }: Props) {
+export default function StudyTimer({ mission, userId, hasPhone = false }: Props) {
   const router = useRouter();
   const { hasHint, markHints, reportStudyState } = useProgressiveOnboarding();
   const [selectedMinutes, setSelectedMinutes] = useState(60);
@@ -178,6 +180,7 @@ export default function StudyTimer({ mission, userId }: Props) {
   const [secondsLeft, setSecondsLeft] = useState(60 * 60);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showGoalSetting, setShowGoalSetting] = useState(false);
+  const [showLeadModal, setShowLeadModal] = useState(false);
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
   const [floats, setFloats] = useState<FloatReward[]>([]);
   const [error, setError] = useState("");
@@ -470,7 +473,23 @@ export default function StudyTimer({ mission, userId }: Props) {
           showRewardLesson={showsRewardLesson}
           onClose={async () => {
             if (showsRewardLesson) await markHints(ONBOARDING_HINTS.REWARDS_EXPLAINED);
+            const triggerLead = sessionResult.needsLeadCapture;
             setShowGoalSetting(false);
+            if (triggerLead) {
+              setShowLeadModal(true);
+            } else {
+              setSessionResult(null);
+            }
+            router.refresh();
+          }}
+        />
+      )}
+
+      {showLeadModal && (
+        <LeadCaptureModal
+          hasPhone={hasPhone}
+          onComplete={() => {
+            setShowLeadModal(false);
             setSessionResult(null);
             router.refresh();
           }}

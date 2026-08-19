@@ -410,3 +410,11 @@ model NotificationLog {
   @@index([ruleId, userId, sentAt])
   @@index([userId, sentAt])
 }
+
+// تنظیمات عمومی سیستم (تغییرپذیر از پنل ادمین)
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+

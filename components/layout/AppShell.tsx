@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Header from "./Header";
 import BottomNav from "./BottomNav";
 import LeadCaptureModal from "@/components/onboarding/LeadCaptureModal";
 import PushRegister from "@/components/push/PushRegister";
 import BotConnectModal from "@/components/onboarding/BotConnectModal";
+import Day2MissionModal from "@/components/onboarding/Day2MissionModal";
 import ProgressiveOnboarding from "@/components/onboarding/ProgressiveOnboarding";
 
 interface User {
@@ -30,17 +32,19 @@ interface AppShellProps {
   hasPhone?: boolean;
   unreadCount?: number;
   showBotConnect?: boolean;
+  showDay2Mission?: boolean;
   botAvailability?: { telegram: boolean; bale: boolean };
 }
 
-export default function AppShell({ user, children, onboardingHints = [], hasCompletedSession = false, needsLead = false, hasPhone = false, unreadCount = 0, showBotConnect = false, botAvailability = { telegram: false, bale: false } }: AppShellProps) {
+export default function AppShell({ user, children, onboardingHints = [], hasCompletedSession = false, needsLead = false, hasPhone = false, unreadCount = 0, showBotConnect = false, showDay2Mission = false, botAvailability = { telegram: false, bale: false } }: AppShellProps) {
   const router = useRouter();
+  const [day2Dismissed, setDay2Dismissed] = useState(false);
   // مقادیر مستقیم از prop سرور؛ با router.refresh() (بعد از خرید/پایان جلسه) به‌روز می‌شوند
   return (
     <ProgressiveOnboarding
       initialHints={onboardingHints}
       hasCompletedSession={hasCompletedSession}
-      allowSetupPrompt={!needsLead && !showBotConnect}
+      allowSetupPrompt={!needsLead && !showBotConnect && !showDay2Mission}
     >
       <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-28 md:pb-12">
         <PushRegister />
@@ -54,6 +58,9 @@ export default function AppShell({ user, children, onboardingHints = [], hasComp
             onComplete={() => router.refresh()}
             onDismiss={() => router.refresh()}
           />
+        )}
+        {showDay2Mission && !needsLead && !showBotConnect && !day2Dismissed && (
+          <Day2MissionModal onDismiss={() => setDay2Dismissed(true)} />
         )}
         {/* Cyber grid background */}
         <div

@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const userBefore = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { isLeadComplete: true, lastStudyDate: true },
+    select: { isLeadComplete: true, lastStudyDate: true, onboardingDay: true },
   });
   if (!userBefore) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -156,16 +156,28 @@ export async function POST(req: NextRequest) {
   }
 
   // ویدیوی پاداش روز: باز شده ولی هنوز دیده نشده (مرتبط با روزی که الان کامل شد یا روز جاری)
-  const rewardVideo =
+  let rewardVideo =
     stateAfter?.video && stateAfter.videoUnlocked && !stateAfter.videoWatched
       ? { id: stateAfter.video.id, title: stateAfter.video.title }
       : null;
 
+  if (!rewardVideo && dayCompleted && inOnboarding) {
+    const firstVideo = await prisma.video.findFirst({
+      where: { isActive: true },
+      orderBy: { day: "asc" },
+      select: { id: true, title: true },
+    });
+    if (firstVideo) {
+      rewardVideo = firstVideo;
+    }
+  }
+
   // ویدیو دیگر شرط تکمیل روز نیست؛ صرفاً جایزه‌ی اختیاری است.
   const needsVideo = false;
 
-  // لید پس از تکمیل ماموریت روز اول و قبل از ویدیوی جایزه (طبق PRD)
-  const needsLeadCapture = dayCompleted && newOnboardingDay === 1 && !userBefore.isLeadComplete;
+  // تکمیل پروفایل (Lead capture): در روز دوم به بعد، اگر سشن مطالعه حداقل ۳۰ دقیقه ثبت شد و پروفایل ناقص بود
+  const isAfterDay1 = userBefore.onboardingDay >= 1 || (inOnboarding && dayCompleted);
+  const needsLeadCapture = isAfterDay1 && !userBefore.isLeadComplete && durationMin >= 30;
 
   return NextResponse.json({
     // نتیجه‌ی جلسه باید کل پاداش همان جلسه را نشان دهد؛ بخشی از آن ممکن است

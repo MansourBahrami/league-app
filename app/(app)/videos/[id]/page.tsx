@@ -4,6 +4,8 @@ import { redirect, notFound } from "next/navigation";
 import VideoPlayerClient from "@/components/videos/VideoPlayerClient";
 import BuyVideoButton from "@/components/videos/BuyVideoButton";
 import { getVideoPrice } from "@/lib/ab";
+import { getVideoUnlockMode } from "@/lib/settings";
+import { tehranDayDiff } from "@/lib/date";
 import Link from "next/link";
 
 interface Props {
@@ -18,22 +20,23 @@ export default async function VideoPlayerPage({ params }: Props) {
   const video = await prisma.video.findUnique({ where: { id } });
   if (!video) notFound();
 
-  const [progress, viewer] = await Promise.all([
+  const [progress, viewer, unlockMode] = await Promise.all([
     prisma.videoProgress.findUnique({
       where: { userId_videoId: { userId: session.userId, videoId: id } },
     }),
     prisma.user.findUnique({
       where: { id: session.userId },
-      select: { videoAccess: true, coins: true, onboardingDay: true },
+      select: { videoAccess: true, coins: true, onboardingDay: true, createdAt: true },
     }),
+    getVideoUnlockMode(),
   ]);
 
+  const daysSinceReg = Math.max(1, tehranDayDiff(new Date(), viewer?.createdAt ?? new Date()) + 1);
+  const isFuture = unlockMode === "all" ? false : video.day > daysSinceReg;
+
   // گروه paid: ویدیوهای مسیر فقط بعد از خرید قابل تماشا هستند.
-  // به‌جای ریدایرکت به داشبورد، خرید را همین‌جا روی صفحه‌ی ویدیو ممکن می‌کنیم.
   const needsPurchase = viewer?.videoAccess === "paid" && video.day >= 1 && !progress?.purchasedAt;
   if (needsPurchase) {
-    // روزهای آینده هنوز قابل خرید نیستند
-    const isFuture = video.day > (viewer?.onboardingDay ?? 0) + 1;
     const price = getVideoPrice(video.day);
     return (
       <div className="flex flex-col gap-6 px-5 pb-6">
@@ -51,7 +54,7 @@ export default async function VideoPlayerPage({ params }: Props) {
           <h1 className="text-[18px] font-extrabold text-on-surface">{video.title}</h1>
           {isFuture ? (
             <p className="text-[14px] text-on-surface-variant">
-              این ویدیوی روز {video.day.toLocaleString("fa-IR")} است و هنوز در دسترس نیست. ماموریت‌های روزهای قبل را کامل کن.
+              این ویدیو هنوز در دسترس قرار نگرفته است.
             </p>
           ) : (
             <>

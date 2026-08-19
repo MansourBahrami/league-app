@@ -84,39 +84,26 @@ export const PROFILE_UNLOCK_COST = 20;
 /** مدت اعتبار آنلاک بخش مطالعه‌ی پروفایل (ساعت) */
 export const PROFILE_UNLOCK_HOURS = 1;
 
-/** هدف کامل روز اول (بدون قانون ساعت ورود): ۲ تا ۴ ساعت بر اساس میانگین گذشته */
-export function getFullDay1Hours(pastAvgHours: number | null): number {
-  const avg = pastAvgHours ?? 1.5;
-  return Math.min(4, Math.max(2, Math.ceil(avg)));
+/** هدف روز اول آنبوردینگ: ۱ ساعت مطالعه (۶۰ دقیقه) */
+export function getFullDay1Hours(_pastAvgHours?: number | null): number {
+  return 1;
 }
 
-/**
- * ماموریت روز اول بر اساس ساعت ورود (طبق PRD + قانون تکمیلی):
- *  - قبل از ۱۷ → هدف کامل (۲ تا ۴ ساعت)
- *  - ۱۷ تا ۲۱ → نصف هدف کامل (حداقل ۱ ساعت)
- *  - بعد از ۲۱ → فقط ۱ ساعت
- */
-export function getDay1MissionHours(pastAvgHours: number | null, hourOfDay: number): number {
-  const full = getFullDay1Hours(pastAvgHours);
-  if (hourOfDay < 17) return full;
-  if (hourOfDay < 21) return Math.max(1, Math.round(full / 2));
+/** ماموریت روز اول: ۱ ساعت */
+export function getDay1MissionHours(_pastAvgHours?: number | null, _hourOfDay?: number): number {
   return 1;
 }
 
 /**
- * هدف مطالعه روزانه در مسیر آنبوردینگ (بر حسب دقیقه).
- *  - روز اول: مقدار snapshot شده هنگام آنبوردینگ (`day1GoalMinutes`) تا در طول روز تغییر نکند.
- *  - از روز دوم: مبنای میانگین اعلامی کاربر (هدف کامل) + هر روز ۳۰ دقیقه بیشتر.
+ * هدف مطالعه در مسیر آنبوردینگ (بر حسب دقیقه):
+ *  - مسیر ۱ روزه: هدف ثابت ۶۰ دقیقه (۱ ساعت) است.
  */
 export function getOnboardingDailyGoalMinutes(
-  onboardingDay: number,
-  pastAvgHours: number | null,
+  _onboardingDay?: number,
+  _pastAvgHours?: number | null,
   day1GoalMinutes?: number | null
 ): number {
-  if (onboardingDay <= 0) {
-    return day1GoalMinutes ?? getFullDay1Hours(pastAvgHours) * 60;
-  }
-  return getFullDay1Hours(pastAvgHours) * 60 + onboardingDay * 30;
+  return day1GoalMinutes ?? 60;
 }
 
 /**

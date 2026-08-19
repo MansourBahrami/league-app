@@ -194,15 +194,17 @@ export default function GoalSettingModal({
           {rewardLesson}
 
           <div className="text-center mb-6">
-            <h2 className="text-[22px] font-extrabold text-on-surface mb-1">ماموریت امروز رو کامل کردی! 🎉</h2>
+            <h2 className="text-[22px] font-extrabold text-on-surface mb-1">
+              {inOnboarding ? "هدف ۱ ساعته امروز رو کامل کردی! 🎉" : "ماموریت امروز رو کامل کردی! 🎉"}
+            </h2>
             <p className="text-[14px] text-on-surface-variant">
               {fmt(durationMin)} مطالعه
             </p>
             {inOnboarding && (
               <div className="mt-3 bg-tertiary-fixed/40 rounded-xl p-2.5">
                 <p className="text-[13px] font-semibold text-on-surface leading-relaxed">
-                  ماموریت امروزت تموم شد! 🎉 فردا ماموریت جدیدت شروع می‌شه —
-                  <span className="text-tertiary font-bold"> ولی می‌تونی همین امروز هم ادامه بدی و جلوتر بزنی.</span>
+                  آفرین! اولین هدف مطالعه‌ت رو تکمیل کردی.
+                  <span className="text-tertiary font-bold"> حالا می‌تونی ویدیوی آموزشی اول رو ببینی یا به مطالعه ادامه بدی!</span>
                 </p>
               </div>
             )}
@@ -240,24 +242,13 @@ export default function GoalSettingModal({
             </div>
           </div>
 
-          {/* هدف فردا = امروز + نیم ساعت */}
-          {inOnboarding && tomorrowGoalMinutes > 0 && (
-            <div className="mb-5 bg-primary-fixed rounded-xl p-3 flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>trending_up</span>
-              <div className="text-right">
-                <p className="text-[13px] font-semibold text-primary">هدف فردا</p>
-                <p className="text-[14px] font-bold text-on-surface">{fmt(tomorrowGoalMinutes)} (نیم ساعت بیشتر از امروز)</p>
-              </div>
-            </div>
-          )}
-
           {/* جایزه ویدیویی */}
           {rewardVideo ? (
             <div className="flex flex-col gap-2">
               <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-1">
                 <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
                 <div className="text-right">
-                  <p className="text-[13px] font-semibold text-tertiary">جایزه‌ات باز شد: ویدیوی آموزشی</p>
+                  <p className="text-[13px] font-semibold text-tertiary">ویدیوی پاداش</p>
                   <p className="text-[14px] font-bold text-on-surface leading-tight">{rewardVideo.title}</p>
                 </div>
               </div>
@@ -271,12 +262,12 @@ export default function GoalSettingModal({
                 ) : (
                   <>
                     <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
-                    تماشای ویدیوی پاداش
+                    {inOnboarding ? "تماشای ویدیوی اول" : "تماشای ویدیوی پاداش"}
                   </>
                 )}
               </button>
-              <button onClick={onClose} className="w-full py-2 text-[13px] font-semibold text-outline hover:text-primary">
-                بعداً تماشا می‌کنم
+              <button onClick={handleSave} disabled={saving} className="w-full py-2 text-[13px] font-semibold text-outline hover:text-primary">
+                ثبت ساعت فردا و بعداً تماشا می‌کنم
               </button>
             </div>
           ) : (

@@ -74,7 +74,8 @@ export default async function DashboardPage() {
 
   if (!inOnboarding) await processUserMissions(session.userId);
 
-  const [activeDaily, weekly, activities, activeFocusCount] = await Promise.all([
+  const [user, activeDaily, weekly, activities, activeFocusCount] = await Promise.all([
+    prisma.user.findUnique({ where: { id: session.userId }, select: { phone: true } }),
     inOnboarding ? Promise.resolve(null) : getActiveDailyMission(session.userId),
     inOnboarding ? Promise.resolve(null) : getWeeklyMissionState(session.userId),
     getPulseActivities(),
@@ -114,7 +115,7 @@ export default async function DashboardPage() {
   return (
     <div className="flex flex-col gap-3 px-4 pb-2">
       <div data-tour="mission">
-        <StudyTimer mission={mission} userId={session.userId} />
+        <StudyTimer mission={mission} userId={session.userId} hasPhone={!!user?.phone} />
       </div>
       <FocusPulse
         initialActivities={activities}

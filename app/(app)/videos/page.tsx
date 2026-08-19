@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import VideoCard from "@/components/videos/VideoCard";
 import { gradeFilter } from "@/lib/onboarding";
 import { getVideoPrice } from "@/lib/ab";
+import { getVideoUnlockMode } from "@/lib/settings";
+import { tehranDayDiff } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +13,19 @@ export default async function VideosPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { onboardingDay: true, grade: true, videoAccess: true },
-  });
+  const [user, unlockMode] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { onboardingDay: true, grade: true, videoAccess: true, createdAt: true },
+    }),
+    getVideoUnlockMode(),
+  ]);
   if (!user) redirect("/login");
 
   const isPaid = user.videoAccess === "paid";
+  const daysSinceReg = Math.max(1, tehranDayDiff(new Date(), user.createdAt) + 1);
 
-  // ویدیوهای مسیر متناسب با پایه؛ روز جاری و گذشته باز، روزهای آینده قفل.
+  // ویدیوهای متناسب با پایه؛ وضعیت قفل بر اساس تنظیم ادمین (همه باز یا روزبه‌روز).
   const videos = await prisma.video.findMany({
     where: { isActive: true, day: { gte: 1 }, ...gradeFilter(user.grade) },
     orderBy: { day: "asc" },
@@ -48,7 +54,7 @@ export default async function VideosPage() {
           videos.map((video) => {
             const prog = progressMap.get(video.id);
             const isCompleted = prog?.completed ?? false;
-            const isFuture = video.day > user.onboardingDay + 1;
+            const isFuture = unlockMode === "all" ? false : video.day > daysSinceReg;
             let isLocked: boolean;
             let purchasable = false;
             let price = 0;
@@ -57,15 +63,15 @@ export default async function VideosPage() {
               if (purchased) {
                 isLocked = false;
               } else if (isFuture) {
-                isLocked = true; // روزهای آینده هنوز در دسترس نیستند
+                isLocked = true; // هنوز در دسترس نیست
               } else {
-                // در دسترس ولی خریده‌نشده → کارت به صفحه‌ی ویدیو می‌رود و همان‌جا خرید می‌شود
+                // در دسترس ولی خریده‌نشده
                 isLocked = false;
                 purchasable = true;
                 price = getVideoPrice(video.day);
               }
             } else {
-              // گروه free: روز جاری و گذشته باز؛ فقط روزهای آینده قفل
+              // گروه free: اگر future نباشد باز است
               isLocked = isFuture;
             }
             const watchPct = prog && video.durationMin > 0

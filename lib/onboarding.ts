@@ -17,15 +17,11 @@ import { tehranDayDiff } from "@/lib/date";
  *  - رقابت (تایمر/XP/لیدربورد) هیچ‌وقت پشت ویدیو قفل نمی‌شود.
  */
 
-export const DEFAULT_ONBOARDING_DAYS = 6;
+export const DEFAULT_ONBOARDING_DAYS = 1;
 
-/** طول مسیر آنبوردینگ = بیشترین day بین ویدیوهای فعال (پیش‌فرض ۶) */
+/** طول مسیر آنبوردینگ: ۱ روز */
 export async function getOnboardingTotalDays(): Promise<number> {
-  const agg = await prisma.video.aggregate({
-    where: { isActive: true, day: { gte: 1 } },
-    _max: { day: true },
-  });
-  return agg._max.day ?? DEFAULT_ONBOARDING_DAYS;
+  return DEFAULT_ONBOARDING_DAYS;
 }
 
 /** فیلتر پایه: ویدیوی «همه پایه‌ها» (grades خالی) یا شامل پایه کاربر */
