@@ -11,9 +11,10 @@
 import { linkMessengerIdentity } from "@/lib/bot-link";
 import { sendMessage } from "@/lib/bot";
 
-type Messenger = "telegram" | "bale";
+export type Messenger = "telegram" | "bale";
 
-interface TgUpdate {
+export interface TgUpdate {
+  update_id?: number;
   message?: {
     chat: { id: number };
     from?: { id: number; first_name?: string; last_name?: string; username?: string };

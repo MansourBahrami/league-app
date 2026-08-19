@@ -1,3 +1,5 @@
+import SectionInfoButton from "@/components/ui/SectionInfoButton";
+
 const ALL_MEDAL_HOURS = [20, 25, 30, 35, 40, 45, 50, 53, 56, 60, 63, 66, 70];
 
 interface Medal {
@@ -18,7 +20,18 @@ export default function MedalsSection({ medals, title = "مدال‌های من"
   return (
     <section className="glass-card rounded-xl p-6 flex flex-col gap-4">
       <div className="flex justify-between items-center w-full">
-        <h2 className="text-[16px] font-bold text-on-surface">{title}</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-[16px] font-bold text-on-surface">{title}</h2>
+          <SectionInfoButton
+            title="مدال‌ها و کاربرد آن‌ها"
+            icon="military_tech"
+            description="مدال‌ها نشان‌دهنده دستاوردهای بزرگ مطالعاتی تو در طول هفته هستند و نقش مهمی در ارتقای سطح دارند."
+            points={[
+              "با شرکت در ماموریت‌های هفتگی (اتاق ماموریت) و تکمیل ساعات هدف هفتگی، مدال اختصاصی آن ماموریت را دریافت می‌کنی.",
+              "برای رسیدن به سطح‌ها و ستاره‌های بالاتر، علاوه بر XP، داشتن تعداد مشخصی از این مدال‌ها الزامی است."
+            ]}
+          />
+        </div>
         <span className="text-[14px] text-primary">{medals.length} مدال</span>
       </div>
       <div className="grid grid-cols-4 gap-3">

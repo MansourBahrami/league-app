@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnboarding";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
@@ -80,11 +81,27 @@ function ProgressBar({ value, tone = "gold" }: { value: number; tone?: "gold" | 
 }
 
 function MissionContext({ mission }: { mission: FocusMission }) {
+  const infoButton = (
+    <SectionInfoButton
+      title="سیستم امتیاز و پاداش مطالعه"
+      icon="auto_awesome"
+      description="تایمر G-camp زمان واقعی مطالعه تو را اندازه گرفته و پاداش‌های سرور را ثبت می‌کند."
+      points={[
+        "هر ۱۵ دقیقه مطالعه تأییدشده = ۱ XP و ۱ سکه پاداش.",
+        "امتیاز XP برای صعود در جدول رده‌بندی هفتگی و ارتقای سطح استفاده می‌شود.",
+        "سکه‌ها برای ورود به اتاق‌های مأموریت، باز کردن ویدیوها و مشاهده لاگ رقبا کاربرد دارند."
+      ]}
+    />
+  );
+
   if (!mission) {
     return (
       <div className="text-center pb-4 border-b border-outline-variant/35">
-        <p className="text-[15px] font-extrabold text-on-surface">فعلاً ماموریت فعالی نداری</p>
-        <p className="text-[12px] text-on-surface-variant mt-1">بدون ماموریت هم می‌تونی مطالعه کنی</p>
+        <div className="flex items-center justify-center gap-1.5">
+          <p className="text-[15px] font-extrabold text-on-surface">فعلاً ماموریت فعالی نداری</p>
+          {infoButton}
+        </div>
+        <p className="text-[12px] text-on-surface-variant mt-1">بدون ماموریت هم می‌تونی آزاد مطالعه کنی</p>
         <Link
           href="/mission-rooms"
           className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-xl border border-tertiary text-tertiary px-3.5 py-2 text-[12.5px] font-bold hover:bg-tertiary-fixed/35 transition-colors"
@@ -101,7 +118,10 @@ function MissionContext({ mission }: { mission: FocusMission }) {
       return (
         <div className="pb-4 border-b border-outline-variant/35">
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[15px] font-extrabold text-on-surface">ماموریت {mission.targetHours.toLocaleString("fa-IR")} ساعته‌ات از فردا شروع می‌شه</p>
+            <div className="flex items-center gap-1.5 min-w-0">
+              <p className="text-[15px] font-extrabold text-on-surface truncate">ماموریت {mission.targetHours.toLocaleString("fa-IR")} ساعته‌ات از فردا شروع می‌شه</p>
+              {infoButton}
+            </div>
             <span className="shrink-0 rounded-full bg-primary-fixed px-2.5 py-1 text-[11px] font-bold text-primary">هفتگی</span>
           </div>
           <p className="text-[12px] text-on-surface-variant mt-1.5">امروز هم می‌تونی آزاد مطالعه کنی</p>
@@ -116,9 +136,12 @@ function MissionContext({ mission }: { mission: FocusMission }) {
       <div className="pb-4 border-b border-outline-variant/35">
         <div className="flex items-start justify-between gap-3">
           <div className="text-right min-w-0">
-            <p className="text-[17px] font-extrabold text-on-surface leading-snug">
-              {mission.isRestDay ? "امروز روز استراحت یا جبرانه" : `امروز ${formatMinutes(mission.dailyGoalMin)} مطالعه کن`}
-            </p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-[17px] font-extrabold text-on-surface leading-snug">
+                {mission.isRestDay ? "امروز روز استراحت یا جبرانه" : `امروز ${formatMinutes(mission.dailyGoalMin)} مطالعه کن`}
+              </p>
+              {infoButton}
+            </div>
             <p className="text-[11.5px] text-tertiary font-bold mt-1">جایزه: {mission.xpReward.toLocaleString("fa-IR")} XP + مدال</p>
           </div>
           <span className="shrink-0 rounded-full bg-primary-fixed px-2.5 py-1 text-[11px] font-bold text-primary">هفتگی</span>
@@ -152,9 +175,12 @@ function MissionContext({ mission }: { mission: FocusMission }) {
     <div className="pb-4 border-b border-outline-variant/35">
       <div className="flex items-start justify-between gap-3">
         <div className="text-right min-w-0">
-          <p className="text-[18px] font-extrabold text-on-surface leading-snug">
-            {completed ? "ماموریت امروز رو انجام دادی!" : `امروز ${formatMinutes(mission.dailyGoalMin)} مطالعه کن`}
-          </p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-[18px] font-extrabold text-on-surface leading-snug">
+              {completed ? "ماموریت امروز رو انجام دادی!" : `امروز ${formatMinutes(mission.dailyGoalMin)} مطالعه کن`}
+            </p>
+            {infoButton}
+          </div>
           {mission.kind === "daily" && mission.coinReward ? (
             <p className="text-[11.5px] text-tertiary font-bold mt-1">جایزه: {mission.coinReward.toLocaleString("fa-IR")} سکه</p>
           ) : null}

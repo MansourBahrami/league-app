@@ -9,6 +9,7 @@ import { ensureReferralCode, getFriendIds } from "@/lib/referral";
 import ContextualOnboardingCard from "@/components/onboarding/ContextualOnboardingCard";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { tehranDayStartDaysAgo } from "@/lib/date";
+import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -123,8 +124,25 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
   return (
     <div className="flex flex-col gap-5 px-5">
+      {/* Header with Info Button */}
+      <div className="flex items-center justify-between px-1 mt-2">
+        <h1 className="text-[18px] font-extrabold text-on-surface">
+          {isFriends ? "رده‌بندی دوستان" : `لیگ سطح ${myLevel}`}
+        </h1>
+        <SectionInfoButton
+          title={isFriends ? "راهنمای رده‌بندی دوستان" : "راهنمای جدول رده‌بندی"}
+          icon="leaderboard"
+          description="این جدول بر اساس مجموع امتیاز XP کسب‌شده در ۷ روز گذشته به‌روزرسانی می‌شود."
+          points={[
+            "هر ۱۵ دقیقه مطالعه تاییدشده = ۱ XP امتیاز هفتگی.",
+            "در لیگ سطح، فقط با هم‌سطح‌های خودت رقابت می‌کنی تا رقابت عادلانه باشد.",
+            "در تب دوستان می‌تونی دوستانت را با لینک اختصاصی دعوت کنی و مستقیم با آن‌ها مسابقه دهی."
+          ]}
+        />
+      </div>
+
       {/* Tabs */}
-      <div className="flex gap-2 bg-surface-container-low rounded-2xl p-1 mt-2">
+      <div className="flex gap-2 bg-surface-container-low rounded-2xl p-1">
         <Link href="/leaderboard" className={tabCls(!isFriends)}>
           <span className="material-symbols-outlined text-[18px]" style={tabIcon(!isFriends)}>trending_up</span>
           رده‌بندی هفتگی

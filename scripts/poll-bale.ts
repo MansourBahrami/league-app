@@ -12,7 +12,7 @@ if (fs.existsSync(envFile)) {
   }
 }
 
-import { handleBotUpdate } from "../lib/bot-handler";
+import { handleBotUpdate, type TgUpdate } from "../lib/bot-handler";
 
 const token = process.env.BALE_BOT_TOKEN;
 if (!token) {
@@ -32,23 +32,26 @@ async function poll() {
     try {
       const url = `${API_BASE}/getUpdates?offset=${offset}&timeout=15`;
       const res = await fetch(url, { signal: AbortSignal.timeout(20000) });
-      const data = await res.json() as { ok: boolean; result?: Array<{ update_id: number; message?: any; callback_query?: any }> };
+      const data = await res.json() as { ok: boolean; result?: TgUpdate[] };
 
       if (data.ok && Array.isArray(data.result)) {
         for (const update of data.result) {
-          offset = update.update_id + 1;
-          console.log(`📩 Received update ${update.update_id} from ${update.message?.from?.username || update.message?.from?.id}: ${update.message?.text}`);
+          if (typeof update.update_id === "number") {
+            offset = update.update_id + 1;
+          }
+          console.log(`📩 Received update ${update.update_id ?? "unknown"} from ${update.message?.from?.username || update.message?.from?.id}: ${update.message?.text}`);
           try {
             await handleBotUpdate("bale", update);
-            console.log(`✅ Handled update ${update.update_id}`);
+            console.log(`✅ Handled update ${update.update_id ?? "unknown"}`);
           } catch (handlerErr) {
-            console.error(`❌ Error handling update ${update.update_id}:`, handlerErr);
+            console.error(`❌ Error handling update ${update.update_id ?? "unknown"}:`, handlerErr);
           }
         }
       }
-    } catch (err: any) {
-      if (err?.name !== "TimeoutError") {
-        console.error("⚠️ Polling error:", err?.message || err);
+    } catch (err: unknown) {
+      const errorObj = err as { name?: string; message?: string } | undefined;
+      if (errorObj?.name !== "TimeoutError") {
+        console.error("⚠️ Polling error:", errorObj?.message || String(err));
       }
       await new Promise((r) => setTimeout(r, 2000));
     }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
 export interface MissionChoice {
   id: string;
@@ -61,7 +62,19 @@ export default function MissionRoomChooser({
           <span className="material-symbols-outlined text-[23px]" style={{ fontVariationSettings: "'FILL' 1" }}>groups_3</span>
         </span>
         <div className="min-w-0 flex-1 text-right">
-          <h2 id="mission-choice-title" className="text-[16px] font-extrabold text-on-surface">ماموریت بعدی‌ات را انتخاب کن</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 id="mission-choice-title" className="text-[16px] font-extrabold text-on-surface">ماموریت بعدی‌ات را انتخاب کن</h2>
+            <SectionInfoButton
+              title="اتاق‌های ماموریت و جوایز"
+              icon="meeting_room"
+              description="در اتاق‌های ماموریت می‌توانی هدف مشخصی تعیین کنی و در کنار دانش‌آموزان هم‌هدف پیش بروی."
+              points={[
+                "ماموریت روزانه: برای هدف‌گذاری روزمره و دریافت جایزه سکه.",
+                "ماموریت هفتگی: برای ایجاد عادت منظم، دریافت XP بالا و کسب مدال‌های الزامی برای ارتقای سطح.",
+                "ماموریت خریداری‌شده از روز بعد فعال می‌شود."
+              ]}
+            />
+          </div>
           <p className="mt-0.5 text-[11.5px] text-on-surface-variant">با کسانی وارد اتاق شو که دقیقاً همین هدف را دارند.</p>
         </div>
       </div>
