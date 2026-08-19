@@ -7,7 +7,6 @@ import { useRouter } from "next/navigation";
 import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnboarding";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
-import ActionGuidanceModal from "@/components/onboarding/ActionGuidanceModal";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
@@ -399,7 +398,22 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
 
   return (
     <>
-      <section data-tour="timer" className="glass-card rounded-[2rem] border border-tertiary-fixed/65 px-4 py-4 shadow-[0_12px_35px_color-mix(in_oklab,var(--color-primary)_9%,transparent)]">
+      {/* Spotlight Backdrop */}
+      {needsStartHint && timerState === "idle" && (
+        <div
+          className="fixed inset-0 z-[70] bg-black/65 backdrop-blur-[2px] transition-all"
+          aria-hidden="true"
+        />
+      )}
+
+      <section
+        data-tour="timer"
+        className={`glass-card rounded-[2rem] px-4 py-4 transition-all duration-300 ${
+          needsStartHint && timerState === "idle"
+            ? "relative z-[75] bg-surface ring-4 ring-tertiary shadow-[0_0_60px_rgba(207,146,6,0.6)] border-2 border-tertiary"
+            : "border border-tertiary-fixed/65 shadow-[0_12px_35px_color-mix(in_oklab,var(--color-primary)_9%,transparent)]"
+        }`}
+      >
         <MissionContext mission={mission} />
 
         <div className="pt-4">
@@ -448,13 +462,22 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
           </div>
 
           {needsStartHint && timerState === "idle" && (
-            <div role="note" className="mt-3 flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary-fixed/70 px-3 py-2.5 pop-in">
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[14px] font-extrabold text-on-primary">۱</span>
+            <div role="note" className="mt-3 flex items-start gap-3 rounded-2xl border-2 border-tertiary/70 bg-tertiary-fixed/85 p-3.5 shadow-xl pop-in">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tertiary text-on-tertiary shadow-md">
+                <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  play_circle
+                </span>
+              </span>
               <div className="min-w-0 flex-1 text-right">
-                <p className="text-[13.5px] font-extrabold text-on-surface">اولین قدم: فقط تایمر رو شروع کن</p>
-                <p className="mt-0.5 text-[11.5px] leading-5 text-on-surface-variant">مدت رو انتخاب کن و روی «شروع مطالعه» بزن؛ بقیه رو سر وقت بهت نشون می‌دیم.</p>
+                <p className="text-[11px] font-extrabold text-tertiary">قدم اول: شروع مطالعه</p>
+                <h4 className="text-[14px] font-extrabold text-on-surface mt-0.5">اینجا تایمر رو روشن کن!</h4>
+                <p className="mt-1 text-[12px] leading-5 text-on-surface-variant">
+                  هدف امروزت ۱ ساعت مطالعه‌ست. زمان رو مشخص کن و روی دکمهٔ «شروع مطالعه» بزن.
+                </p>
               </div>
-              <span className="material-symbols-outlined text-[20px] text-primary motion-safe:animate-bounce">arrow_downward</span>
+              <span className="material-symbols-outlined text-[22px] text-tertiary motion-safe:animate-bounce mt-1 shrink-0">
+                arrow_downward
+              </span>
             </div>
           )}
 
@@ -462,7 +485,9 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             type="button"
             onClick={handleToggle}
             data-onboarding="timer-start"
-            className={`gamified-btn mt-3 w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${button.cls}`}
+            className={`gamified-btn mt-3 w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${button.cls} ${
+              needsStartHint && timerState === "idle" ? "ring-2 ring-white/80 animate-pulse" : ""
+            }`}
           >
             <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>{button.icon}</span>
             {button.label}
@@ -519,22 +544,6 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             setSessionResult(null);
             router.refresh();
           }}
-        />
-      )}
-
-      {needsStartHint && timerState === "idle" && (
-        <ActionGuidanceModal
-          hint={ONBOARDING_HINTS.TIMER_STARTED}
-          eyebrow="قدم اول: مطالعه"
-          title="امروز فقط ۱ ساعت درس بخون!"
-          description="تایمر مطالعه رو تنظیم کن و روی دکمه «شروع مطالعه» بزن تا اولین جلسه تمرکزت ثبت بشه."
-          icon="play_circle"
-          actionText="شروع مطالعه"
-          points={[
-            "هدف روز اول: ۱ ساعت مطالعه با تایمر.",
-            "به ازای هر ۱۵ دقیقه مطالعه، ۱ XP و ۱ سکه جایزه می‌گیری."
-          ]}
-          targetElementSelector="[data-onboarding='timer-start']"
         />
       )}
     </>
