@@ -36,9 +36,14 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/manifest") ||
     pathname.startsWith("/icon-") ||
+    pathname.startsWith("/posters/") ||
     pathname.endsWith(".png") ||
+    pathname.endsWith(".jpg") ||
+    pathname.endsWith(".jpeg") ||
+    pathname.endsWith(".webp") ||
     pathname.endsWith(".svg") ||
-    pathname.endsWith(".ico")
+    pathname.endsWith(".ico") ||
+    pathname.endsWith(".json")
   ) {
     return NextResponse.next();
   }

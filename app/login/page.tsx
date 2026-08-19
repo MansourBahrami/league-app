@@ -237,6 +237,7 @@ export default function LoginPage() {
                     src={slide.image}
                     alt={slide.title}
                     fill
+                    unoptimized
                     sizes="(max-width: 600px) 100vw, 480px"
                     className="object-cover object-top"
                     priority={idx === 0}
