@@ -126,19 +126,20 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
     <div className="flex flex-col gap-5 px-5">
       {/* Header with Info Button */}
       <div className="flex items-center justify-between px-1 mt-2">
-        <h1 className="text-[18px] font-extrabold text-on-surface">
-          {isFriends ? "رده‌بندی دوستان" : `لیگ سطح ${myLevel}`}
-        </h1>
-        <SectionInfoButton
-          title={isFriends ? "راهنمای رده‌بندی دوستان" : "راهنمای جدول رده‌بندی"}
-          icon="leaderboard"
-          description="این جدول بر اساس مجموع امتیاز XP کسب‌شده در ۷ روز گذشته به‌روزرسانی می‌شود."
-          points={[
-            "هر ۱۵ دقیقه مطالعه تاییدشده = ۱ XP امتیاز هفتگی.",
-            "در لیگ سطح، فقط با هم‌سطح‌های خودت رقابت می‌کنی تا رقابت عادلانه باشد.",
-            "در تب دوستان می‌تونی دوستانت را با لینک اختصاصی دعوت کنی و مستقیم با آن‌ها مسابقه دهی."
-          ]}
-        />
+        <div className="flex items-center gap-1.5">
+          <h1 className="text-[18px] font-extrabold text-on-surface">
+            {isFriends ? "رده‌بندی دوستان" : `لیگ سطح ${myLevel}`}
+          </h1>
+          <SectionInfoButton
+            title={isFriends ? "راهنمای رده‌بندی دوستان" : "راهنمای جدول رده‌بندی"}
+            description="این جدول بر اساس مجموع امتیاز XP کسب‌شده در ۷ روز گذشته به‌روزرسانی می‌شود."
+            points={[
+              "هر ۱۵ دقیقه مطالعه تاییدشده = ۱ XP امتیاز هفتگی.",
+              "در لیگ سطح، فقط با هم‌سطح‌های خودت رقابت می‌کنی تا رقابت عادلانه باشد.",
+              "در تب دوستان می‌تونی دوستانت را با لینک اختصاصی دعوت کنی و مستقیم با آن‌ها مسابقه دهی."
+            ]}
+          />
+        </div>
       </div>
 
       {/* Tabs */}

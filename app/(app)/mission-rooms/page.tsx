@@ -8,6 +8,7 @@ import { suggestMissions } from "@/lib/gamification";
 import MissionRoomChooser, { type MissionChoice } from "@/components/mission-rooms/MissionRoomChooser";
 import ContextualOnboardingCard from "@/components/onboarding/ContextualOnboardingCard";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -79,7 +80,18 @@ export default async function MissionRoomsPage() {
             <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>meeting_room</span>
           </span>
           <div className="min-w-0 flex-1 text-right">
-            <h1 className="text-[18px] font-extrabold text-on-surface">اتاق مأموریت</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-[18px] font-extrabold text-on-surface">اتاق مأموریت</h1>
+              <SectionInfoButton
+                title="اتاق‌های مأموریت"
+                description="در اتاق‌های مأموریت می‌توانی هدف روزانه یا هفتگی برای مطالعه برداری و همراه سایر دانش‌آموزان هم‌هدف پیش بروی."
+                points={[
+                  "مأموریت روزانه: پاداش سکه به ازای تکمیل ساعت مطالعه هدف در همان روز.",
+                  "مأموریت هفتگی: پاداش XP بالا و مدال‌های لازم برای ارتقای سطح.",
+                  "مأموریت خریداری‌شده از روز بعد فعال می‌شود."
+                ]}
+              />
+            </div>
             <p className="mt-0.5 text-[11.5px] text-on-surface-variant">هدفت را انتخاب کن و با هم‌هدف‌هایت جلو برو.</p>
           </div>
           <span className="rounded-full bg-tertiary-fixed/60 px-2.5 py-1 text-[11px] font-bold text-tertiary">{user.coins.toLocaleString("fa-IR")} سکه</span>

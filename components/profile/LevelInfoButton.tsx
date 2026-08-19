@@ -38,35 +38,35 @@ export default function LevelInfoButton({ levels, currentLevel, currentStars }: 
         type="button"
         onClick={() => setOpen(true)}
         aria-label="راهنمای سطح‌ها"
-        className="flex items-center justify-center w-6 h-6 rounded-full text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"
+        className="inline-flex items-center justify-center w-[18px] h-[18px] rounded-full border border-outline/40 bg-surface-container-high/60 text-on-surface-variant/80 text-[11px] font-extrabold hover:bg-primary hover:text-on-primary hover:border-primary transition-all active:scale-90 select-none shrink-0"
       >
-        <span className="material-symbols-outlined text-[18px]">info</span>
+        !
       </button>
 
       {open && (
         <div
-          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))]"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
           onClick={() => setOpen(false)}
         >
           <div
-            className="feed-item-enter w-full max-w-[440px] max-h-[82vh] overflow-y-auto bg-surface rounded-2xl shadow-2xl border border-outline-variant/30"
+            className="feed-item-enter w-full max-w-[420px] max-h-[82vh] overflow-y-auto bg-surface rounded-[24px] shadow-2xl border border-outline-variant/30 text-right"
             onClick={(e) => e.stopPropagation()}
           >
             {/* سربرگ چسبان */}
             <div className="sticky top-0 bg-surface/95 backdrop-blur-md border-b border-outline-variant/30 px-4 py-3 flex items-center justify-between">
-              <h3 className="text-[16px] font-bold text-on-surface flex items-center gap-1.5">
-                <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-                  workspace_premium
+              <div className="flex items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[13px] font-extrabold text-primary">
+                  !
                 </span>
-                سطح‌ها و شرایط ارتقا
-              </h3>
+                <h3 className="text-[15px] font-extrabold text-on-surface">سطح‌ها و شرایط ارتقا</h3>
+              </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="بستن"
-                className="flex items-center justify-center w-8 h-8 rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-on-surface-variant hover:bg-surface-container-high transition-colors"
               >
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                <span className="material-symbols-outlined text-[18px]">close</span>
               </button>
             </div>
 
