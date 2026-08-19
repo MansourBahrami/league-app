@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnboarding";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
+import ActionGuidanceModal from "@/components/onboarding/ActionGuidanceModal";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
@@ -518,6 +519,22 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             setSessionResult(null);
             router.refresh();
           }}
+        />
+      )}
+
+      {needsStartHint && timerState === "idle" && (
+        <ActionGuidanceModal
+          hint={ONBOARDING_HINTS.TIMER_STARTED}
+          eyebrow="قدم اول: مطالعه"
+          title="امروز فقط ۱ ساعت درس بخون!"
+          description="تایمر مطالعه رو تنظیم کن و روی دکمه «شروع مطالعه» بزن تا اولین جلسه تمرکزت ثبت بشه."
+          icon="play_circle"
+          actionText="شروع مطالعه"
+          points={[
+            "هدف روز اول: ۱ ساعت مطالعه با تایمر.",
+            "به ازای هر ۱۵ دقیقه مطالعه، ۱ XP و ۱ سکه جایزه می‌گیری."
+          ]}
+          targetElementSelector="[data-onboarding='timer-start']"
         />
       )}
     </>

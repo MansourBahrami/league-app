@@ -6,7 +6,7 @@ import { getCurrentMissionRoomSnapshots, pickMissionRoomToOpen } from "@/lib/mis
 import { formatJalaliLong, getNextTehranMissionWeek } from "@/lib/date";
 import { suggestMissions } from "@/lib/gamification";
 import MissionRoomChooser, { type MissionChoice } from "@/components/mission-rooms/MissionRoomChooser";
-import ContextualOnboardingCard from "@/components/onboarding/ContextualOnboardingCard";
+import ActionGuidanceModal from "@/components/onboarding/ActionGuidanceModal";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
@@ -98,17 +98,18 @@ export default async function MissionRoomsPage() {
         </div>
       </header>
 
-      <ContextualOnboardingCard
+      <ActionGuidanceModal
         hint={ONBOARDING_HINTS.MISSION_ROOMS_EXPLAINED}
-        eyebrow="اولین ورود به اتاق مأموریت"
-        title={user.onboardingDay < 1 ? "فعلاً هدف روز اول رو کامل کن" : "یک هدف انتخاب کن و با هم‌هدف‌هات جلو برو"}
+        eyebrow="اتاق‌های مأموریت"
+        title="مأموریتت رو انتخاب کن!"
         description={user.onboardingDay < 1
-          ? "اتاق‌های مأموریت بعد از روز اول باز می‌شوند. بعد از اتمام ۱ ساعت مطالعه امروز، می‌تونی برای روزهای بعد مأموریت انتخاب کنی."
-          : "اینجا هدف روزانه یا هفتگی می‌خری، از شروع بازه کنار آدم‌های هم‌هدف قرار می‌گیری و پیشرفت جمع رو می‌بینی."}
+          ? "اتاق‌های مأموریت بعد از روز اول باز می‌شن. فعلاً ۱ ساعت مطالعه امروزت رو کامل کن تا بتونی مأموریت برداری."
+          : "یک مأموریت روزانه یا هفتگی بردار تا از فردا کنار بچه‌هایی که همین هدف رو دارن درس بخونی و مدال بگیری."}
         icon="meeting_room"
+        actionText="انتخاب مأموریت"
         points={[
-          "ماموریت خریداری‌شده از روز بعد فعال می‌شود؛ مطالعهٔ امروز آزاد است.",
-          "پاداش هر نفر از زمان تأییدشدهٔ خودش محاسبه می‌شود، نه عملکرد بقیه.",
+          "مأموریت روزانه سکه جایزه میده و مأموریت هفتگی XP بالا + مدال ارتقای سطح.",
+          "مأموریتی که می‌خری از فردا فعال می‌شه و مطالعه امروزت آزاده."
         ]}
       />
 

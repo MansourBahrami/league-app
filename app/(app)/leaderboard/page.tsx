@@ -6,7 +6,7 @@ import Podium from "@/components/leaderboard/Podium";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
 import InviteFriends from "@/components/social/InviteFriends";
 import { ensureReferralCode, getFriendIds } from "@/lib/referral";
-import ContextualOnboardingCard from "@/components/onboarding/ContextualOnboardingCard";
+import ActionGuidanceModal from "@/components/onboarding/ActionGuidanceModal";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { tehranDayStartDaysAgo } from "@/lib/date";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
@@ -154,15 +154,16 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         </Link>
       </div>
 
-      <ContextualOnboardingCard
+      <ActionGuidanceModal
         hint={ONBOARDING_HINTS.LEADERBOARD_EXPLAINED}
-        eyebrow="اولین ورود به رده‌بندی"
-        title="اینجا نتیجهٔ مطالعه‌ات تبدیل به رقابت می‌شه"
-        description="جدول اصلی، XP هفت روز اخیرت رو با کاربرهای هم‌سطح مقایسه می‌کنه؛ پس رقابت از نقطهٔ منصفانه‌تری شروع می‌شه."
+        eyebrow="جدول رده‌بندی"
+        title="رتبه‌ات رو ببر بالا!"
+        description="اینجا رتبه‌ات با بچه‌های هم‌سطح خودت مقایسه می‌شه. با هر ۱۵ دقیقه مطالعه ۱ XP می‌گیری و میای بالاتر."
         icon="leaderboard"
+        actionText="مشاهده رده‌بندی"
         points={[
-          "هر ۱۵ دقیقهٔ تأییدشده، ۱ XP به امتیاز هفتگی‌ات اضافه می‌کند.",
-          "تب دوستان جداست؛ می‌تونی آدم‌های خودت رو دعوت کنی و مستقیم رقابت کنی.",
+          "هر ۱۵ دقیقه مطالعه تاییدشده = ۱ XP هفتگی.",
+          "توی تب دوستان می‌تونی رفقات رو هم دعوت کنی و مستقیم مسابقه بدی."
         ]}
       />
 
