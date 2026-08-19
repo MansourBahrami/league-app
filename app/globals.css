@@ -225,9 +225,40 @@ body {
 .hide-scrollbar::-webkit-scrollbar { display: none; }
 .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-/* === Feed slide-in animation === */
-@keyframes slideInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-.feed-item-enter { animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+/* === Live activity: a fresh card rises into place === */
+@keyframes liveActivityCardRise {
+  0% {
+    opacity: 0;
+    transform: translateY(calc(100% + 12px)) scale(0.96);
+  }
+  18% {
+    opacity: 0.58;
+    transform: translateY(32px) scale(0.97);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-6px) scale(1.014);
+  }
+  82% {
+    transform: translateY(2px) scale(0.998);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.live-activity-card-stage {
+  min-height: 68px;
+  overflow: hidden;
+  border-radius: 2rem;
+}
+
+.live-activity-card-enter {
+  transform-origin: center bottom;
+  animation: liveActivityCardRise 860ms cubic-bezier(0.22, 0.72, 0.24, 1) both;
+  will-change: transform, opacity;
+}
 
 /* === Streak flame pulse === */
 @keyframes flamePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
@@ -241,6 +272,133 @@ body {
   100% { opacity: 0; transform: translateY(-44px) scale(0.9); }
 }
 .reward-float { animation: rewardFloat 2s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+
+/* === Unified mission + timer halo === */
+@property --timer-elapsed-angle {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0turn;
+}
+
+.focus-timer-halo {
+  --timer-elapsed-angle: 0turn;
+  --timer-ring-color: var(--color-tertiary-fixed-dim);
+  position: relative;
+  width: min(54vw, 220px);
+  aspect-ratio: 1;
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background: var(--color-surface-container-lowest);
+  box-shadow:
+    0 0 0 7px color-mix(in oklab, var(--color-tertiary-fixed) 44%, transparent),
+    0 14px 34px color-mix(in oklab, var(--color-tertiary) 14%, transparent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.focus-timer-halo::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: 1;
+  border-radius: inherit;
+  padding: 3px;
+  background: conic-gradient(
+    from 0deg,
+    var(--color-outline-variant) 0 var(--timer-elapsed-angle),
+    var(--timer-ring-color) var(--timer-elapsed-angle) 1turn
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.focus-timer-halo > time,
+.focus-timer-halo > p,
+.focus-timer-halo > .reward-float {
+  position: relative;
+  z-index: 2;
+}
+
+.focus-timer-spark {
+  position: absolute;
+  top: -14px;
+  right: 50%;
+  z-index: 3;
+  transform: translateX(50%);
+  background: var(--color-surface-container-lowest);
+  border-radius: 9999px;
+  padding: 2px;
+  transition: opacity 180ms ease;
+}
+
+.focus-timer-progress-orbit {
+  position: absolute;
+  inset: -3px;
+  z-index: 4;
+  border-radius: inherit;
+  opacity: 0;
+  transform: rotate(var(--timer-elapsed-angle));
+  pointer-events: none;
+}
+
+.focus-timer-progress-dot {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-surface-container-lowest);
+  border-radius: 9999px;
+  background: var(--color-tertiary-fixed-dim);
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--color-tertiary-fixed) 58%, transparent),
+    0 0 12px color-mix(in oklab, var(--color-tertiary) 42%, transparent);
+  transform: translate(-50%, -50%);
+}
+
+@keyframes focusHaloPulse {
+  0%, 100% { box-shadow: 0 0 0 7px color-mix(in oklab, var(--color-primary-fixed) 45%, transparent), 0 14px 34px color-mix(in oklab, var(--color-primary) 12%, transparent); }
+  50% { box-shadow: 0 0 0 10px color-mix(in oklab, var(--color-primary-fixed) 65%, transparent), 0 16px 38px color-mix(in oklab, var(--color-primary) 20%, transparent); }
+}
+
+.focus-timer-halo-active {
+  --timer-ring-color: var(--color-primary);
+  transition: --timer-elapsed-angle 1s linear;
+  animation: focusHaloPulse 2.4s ease-in-out infinite;
+}
+
+.focus-timer-halo-active .focus-timer-spark {
+  opacity: 0;
+}
+
+.focus-timer-halo-active .focus-timer-progress-orbit {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .focus-timer-halo-active,
+  .live-activity-card-enter,
+  .streak-flame {
+    animation: none;
+  }
+
+  .focus-timer-halo-active {
+    transition: none;
+  }
+
+  .focus-timer-spark {
+    transition: none;
+  }
+}
 
 /* === Pop-in (celebration badges, medals) === */
 @keyframes popIn {

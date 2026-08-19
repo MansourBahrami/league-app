@@ -33,7 +33,7 @@ async function setWebhook(
     const res = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url: webhookUrl }),
+      body: JSON.stringify({ url: webhookUrl, secret_token: SECRET }),
       signal: AbortSignal.timeout(15000),
     });
     const data = await res.json() as { ok: boolean; description?: string };
@@ -63,11 +63,15 @@ async function getMe(name: string, base: string, token: string) {
     console.log("   مثال: APP_PUBLIC_URL=https://xxx.serveousercontent.com npx tsx scripts/setup-webhooks.ts");
     process.exit(1);
   }
+  if (!SECRET) {
+    console.error("❌ BOT_WEBHOOK_SECRET الزامی است");
+    process.exit(1);
+  }
 
   console.log(`\n🌐 APP_PUBLIC_URL: ${APP_URL}\n`);
 
-  const tgWebhook = `${APP_URL}/api/bot/telegram?secret=${SECRET}`;
-  const baleWebhook = `${APP_URL}/api/bot/bale?secret=${SECRET}`;
+  const tgWebhook = `${APP_URL}/api/bot/telegram`;
+  const baleWebhook = `${APP_URL}/api/bot/bale`;
 
   await getMe("تلگرام", "https://api.telegram.org", TG_TOKEN);
   await getMe("بله", "https://tapi.bale.ai", BALE_TOKEN);

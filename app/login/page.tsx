@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Script from "next/script";
-import MiniAppAutoLogin from "@/components/auth/MiniAppAutoLogin";
 import { normalizeDigits } from "@/lib/phone";
 
 type Step = "phone" | "otp";
@@ -85,12 +83,6 @@ export default function LoginPage() {
       />
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* اسکریپت WebApp تلگرام/بله برای احراز خودکار مینی‌اپ */}
-      <Script src="https://telegram.org/js/telegram-web-app.js" strategy="afterInteractive" />
-      <Suspense fallback={null}>
-        <MiniAppAutoLogin />
-      </Suspense>
-
       <div className="glass-card w-full max-w-sm rounded-2xl p-8 relative z-10">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
@@ -162,7 +154,7 @@ export default function LoginPage() {
                   <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                     login
                   </span>
-                  ورود به اپلیکیشن
+                  ورود یا ثبت‌نام
                 </>
               )}
             </button>

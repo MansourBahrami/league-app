@@ -28,7 +28,7 @@ function faNum(v: unknown): string {
 const TYPE_LABEL: Record<string, (m: Record<string, unknown>) => string> = {
   timer_start: (m) => `تایمر ${faNum(m.durationMin)} دقیقه‌ای رو شروع کرد`,
   session_complete: (m) => `${faNum(m.durationMin)} دقیقه مطالعه کرد`,
-  mission_buy: (m) => `ماموریت ${faNum(m.targetHours)} ساعته خرید`,
+  mission_buy: (m) => `به اتاق ماموریت ${faNum(m.targetHours)} ساعته پیوست`,
   medal_earn: (m) => `مدال ${faNum(m.targetHours)} ساعته گرفت`,
   level_up: (m) => `به سطح ${m.level ?? ""} رسید`,
   streak: (m) => `به زنجیره ${faNum(m.streak)} روزه رسید 🔥`,
@@ -53,9 +53,18 @@ interface Props {
   meId: string;
   initialCounts: CountsMap;
   initialMine: MineMap;
+  allowedUserIds?: string[];
+  emptyLabel?: string;
 }
 
-export default function LiveFeed({ initialActivities, meId, initialCounts, initialMine }: Props) {
+export default function LiveFeed({
+  initialActivities,
+  meId,
+  initialCounts,
+  initialMine,
+  allowedUserIds,
+  emptyLabel = "هنوز فعالیتی ثبت نشده. اول شروع کن!",
+}: Props) {
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [counts, setCounts] = useState<CountsMap>(initialCounts);
   const [mine, setMine] = useState<MineMap>(initialMine);
@@ -67,11 +76,14 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
     es.onmessage = (event) => {
       try {
         const activity: Activity = JSON.parse(event.data);
+        if (allowedUserIds && !allowedUserIds.includes(activity.userId)) return;
+        const metadata = (activity.metadata ?? {}) as Record<string, unknown>;
+        if (activity.type === "session_complete" && Number(metadata.durationMin ?? 0) <= 0) return;
         setActivities((prev) => [activity, ...prev].slice(0, 200));
       } catch {}
     };
     return () => es.close();
-  }, []);
+  }, [allowedUserIds]);
 
   useEffect(() => {
     if (!toast) return;
@@ -133,7 +145,7 @@ export default function LiveFeed({ initialActivities, meId, initialCounts, initi
   }
 
   if (activities.length === 0) {
-    return <p className="text-on-surface-variant text-center py-8">هنوز فعالیتی ثبت نشده. اول شروع کن!</p>;
+    return <p className="text-on-surface-variant text-center py-8">{emptyLabel}</p>;
   }
 
   return (

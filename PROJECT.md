@@ -2,7 +2,7 @@
 
 > سند فنی و محصولی پروژه. هرچیزی که برای ادامه توسعه لازم است اینجاست: استک، ساختار دیتابیس، یوزر فلو، فیچرها، و گام‌های بعدی.
 >
-> **آخرین به‌روزرسانی:** تیر ۱۴۰۵ — **استقرار production زنده** (HTTPS با CDN پارس‌پک، ربات بله، پیامک کاوه‌نگار). علاوه بر فازهای ۱ تا ۲۸، موتور قانون نوتیفیکیشن، A/B دسترسی ویدیو، ماموریت روزانه، مرخصی استریک و آواتار آپلودی نیز در کد فعال‌اند. نقشهٔ فایل‌ها: [FILES.md](FILES.md) · استقرار: [DEPLOYMENT.md](DEPLOYMENT.md) · کارهای آینده: [ROADMAP.md](ROADMAP.md).
+> **آخرین به‌روزرسانی:** مرداد ۱۴۰۵ — ثبت‌نام/ورود فقط با OTP موبایل، اتصال اختیاری بله/تلگرام بعد از اولین جلسه، سشن نسخه‌دار و محافظت Origin سازگار با شبکهٔ محلی به مدل فعال محصول اضافه شد. استقرار production (HTTPS با CDN پارس‌پک، ربات بله و پیامک کاوه‌نگار) فعال است. نقشهٔ فایل‌ها: [FILES.md](FILES.md) · استقرار: [DEPLOYMENT.md](DEPLOYMENT.md) · کارهای آینده: [ROADMAP.md](ROADMAP.md).
 
 ---
 
@@ -90,7 +90,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | فیلد | نوع | توضیح |
 |------|-----|-------|
 | `id` | String (cuid) | شناسه |
-| `phone` | String? (unique) | شماره موبایل (فرمت `0XXXXXXXXXX`)؛ برای حساب ساخته‌شده از ربات ممکن است تا lead capture خالی باشد |
+| `phone` | String? (unique) | هویت اصلی ثبت‌نام و ورود؛ nullable فقط برای سازگاری با حساب‌های رباتی قدیمی |
 | `name`, `grade`, `field` | String? | اطلاعات lead capture (نام، پایه، رشته) |
 | `avatarUrl` | String? | آواتار |
 | `xp` | Int | امتیاز تجربه |
@@ -108,8 +108,9 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | `lastStudyDate` | DateTime? | آخرین روز (۰۰:۰۰) با جلسه — مبنای محاسبه streak |
 | `referralCode` | String? (unique) | کد دعوت دوستان |
 | `role` | String | `user` یا `admin` (پیش‌فرض `user`) |
+| `sessionVersion` | Int | نسخه سشن؛ با logout افزایش می‌یابد و JWTهای قبلی را باطل می‌کند |
 | `videoAccess` | String? | گروه A/B ویدیو: `free` یا `paid` |
-| `telegramId`, `baleId` | String? | شناسهٔ حساب در پیام‌رسان‌ها |
+| `telegramId`, `baleId` | String? | کانال‌های اعلان متصل؛ روش ورود نیستند |
 | `lastWeeklyRank` | Int? | snapshot رتبه برای اعلان افت رتبه |
 | ایندکس‌ها | `xp`, `level` | برای لیدربورد و رتبه‌بندی |
 
@@ -119,6 +120,8 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 #### `Mission` / `UserMission` — ماموریت‌ها
 - `Mission`: تعریف ماموریت (هدف ساعت هفتگی، حداقل میانگین، هزینه سکه، جایزه XP، مدال مرتبط).
 - `UserMission`: ماموریت خریداری‌شده با `activatesAt` (ابتدای روز بعد)، `expiresAt` (۷ روز بعد از فعال‌سازی)، `status` (`pending`/`active`/`completed`/`failed`). چرخه عمر در `lib/mission.ts`.
+- `MissionRoom`: اتاق مشترک یک تعریف مأموریت در یک بازهٔ دقیق؛ کاربران هم‌هدف را کنار هم می‌آورد، بدون ادغام پیشرفت یا پاداش فردی.
+- `MissionRoomMember`: اتصال یک‌به‌یک `UserMission` به اتاق و عضو؛ پیشرفت اتاق از جلسه‌های تأییدشدهٔ همان بازه محاسبه می‌شود.
 
 #### `Medal` / `UserMedal` — مدال‌ها
 `Medal` بر اساس `targetHours` (۲۰ تا ۷۰ ساعت، یکتا). `UserMedal` رکورد کسب مدال (تکرارپذیر — هر تکمیل ماموریت یک رکورد جدید).
@@ -142,8 +145,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 #### `InboxItem` — صندوق پیام/نوتیف
 `userId` (گیرنده)، `type` (`reaction` / `reaction_reward` / `system` / `message`)، `actorId?`، `body?` (برای DM آینده)، `metadata` (JSON)، `read`. ایندکس‌ها روی `[userId, read]` و `[userId, createdAt desc]`. منطق در `lib/inbox.ts`. (مدل عمداً برای توسعه به پیام خصوصی آماده شده؛ DM فعلاً ساخته نشده — ریسک مودریشن کاربر زیر سن قانونی.)
 
-#### `OtpToken` — کد یکبارمصرف
-`phone` (PK)، `code`، `expiresAt`. (همچنین در Redis با TTL نگهداری می‌شود — Redis منبع اصلی اعتبارسنجی است.)
+OTP فقط به‌صورت هش‌شده و کوتاه‌عمر در Redis نگهداری می‌شود و پس از پنج تلاش ناموفق یا اولین تأیید موفق اتمیک حذف می‌شود.
 
 #### مدل‌های زیرساخت و قابلیت‌های جدید
 - `AvatarImage`: تصویر فشردهٔ آواتار در جدول جداگانه، بدون سنگین‌کردن کوئری‌های `User`.
@@ -244,26 +246,29 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
   │    ├─ هر ۱۵ دقیقه → POST /api/study/tick (۱ XP + ۱ سکه فوری)
   │    └─ پایان → POST /api/study/end (محاسبه نهایی + بررسی سطح + لاگ فعالیت)
   │         │
-  │         ├─ بعد از تکمیل روز اول → قفل LeadCaptureModal (نام/پایه/رشته/موبایل اجباری)
+  │         ├─ بعد از اولین جلسهٔ ثبت‌شده → پیشنهاد یک‌بارهٔ اتصال ربات تلگرام/بله
+  │         │    └─ لینک یکتای ۱۵دقیقه‌ای → /start <token> → اتصال کانال به همین User
+  │         ├─ بعد از تکمیل روز اول → قفل LeadCaptureModal (نام/پایه/رشته)
   │         └─ سپس → GoalSettingModal (فردا ساعت چند شروع می‌کنی؟)
   ▼
 ناوبری اصلی (BottomNav):
-  /dashboard   → تمرکز، ماموریت روز و گزارش مطالعه
-  /feed        → بورد زنده فعالیت‌ها (SSE real-time)
-  /leaderboard → لیدربورد هفتگی (XP هفت روز اخیر، سکوی تاپ ۳)
-  /profile     → آمار، مدال‌ها، ویرایش پروفایل، خروج
+  /mission-rooms → ورود مستقیم به اتاق جاری؛ فقط در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی
+  /videos        → آموزش‌های متناسب با پایه
+  /dashboard     → مطالعه، ماموریت روز و تایمر
+  /leaderboard   → رده‌بندی هفتگی (XP هفت روز اخیر، سکوی تاپ ۳)
+  /profile       → آمار، نمودار مطالعه، مدال‌ها و تنظیمات حساب
 
 مسیرهای تکمیلی:
-  /missions    → بازارچه ماموریت روزانه/هفتگی
-  /videos      → ویدیوهای آموزشی free/paid
+  /missions    → redirect سازگار به /mission-rooms
+  /feed        → بورد زندهٔ عمومی فعالیت‌ها (SSE؛ از کارت فعالیت صفحه مطالعه)
   /inbox       → صندوق اعلان و واکنش‌ها
   /tournaments → رقابت‌های بازه‌دار
 ```
 
 ### محافظت از مسیرها (`proxy.ts`)
 - مسیرهای عمومی: `/login`، `/api/auth/send-otp`، `/api/auth/verify-otp`، فایل‌های استاتیک.
-- بقیه نیازمند کوکی JWT معتبر؛ در غیر این صورت redirect به `/login`.
-- هدرهای `x-user-id` و `x-user-phone` روی درخواست‌های احرازشده ست می‌شوند.
+- بقیه نیازمند کوکی JWT معتبرند؛ صفحات به `/login` هدایت و APIها پاسخ JSON با وضعیت 401 می‌گیرند.
+- درخواست‌های تغییردهنده cross-site در Proxy رد می‌شوند و کوکی `SameSite=Lax` است. تطبیق Origin علاوه بر URL داخلی Next، Host واقعی درخواست (پروتکل، دامنه/IP و پورت) را بررسی می‌کند تا دسترسی معتبر موبایل از شبکهٔ محلی یا اجرای پشت reverse proxy اشتباهاً مسدود نشود.
 
 ---
 
@@ -277,7 +282,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 | ۴ | داشبورد + تایمر مقاوم آفلاین | ✅ | `StudyTimer.tsx`, `app/api/study/*` |
 | ۵ | موتور گیمیفیکیشن | ✅ | `lib/gamification.ts` |
 | ۶ | آنبوردینگ + Lead Capture | ✅ | `components/onboarding/*` |
-| ۷ | بازارچه ماموریت‌ها | ✅ | `MissionCard.tsx`, `app/api/missions/buy` |
+| ۷ | اتاق مأموریت روزانه/هفتگی | ✅ | `mission-rooms/*`, `app/api/missions/buy` |
 | ۸ | لیدربورد | ✅ | `Podium.tsx`, `LeaderboardList.tsx` |
 | ۹ | بورد زنده (SSE) | ✅ | `app/api/feed/stream`, `LiveFeed.tsx` |
 | ۱۰ | ویدیو + anti-seek | ✅ | `VideoPlayerClient.tsx` |
@@ -294,11 +299,12 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 | جدید | A/B دسترسی ویدیو | ✅ | `lib/ab.ts`, `/admin/analytics` |
 | جدید | ماموریت روزانه + مرخصی استریک | ✅ | `DAILY_MISSION_TABLE`, `/api/streak/freeze` |
 | جدید | آپلود آواتار در DB | ✅ | `AvatarImage`, `/api/profile/avatar` |
+| جدید | اتاق مأموریت اجتماعی | ✅ | `MissionRoom`, `MissionRoomMember`, `/mission-rooms` |
 
 ### جزئیات قابل‌توجه پیاده‌سازی
 - **تایمر مقاوم آفلاین**: مدت زمان از `startTime` محاسبه می‌شود نه شمارنده؛ در `localStorage` ذخیره و در reload بازیابی می‌شود.
 - **تایید روز آنبوردینگ**: روز وقتی پیش می‌رود که `onboardingStepMinutes` همان روز تقویمی تهران به هدف برسد. ویدیوی روز اختیاری است و در گروه paid خریدنی است.
-- **حلقه ماموریت**: خرید (`pending`، سکه کسر) → فعال از روز بعد (`active`) → تکمیل با رسیدن به ساعت هدف (`completed` + XP + مدال + فید) → یا انقضا (`failed`، سکه سوخته). همه در `lib/mission.ts`.
+- **حلقه ماموریت**: انتخاب هدف → عضویت در اتاق هم‌هدف‌ها → پیشرفت فردی با زمان تأییدشده → تکمیل (`completed` + XP/سکه/مدال) یا انقضا (`failed`). مأموریت هفتگی جمعه انتخاب و شنبه شروع می‌شود؛ منطق پاداش فردی در `lib/mission.ts` باقی مانده است.
 - **بورد زنده با SSE**: `broadcastActivity()` در `app/api/feed/stream/route.ts` به subscriberها push می‌کند. هنگام جلسه، خرید ماموریت، مدال، و ارتقای سطح فراخوانی می‌شود.
 - **لیدربورد هم‌سطح**: هرکس فقط با کاربران هم‌`level` خودش رقابت می‌کند (شامل تازه‌نفس).
 - **Anti-seek ویدیو**: کاربر نمی‌تواند جلوتر از بیشترین نقطه دیده‌شده برود. جایزه ۱۵ سکه در ۹۰٪ تماشا.
@@ -374,7 +380,9 @@ league_proj_new/
 | POST | `/api/study/pause` | `{ sessionId }` | ثبت شروع pause سمت سرور |
 | POST | `/api/study/resume` | `{ sessionId }` | پایان pause → افزودن مدت به `pausedSec` |
 | POST | `/api/study/end` | `{ sessionId }` | پایان (idempotent، رد جلسه بسته) + نتیجه (XP، `dayCompleted`، `needsVideo`، `rewardVideo`، `streak`، `streakMilestone`، ...) |
-| POST | `/api/missions/buy` | `{ missionId }` | خرید ماموریت (وضعیت `pending`) |
+| POST | `/api/missions/buy` | `{ missionId }` | انتخاب مأموریت، کسر هزینه، عضویت در اتاق → `{ roomId }` |
+| GET | `/api/mission-rooms/[id]` | — | snapshot مجاز اتاق، رتبه و پیشرفت زندهٔ اعضا |
+| POST | `/api/mission-rooms/[id]/cheer` | `{ targetUserId, cheer }` | تشویق از پیش‌تعریف‌شده با محدودیت یک‌ساعته |
 | POST | `/api/streak/freeze` | — | خرید مرخصی استریک با ۵۰ سکه |
 | POST | `/api/videos/[id]/buy` | — | خرید ویدیوی روز برای گروه `paid` |
 | POST | `/api/videos/[id]/progress` | `{ watchedSeconds, totalSeconds }` | ثبت پیشرفت + جایزه ۹۰٪ (۲× اگر در ۲۴ ساعت اول) + احتمال تکمیل روز آنبوردینگ |
@@ -406,7 +414,7 @@ league_proj_new/
 
 ### انجام‌شده در استقرار ✅
 - **HTTPS واقعی**: TLS در لبهٔ CDN پارس‌پک (داخل ایران) با گواهی معتبر Let's Encrypt؛ مبدأ با Caddy `tls internal`.
-- **ربات بله**: webhook مستقیم در اپ (`/api/bot/bale`)؛ ورود seamless با Magic Link.
+- **ربات بله**: webhook مستقیم در اپ (`/api/bot/bale`)؛ اتصال یکبارمصرف به حساب موبایلی برای اعلان‌ها.
 - **پیامک OTP**: کاوه‌نگار (`lib/sms.ts`) — در production کد واقعی پیامک می‌شود.
 
 ### باقی‌مانده
@@ -423,7 +431,7 @@ league_proj_new/
 - **۲۲**: ویدیو در حلقه روزانه (`lib/onboarding.ts`)، سکه ۲× تماشای سریع، طول مسیر منعطف، ویدیوهای قفل، CTA ادمین.
 - **۲۳**: توکن‌های رنگ `@theme`، کانفتی (`components/ui/Confetti.tsx`)، تایمر فشرده، شرط مدال در پیشرفت سطح، safe-area، ساعت دلخواه.
 - **۲۴**: دعوت دوستان (`lib/referral.ts` + `/api/friends` + تب «دوستان»)، cold start با «لیگ آزاد».
-- **۲۵**: Magic Link (`lib/magic.ts`, `/api/auth/magic`, `/api/bot/magic-link`) + سرویس ربات مجزا در `bot/`.
+- **۲۵**: اتصال یکبارمصرف ربات (`lib/bot-link.ts`, `/api/profile/bot-link`, `/api/bot/link`) به حساب موبایلی موجود.
 - **۲۶**: Web Push (`lib/push.ts`, `public/sw.js`, `PushSubscription`, `/api/push/subscribe`, `PushRegister`/`NotificationToggle`).
 - **۲۷**: نوتیف رقابتی (`lib/notifications.ts`) + تورنومنت (`lib/tournament.ts`, پنل ادمین + صفحات کاربر + تسویه در cron).
 - **۲۸**: تعامل اجتماعی فید — ری‌اکشن روی آیتم‌های فید (`Reaction`, `lib/reaction.ts`, نوار واکنش در `LiveFeed` با به‌روزرسانی خوش‌بینانه)، صندوق نوتیف (`InboxItem`, `lib/inbox.ts`, آیکون زنگوله‌ی هدر + صفحه‌ی `/inbox`)، اعلان واکنش با Web Push، و جایزه‌ی روزانه‌ی تشویق (۵ نفر/روز = ۵ سکه). مدل صندوق آماده‌ی توسعه به پیام خصوصی (DM).
@@ -433,7 +441,6 @@ league_proj_new/
 ## ۱۱. بدهی فنی و نکات نگهداری
 
 - **`lib/socket.ts`** باقیمانده از تصمیم اولیه Socket.io است و استفاده نمی‌شود (فید با SSE کار می‌کند).
-- **`OtpToken` در دیتابیس**: Redis منبع اصلی اعتبارسنجی OTP است؛ جدول دیتابیس backup/audit است.
 - **تست سطح‌ها**: در وضعیت فعلی انتظار تست برای بازهٔ ۸ تا ۲۹ XP با `LEVEL_TABLE` یکسان نیست و باید تصمیم محصولی نهایی شود.
 - **ویدیوی anti-seek**: کنترل جلو زدن در کلاینت است؛ endpoint پیشرفت باید در آینده اعتبارسنجی سخت‌گیرانه‌تر سمت سرور داشته باشد.
 - **SSE درون‌حافظه‌ای**: برای یک process مناسب است؛ در چند replica به Redis Pub/Sub یا زیرساخت مشترک نیاز دارد.

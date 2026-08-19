@@ -44,6 +44,14 @@ function renderContent(it: InboxItem): { text: string; icon: string; bg: string;
         color: "var(--color-tertiary)",
         href: "/feed",
       };
+    case "room_cheer":
+      return {
+        text: `${actorName}: ${it.body ?? "ادامه بده!"}`,
+        icon: "volunteer_activism",
+        bg: "var(--color-secondary-container)",
+        color: "var(--color-secondary)",
+        href: typeof meta.roomId === "string" ? `/mission-rooms/${meta.roomId}` : "/mission-rooms",
+      };
     case "message":
       return {
         text: it.body ?? `${actorName} برات پیام فرستاد`,

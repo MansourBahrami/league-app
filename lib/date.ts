@@ -40,6 +40,29 @@ export function tehranDayDiff(a: Date, b: Date): number {
   return Math.round((tehranDayStart(a).getTime() - tehranDayStart(b).getTime()) / 86400000);
 }
 
+/** شماره روز هفته در تهران با قرارداد جاوااسکریپت: یکشنبه=۰ ... جمعه=۵، شنبه=۶ */
+export function tehranWeekdayIndex(instant: Date = new Date()): number {
+  return new Date(instant.getTime() + TEHRAN_OFFSET_MIN * 60000).getUTCDay();
+}
+
+/** بازه ثبت‌نام ماموریت هفتگی: جمعه انتخاب، شنبه شروع، جمعه بعد پایان. */
+export function getNextTehranMissionWeek(instant: Date = new Date()): {
+  enrollmentOpen: boolean;
+  startsAt: Date;
+  endsAt: Date;
+} {
+  const todayStart = tehranDayStart(instant);
+  const weekday = tehranWeekdayIndex(instant);
+  const untilSaturday = (6 - weekday + 7) % 7;
+  const daysUntilSaturday = untilSaturday === 0 ? 7 : untilSaturday;
+  const startsAt = new Date(todayStart.getTime() + daysUntilSaturday * 86400000);
+  return {
+    enrollmentOpen: weekday === 5,
+    startsAt,
+    endsAt: new Date(startsAt.getTime() + 7 * 86400000),
+  };
+}
+
 /* ---------- تبدیل میلادی ↔ شمسی (الگوریتم استاندارد jalaali) ---------- */
 
 function div(a: number, b: number): number {
@@ -55,7 +78,7 @@ export interface Jalali {
 /** میلادی → شمسی */
 export function toJalali(gy: number, gm: number, gd: number): Jalali {
   const gDaysInMonth = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-  let gy2 = gm > 2 ? gy + 1 : gy;
+  const gy2 = gm > 2 ? gy + 1 : gy;
   let days =
     355666 +
     365 * gy +

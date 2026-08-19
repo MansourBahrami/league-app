@@ -2,18 +2,14 @@
  * منطق مشترک پردازش پیام‌های ربات (تلگرام و بله هر دو همین را صدا می‌زنند).
  *
  * دستورات پشتیبانی‌شده:
- *   /start         → لینک magic-link + دکمه باز کردن اپ
- *   /start <token> → مصرف magic token (در صورت عدم پشتیبانی از مینی‌اپ)
- *   /link          → لینک جدید برای کاربرانی که قبلاً ثبت‌نام کرده‌اند
+ *   /start <token> → اتصال حساب پیام‌رسان به Userی که قبلاً با موبایل وارد شده
+ *   /start         → راهنمای گرفتن لینک اتصال از داخل اپ
  *
- * ثبت‌نام از ربات:
- *   - اگر کاربر با این telegramId/baleId شناخته نشده باشد → ایجاد حساب.
- *   - سپس magic link یا دکمه مینی‌اپ می‌فرستیم.
+ * ربات نه User می‌سازد و نه سشن ورود صادر می‌کند.
  */
 
-import { prisma } from "@/lib/db";
-import { createMagicToken } from "@/lib/magic";
-import { sendMessageWithButtons, miniAppButton, sendMessage } from "@/lib/bot";
+import { linkMessengerIdentity } from "@/lib/bot-link";
+import { sendMessage } from "@/lib/bot";
 
 type Messenger = "telegram" | "bale";
 
@@ -39,19 +35,16 @@ export async function handleBotUpdate(messenger: Messenger, update: TgUpdate): P
   if (!from) return;
 
   const messengerId = String(from.id);
-  const displayName =
-    [from.first_name, from.last_name].filter(Boolean).join(" ") || null;
-
   const text = (msg.text ?? "").trim();
 
-  if (text.startsWith("/start") || text.startsWith("/link")) {
-    await handleStart(messenger, chatId, messengerId, displayName, text);
+  if (text.startsWith("/start")) {
+    await handleStart(messenger, chatId, messengerId, text);
     return;
   }
 
   // سایر پیام‌ها
   await sendMessage(messenger, chatId,
-    "سلام! برای ورود به اپ دستور /start رو بزن."
+    "برای اتصال ربات، داخل اپ G-camp و از بخش اتصال پیام‌رسان اقدام کن."
   );
 }
 
@@ -59,41 +52,20 @@ async function handleStart(
   messenger: Messenger,
   chatId: number,
   messengerId: string,
-  displayName: string | null,
   text: string
 ): Promise<void> {
-  const appUrl = process.env.APP_PUBLIC_URL ?? process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-  const messengerParam = messenger === "telegram" ? "tg" : "bale";
-
-  // پیدا کردن یا ساختن کاربر
-  const where = messenger === "telegram" ? { telegramId: messengerId } : { baleId: messengerId };
-  let user = await prisma.user.findUnique({ where });
-  if (!user) {
-    const data = messenger === "telegram"
-      ? { telegramId: messengerId, name: displayName }
-      : { baleId: messengerId, name: displayName };
-    user = await prisma.user.create({ data });
+  const token = text.trim().split(/\s+/)[1];
+  if (!token) {
+    await sendMessage(messenger, chatId, "برای اتصال امن، اول وارد اپ G-camp شو و روی «اتصال به ربات» بزن.");
+    return;
   }
 
-  // ساخت magic token (یکبارمصرف ۱۵ دقیقه)
-  const token = await createMagicToken(user.id);
-  const magicUrl = `${appUrl}/api/auth/magic?token=${token}`;
-  const miniAppUrl = `${appUrl}/login?mp=${messengerParam}`;
-
-  // پیام خوش‌آمد
-  const greeting = user.name ? `سلام ${user.name} 👋` : "سلام! 👋";
-  const bodyText = messenger === "telegram"
-    ? `${greeting}\n\n🎮 <b>لیگ مطالعه</b> — هر دقیقه‌ای که می‌خونی XP و سکه می‌گیری!\n\n🔒 لینک ورود سریع (۱۵ دقیقه اعتبار):\n<code>${magicUrl}</code>`
-    : `${greeting}\n\n🎮 لیگ مطالعه — هر دقیقه‌ای که می‌خونی XP و سکه می‌گیری!\n\nبرای ورود روی دکمه زیر بزن:`;
-
-  const buttons = messenger === "telegram"
-    ? [
-        [miniAppButton("telegram", "🚀 باز کردن اپ", miniAppUrl)],
-        [{ text: "🔗 لینک ورود مستقیم", url: magicUrl }],
-      ]
-    : [
-        [{ text: "🔗 ورود به اپ", url: magicUrl }],
-      ];
-
-  await sendMessageWithButtons(messenger, chatId, bodyText, buttons);
+  const result = await linkMessengerIdentity(messenger, messengerId, token);
+  if (result === "linked") {
+    await sendMessage(messenger, chatId, "✅ حساب با موفقیت به G-camp متصل شد. از این به بعد یادآوری‌ها و خبرهای مهم را همین‌جا می‌فرستیم.");
+  } else if (result === "conflict") {
+    await sendMessage(messenger, chatId, "این حساب پیام‌رسان قبلاً به یک حساب دیگر متصل شده است.");
+  } else {
+    await sendMessage(messenger, chatId, "این لینک اتصال نامعتبر یا منقضی شده. از داخل اپ یک لینک تازه بگیر.");
+  }
 }

@@ -17,7 +17,8 @@ interface Props {
   needsVideo?: boolean;
   tomorrowGoalMinutes: number;
   rewardVideo: { id: string; title: string } | null;
-  onClose: () => void;
+  showRewardLesson?: boolean;
+  onClose: () => void | Promise<void>;
 }
 
 const TIME_OPTIONS = [
@@ -41,7 +42,6 @@ export default function GoalSettingModal({
   xpEarned,
   coinsEarned,
   durationMin,
-  onboardingDay,
   dayCompleted,
   inOnboarding,
   dailyGoalMinutes,
@@ -49,6 +49,7 @@ export default function GoalSettingModal({
   needsVideo = false,
   tomorrowGoalMinutes,
   rewardVideo,
+  showRewardLesson = false,
   onClose,
 }: Props) {
   const router = useRouter();
@@ -58,7 +59,7 @@ export default function GoalSettingModal({
 
   const effectiveTime = customTime || selectedTime;
 
-  async function saveGoalThen(after: () => void) {
+  async function saveGoalThen(after: () => void | Promise<void>) {
     setSaving(true);
     if (effectiveTime) {
       const [h, m] = effectiveTime.split(":").map(Number);
@@ -71,14 +72,14 @@ export default function GoalSettingModal({
       }).catch(() => {});
     }
     setSaving(false);
-    after();
+    await after();
   }
 
   const handleSave = () => saveGoalThen(onClose);
   const handleWatchReward = () =>
-    saveGoalThen(() => {
+    saveGoalThen(async () => {
+      await onClose();
       if (rewardVideo) router.push(`/videos/${rewardVideo.id}`);
-      else onClose();
     });
 
   const rewardBadges = (
@@ -98,6 +99,22 @@ export default function GoalSettingModal({
     </div>
   );
 
+  const rewardLesson = showRewardLesson ? (
+    <div className="mb-4 rounded-2xl border border-tertiary/25 bg-tertiary-fixed/35 p-3.5 pop-in">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-tertiary text-on-tertiary">
+          <span className="material-symbols-outlined text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>rewarded_ads</span>
+        </span>
+        <div className="min-w-0 flex-1 text-right">
+          <p className="text-[14px] font-extrabold text-on-surface">این امتیاز از زمان تأییدشده‌ات اومد</p>
+          <p className="mt-1 text-[12px] leading-6 text-on-surface-variant">
+            هر ۱۵ دقیقه مطالعه = <span className="font-extrabold text-primary">۱ XP</span> برای رتبهٔ هفتگی + <span className="font-extrabold text-tertiary">۱ سکه</span> برای امکانات و مأموریت‌ها.
+          </p>
+        </div>
+      </div>
+    </div>
+  ) : null;
+
   /* ---------- حالت الف: دقیقه‌ها کامل شد ولی ویدیوی روز مانده ---------- */
   if (inOnboarding && needsVideo && rewardVideo) {
     return (
@@ -105,10 +122,11 @@ export default function GoalSettingModal({
         <Confetti count={30} />
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
+          {rewardLesson}
           <div className="text-center mb-5">
             <h2 className="text-[18px] font-extrabold text-on-surface mb-1">دقیقه‌های امروزت تکمیل شد! 🎯</h2>
             <p className="text-[14px] text-on-surface-variant">
-              یک قدم تا تکمیل روز {onboardingDay.toLocaleString("fa-IR")} مونده: ویدیوی امروز رو ببین (الان ببینی سکه ۲× می‌گیری).
+              یک قدم تا تکمیل ماموریت امروز مونده: ویدیوی امروز رو ببین (الان ببینی سکه ۲× می‌گیری).
             </p>
           </div>
           <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-3">
@@ -131,13 +149,14 @@ export default function GoalSettingModal({
     );
   }
 
-  /* ---------- حالت ب: روز آنبوردینگ هنوز کامل نشده (دقیقه کم است) ---------- */
-  if (inOnboarding && !dayCompleted) {
+  /* ---------- حالت ب: هدف روزانه تعیین‌شده هنوز کامل نشده (دقیقه کم است) ---------- */
+  if (dailyGoalMinutes > 0 && !dayCompleted) {
     const progressPct = Math.min(100, Math.round(((dailyGoalMinutes - remainingMinutes) / dailyGoalMinutes) * 100));
     return (
       <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
         <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
           {rewardBadges}
+          {rewardLesson}
           <div className="text-center mb-5">
             <h2 className="text-[18px] font-extrabold text-on-surface mb-1">آفرین! {fmt(durationMin)} مطالعه کردی</h2>
             <p className="text-[14px] text-on-surface-variant">
@@ -146,7 +165,7 @@ export default function GoalSettingModal({
           </div>
           <div className="mb-5">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[13px] font-semibold text-tertiary">ماموریت روز {(onboardingDay + 1).toLocaleString("fa-IR")}</span>
+              <span className="text-[13px] font-semibold text-tertiary">پیشرفت ماموریت امروز</span>
               <span className="text-[13px] text-on-surface-variant">{fmt(dailyGoalMinutes - remainingMinutes)} / {fmt(dailyGoalMinutes)}</span>
             </div>
             <div className="h-3 w-full bg-surface-container rounded-full overflow-hidden">
@@ -165,125 +184,153 @@ export default function GoalSettingModal({
     );
   }
 
-  /* ---------- حالت ج: روز کامل شد یا خارج از آنبوردینگ ---------- */
-  const celebrate = dayCompleted ? "ماموریت امروز رو کامل کردی! 🎉" : durationMin >= 30 ? "آفرین! جلسه خوبی داشتی 🎉" : "شروع کردی، ادامه بده!";
+  /* ---------- حالت ج: هدف روزانه کامل شد (پرسش هدف فردا) ---------- */
+  if (dayCompleted) {
+    return (
+      <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
+        <Confetti count={50} />
+        <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
+          {rewardBadges}
+          {rewardLesson}
 
-  return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
-      {dayCompleted && <Confetti count={50} />}
-      <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
-        {rewardBadges}
+          <div className="text-center mb-6">
+            <h2 className="text-[22px] font-extrabold text-on-surface mb-1">ماموریت امروز رو کامل کردی! 🎉</h2>
+            <p className="text-[14px] text-on-surface-variant">
+              {fmt(durationMin)} مطالعه
+            </p>
+            {inOnboarding && (
+              <div className="mt-3 bg-tertiary-fixed/40 rounded-xl p-2.5">
+                <p className="text-[13px] font-semibold text-on-surface leading-relaxed">
+                  ماموریت امروزت تموم شد! 🎉 فردا ماموریت جدیدت شروع می‌شه —
+                  <span className="text-tertiary font-bold"> ولی می‌تونی همین امروز هم ادامه بدی و جلوتر بزنی.</span>
+                </p>
+              </div>
+            )}
+          </div>
 
-        <div className="text-center mb-6">
-          <h2 className="text-[22px] font-extrabold text-on-surface mb-1">{celebrate}</h2>
-          <p className="text-[14px] text-on-surface-variant">
-            {fmt(durationMin)} مطالعه{inOnboarding ? ` — روز ${onboardingDay.toLocaleString("fa-IR")}` : ""}
-          </p>
-          {dayCompleted && inOnboarding && (
-            <div className="mt-3 bg-tertiary-fixed/40 rounded-xl p-2.5">
-              <p className="text-[13px] font-semibold text-on-surface leading-relaxed">
-                ماموریت امروزت تموم شد! 🎉 فردا ماموریت جدیدت شروع می‌شه —
-                <span className="text-tertiary font-bold"> ولی می‌تونی همین امروز هم ادامه بدی و جلوتر بزنی.</span>
-              </p>
+          {/* پرسش هدف فردا */}
+          <div className="mb-5">
+            <p className="text-[16px] font-bold text-on-surface text-center mb-3">فردا ساعت چند شروع می‌کنی؟</p>
+            <div className="grid grid-cols-4 gap-2">
+              {TIME_OPTIONS.map((t) => (
+                <button
+                  key={t.value}
+                  type="button"
+                  onClick={() => { setSelectedTime(t.value); setCustomTime(""); }}
+                  className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${
+                    effectiveTime === t.value
+                      ? "bg-primary text-on-primary border-primary shadow-md"
+                      : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+            {/* ورودی ساعت دلخواه */}
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[12px] text-on-surface-variant">یا ساعت دلخواه:</span>
+              <input
+                type="time"
+                value={customTime}
+                onChange={(e) => { setCustomTime(e.target.value); setSelectedTime(null); }}
+                className="border border-outline-variant rounded-lg px-2 py-1 text-[13px] text-on-surface bg-surface-container-lowest"
+                dir="ltr"
+              />
+            </div>
+          </div>
+
+          {/* هدف فردا = امروز + نیم ساعت */}
+          {inOnboarding && tomorrowGoalMinutes > 0 && (
+            <div className="mb-5 bg-primary-fixed rounded-xl p-3 flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>trending_up</span>
+              <div className="text-right">
+                <p className="text-[13px] font-semibold text-primary">هدف فردا</p>
+                <p className="text-[14px] font-bold text-on-surface">{fmt(tomorrowGoalMinutes)} (نیم ساعت بیشتر از امروز)</p>
+              </div>
+            </div>
+          )}
+
+          {/* جایزه ویدیویی */}
+          {rewardVideo ? (
+            <div className="flex flex-col gap-2">
+              <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-1">
+                <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
+                <div className="text-right">
+                  <p className="text-[13px] font-semibold text-tertiary">جایزه‌ات باز شد: ویدیوی آموزشی</p>
+                  <p className="text-[14px] font-bold text-on-surface leading-tight">{rewardVideo.title}</p>
+                </div>
+              </div>
+              <button
+                onClick={handleWatchReward}
+                disabled={saving}
+                className="gamified-btn w-full bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-60"
+              >
+                {saving ? (
+                  <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
+                    تماشای ویدیوی پاداش
+                  </>
+                )}
+              </button>
+              <button onClick={onClose} className="w-full py-2 text-[13px] font-semibold text-outline hover:text-primary">
+                بعداً تماشا می‌کنم
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <button
+                onClick={onClose}
+                className="flex-1 py-3 rounded-xl border border-outline-variant text-on-surface-variant text-[14px] font-semibold hover:bg-surface-container transition-colors"
+              >
+                بعداً
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="flex-grow gamified-btn bg-primary text-on-primary font-bold text-[15px] py-3 px-6 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-60"
+              >
+                {saving ? (
+                  <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>alarm</span>
+                    ثبت هدف
+                  </>
+                )}
+              </button>
             </div>
           )}
         </div>
+      </div>
+    );
+  }
 
-        {/* پرسش هدف فردا */}
-        <div className="mb-5">
-          <p className="text-[16px] font-bold text-on-surface text-center mb-3">فردا ساعت چند شروع می‌کنی؟</p>
-          <div className="grid grid-cols-4 gap-2">
-            {TIME_OPTIONS.map((t) => (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => { setSelectedTime(t.value); setCustomTime(""); }}
-                className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${
-                  effectiveTime === t.value
-                    ? "bg-primary text-on-primary border-primary shadow-md"
-                    : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-          {/* ورودی ساعت دلخواه */}
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-[12px] text-on-surface-variant">یا ساعت دلخواه:</span>
-            <input
-              type="time"
-              value={customTime}
-              onChange={(e) => { setCustomTime(e.target.value); setSelectedTime(null); }}
-              className="border border-outline-variant rounded-lg px-2 py-1 text-[13px] text-on-surface bg-surface-container-lowest"
-              dir="ltr"
-            />
-          </div>
+  /* ---------- حالت د: بدون ماموریت فعال / مطالعه آزاد ---------- */
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto">
+      <div className="glass-card w-full max-w-[500px] rounded-2xl p-6 pb-8">
+        {rewardBadges}
+        {rewardLesson}
+
+        <div className="text-center mb-6">
+          <h2 className="text-[20px] font-extrabold text-on-surface mb-1">
+            {durationMin >= 30 ? "آفرین! جلسه خوبی داشتی 🎉" : "شروع کردی، ادامه بده!"}
+          </h2>
+          <p className="text-[14px] text-on-surface-variant">
+            {fmt(durationMin)} مطالعه
+          </p>
         </div>
 
-        {/* هدف فردا = امروز + نیم ساعت */}
-        {inOnboarding && tomorrowGoalMinutes > 0 && (
-          <div className="mb-5 bg-primary-fixed rounded-xl p-3 flex items-center gap-3">
-            <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>trending_up</span>
-            <div className="text-right">
-              <p className="text-[13px] font-semibold text-primary">هدف فردا</p>
-              <p className="text-[14px] font-bold text-on-surface">{fmt(tomorrowGoalMinutes)} (نیم ساعت بیشتر از امروز)</p>
-            </div>
-          </div>
-        )}
-
-        {/* جایزه ویدیویی */}
-        {rewardVideo ? (
-          <div className="flex flex-col gap-2">
-            <div className="bg-tertiary-fixed/30 rounded-xl p-3 flex items-center gap-3 mb-1">
-              <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>card_giftcard</span>
-              <div className="text-right">
-                <p className="text-[13px] font-semibold text-tertiary">جایزه‌ات باز شد: ویدیوی آموزشی</p>
-                <p className="text-[14px] font-bold text-on-surface leading-tight">{rewardVideo.title}</p>
-              </div>
-            </div>
-            <button
-              onClick={handleWatchReward}
-              disabled={saving}
-              className="gamified-btn w-full bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-60"
-            >
-              {saving ? (
-                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
-                  تماشای ویدیوی پاداش
-                </>
-              )}
-            </button>
-            <button onClick={onClose} className="w-full py-2 text-[13px] font-semibold text-outline hover:text-primary">
-              بعداً تماشا می‌کنم
-            </button>
-          </div>
-        ) : (
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 py-3 rounded-xl border border-outline-variant text-on-surface-variant text-[14px] font-semibold hover:bg-surface-container transition-colors"
-            >
-              بعداً
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="flex-grow gamified-btn bg-primary text-on-primary font-bold text-[15px] py-3 px-6 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20 disabled:opacity-60"
-            >
-              {saving ? (
-                <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-              ) : (
-                <>
-                  <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>alarm</span>
-                  ثبت هدف
-                </>
-              )}
-            </button>
-          </div>
-        )}
+        <button
+          onClick={onClose}
+          className="gamified-btn w-full bg-primary text-on-primary font-bold text-[16px] py-3.5 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
+        >
+          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+          ثبت و ادامه
+        </button>
       </div>
     </div>
   );

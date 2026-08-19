@@ -1,8 +1,8 @@
 /**
- * سرویس ربات تلگرام (Magic Link) — فاز ۲۵.
+ * سرویس ربات تلگرام برای اتصال حساب پیام‌رسان به حساب موبایلی G-camp.
  *
  * سرویس Node.js مجزا از اپ اصلی. با long-polling کار می‌کند (بدون نیاز به webhook عمومی
- * برای شروع). هنگام /start یک Magic Link از اپ اصلی می‌گیرد و برای کاربر می‌فرستد.
+ * برای شروع). توکن /start را به اپ اصلی می‌فرستد تا همان User موجود لینک شود.
  *
  * اجرا: `npm install && node index.js` (متغیرهای bot/.env را تنظیم کنید).
  *
@@ -22,20 +22,18 @@ if (!TELEGRAM_BOT_TOKEN || !BOT_API_SECRET) {
 
 const API = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
-async function getMagicLink(user) {
-  const res = await fetch(`${APP_URL}/api/bot/magic-link`, {
+async function linkAccount(user, token) {
+  const res = await fetch(`${APP_URL}/api/bot/link`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${BOT_API_SECRET}` },
     body: JSON.stringify({
       messenger: "telegram",
       messengerUserId: String(user.id),
-      firstName: user.first_name,
-      lastName: user.last_name,
+      token,
     }),
   });
-  if (!res.ok) throw new Error(`magic-link failed: ${res.status}`);
-  const data = await res.json();
-  return data.url;
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.result ?? `link failed: ${res.status}`);
 }
 
 async function sendMessage(chatId, text, replyMarkup) {
@@ -51,16 +49,17 @@ async function handleUpdate(update) {
   if (!msg || !msg.text) return;
 
   if (msg.text.startsWith("/start")) {
+    const token = msg.text.trim().split(/\s+/)[1];
+    if (!token) {
+      await sendMessage(msg.chat.id, "برای اتصال امن، اول وارد اپ G-camp شو و روی «اتصال به ربات» بزن.");
+      return;
+    }
     try {
-      const url = await getMagicLink(msg.from);
-      await sendMessage(
-        msg.chat.id,
-        "سلام عزیزم😍\nبه اَپ G-cmap خوش‌اومدی💛\n\nاینجا با بقیه درس میخونی و رقابت میکنی.\nبرای ورود، روی دکمه زیر بزن:",
-        { inline_keyboard: [[{ text: "🚀 ورود به اپ", url }]] }
-      );
+      await linkAccount(msg.from, token);
+      await sendMessage(msg.chat.id, "✅ حساب با موفقیت به G-camp متصل شد. از این به بعد یادآوری‌ها و خبرهای مهم را همین‌جا می‌فرستیم.");
     } catch (e) {
       console.error(e);
-      await sendMessage(msg.chat.id, "خطا در ساخت لینک ورود. کمی بعد دوباره /start بزن.");
+      await sendMessage(msg.chat.id, "این لینک اتصال نامعتبر، منقضی یا قبلاً استفاده شده است. از داخل اپ یک لینک تازه بگیر.");
     }
   }
 }
@@ -81,5 +80,5 @@ async function poll() {
   poll();
 }
 
-console.log("ربات تلگرام در حال اجراست (long-polling)...");
+console.log("ربات اتصال تلگرام در حال اجراست (long-polling)...");
 poll();

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { redis } from "@/lib/redis";
 import { getSession } from "@/lib/auth";
 import { normalizePhone, normalizeDigits } from "@/lib/phone";
+import { consumeOtp } from "@/lib/otp";
 
 /**
  * اتصال و تأیید شماره موبایل به حسابِ کاربرِ واردشده (برای lead capture بعد از روز اول).
@@ -20,19 +20,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "شماره موبایل نامعتبر است" }, { status: 400 });
   }
   const normalizedCode = normalizeDigits(String(code)).trim();
-  const storedOtp = await redis.get(`otp:${normalized}`);
-  if (!storedOtp || storedOtp !== normalizedCode) {
-    return NextResponse.json({ error: "کد تأیید اشتباه یا منقضی شده است" }, { status: 401 });
+  if (!/^\d{6}$/.test(normalizedCode)) {
+    return NextResponse.json({ error: "کد تأیید نامعتبر است" }, { status: 400 });
   }
-
   // شماره نباید متعلق به حساب دیگری باشد
   const owner = await prisma.user.findUnique({ where: { phone: normalized }, select: { id: true } });
   if (owner && owner.id !== session.userId) {
     return NextResponse.json({ error: "این شماره قبلاً با حساب دیگری ثبت شده است" }, { status: 409 });
   }
 
-  await redis.del(`otp:${normalized}`);
-  await prisma.otpToken.deleteMany({ where: { phone: normalized } });
+  const otpResult = await consumeOtp(normalized, normalizedCode);
+  if (otpResult !== "valid") {
+    return NextResponse.json({ error: "کد تأیید اشتباه یا منقضی شده است" }, { status: 401 });
+  }
 
   const cur = await prisma.user.findUnique({
     where: { id: session.userId },

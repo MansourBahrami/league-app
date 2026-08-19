@@ -1,7 +1,7 @@
 # راهنمای استقرار (Production Deployment)
 
 > وضعیت زنده، معماری، و کارهای انجام‌شده برای استقرار اپ روی سرور.
-> **آخرین به‌روزرسانی:** تیر ۱۴۰۵ — اتصال ربات بله، HTTPS واقعی، پیامک OTP کاوه‌نگار و cron موتور قانون اعلان.
+> **آخرین به‌روزرسانی:** مرداد ۱۴۰۵ — ورود فقط با OTP موبایل، اتصال ربات بله برای اعلان، محافظت Origin شبکهٔ محلی، HTTPS واقعی، پیامک کاوه‌نگار و cron موتور قانون اعلان.
 
 ---
 
@@ -12,8 +12,8 @@
 | آدرس عمومی | ✅ | `https://app.ayandetalayee.ir` (گواهی معتبر Let's Encrypt) |
 | HTTPS | ✅ | TLS در لبهٔ CDN پارس‌پک (داخل ایران) ترمینیت می‌شود |
 | ورود با پیامک (OTP) | ✅ | کاوه‌نگار، خط فرستنده `9982005239` |
-| ورود با ربات بله | ✅ | `@gcamp_bot` — webhook روی آدرس HTTPS |
-| ورود با تلگرام | 🟡 | کد آماده؛ ارسال از سرور ایران به api.telegram.org بلاک است |
+| اتصال ربات بله | ✅ | `@gcamp_bot` — webhook روی آدرس HTTPS برای اعلان‌های حساب موبایلی |
+| اتصال ربات تلگرام | 🟡 | کد آماده؛ ارسال از سرور ایران به api.telegram.org بلاک است |
 | دیتابیس + کش | ✅ | PostgreSQL 17 + Redis 7 در Docker |
 
 > دامنهٔ نهایی بعداً به `Gcamp.ir` تغییر می‌کند؛ `app.ayandetalayee.ir` فعلاً برای تست/تولید فعال است.
@@ -27,7 +27,7 @@
 - **اجرا:** فایل `docker-compose.yml` داخل repo سه سرویس اصلی را تعریف می‌کند:
   - `app` — ایمیج `mansourbahrami/league-app:latest` (Next.js، expose پورت 3000)
   - `postgres` — `postgres:17-alpine` (دیتابیس `league_db`)
-  - `redis` — `redis:7-alpine` (OTP + توکن magic، با پسورد)
+  - `redis` — `redis:7-alpine` (OTP هش‌شده + توکن اتصال ربات، با پسورد)
 - **Reverse proxy production:** Caddy کنار این سه سرویس روی سرور پیکربندی شده است، اما تعریف آن در compose فعلی repo وجود ندارد. بنابراین compose سرور/پیکربندی Caddy یک لایهٔ استقرار جدا از فایل tracked پروژه است.
 - **رجیستری:** Docker Hub (با mirror آروان روی سرور به‌خاطر تحریم).
 
@@ -78,20 +78,25 @@ app.ayandetalayee.ir {
 
 بله از Bot API سازگار با تلگرام استفاده می‌کند (`https://tapi.bale.ai/bot<TOKEN>/`). برخلاف سرویس مجزای `bot/` (که long-polling تلگرام است)، **بله از طریق webhook مستقیم در خود اپ** وصل شده:
 
-- **Endpoint:** `POST /api/bot/bale?secret=<BOT_WEBHOOK_SECRET>` → `handleBotUpdate("bale", …)`
-- **امنیت:** secret اشتباه → ۴۰۳.
-- **جریان ورود:** کاربر `/start` می‌زند → ربات کاربر را پیدا/می‌سازد و یک Magic Link (Redis، ۱۵ دقیقه) با دکمهٔ «ورود به اپ» می‌فرستد → کلیک → `/api/auth/magic` کوکی JWT ست و به `/dashboard` ریدایرکت می‌کند.
+- **Endpoint:** `POST /api/bot/bale` → `handleBotUpdate("bale", …)`
+- **امنیت:** مقدار `secret_token` ثبت‌شده از header استاندارد Bot API بررسی می‌شود و وارد URL/log نمی‌شود.
+- **جریان اتصال:** کاربر ابتدا با موبایل و OTP وارد اپ می‌شود؛ بعد از اولین جلسه، deep link یکبارمصرف ربات را باز می‌کند و `/start <token>` شناسه بله را به همان User متصل می‌کند. ربات هیچ حساب یا سشن ورود نمی‌سازد.
 
 ### ثبت webhook (یک‌بار، از روی سرور که به بله دسترسی دارد)
 ```bash
 TOKEN='<BALE_BOT_TOKEN>'
-URL='https://app.ayandetalayee.ir/api/bot/bale?secret=<BOT_WEBHOOK_SECRET>'
-curl -s -G --data-urlencode "url=$URL" "https://tapi.bale.ai/bot$TOKEN/setWebhook"
+URL='https://app.ayandetalayee.ir/api/bot/bale'
+SECRET='<BOT_WEBHOOK_SECRET>'
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d "{\"url\":\"$URL\",\"secret_token\":\"$SECRET\"}" \
+  "https://tapi.bale.ai/bot$TOKEN/setWebhook"
 # بررسی:
 curl -s "https://tapi.bale.ai/bot$TOKEN/getWebhookInfo"
 ```
 
-> نکتهٔ مهم: ریدایرکت پس از مصرف magic از `APP_PUBLIC_URL` ساخته می‌شود نه `req.url`. اگر از `req.url` استفاده شود، پشت CDN/Caddy میزبان داخلی `localhost:3000` دیده می‌شود و کاربر به آدرس اشتباه می‌رود. (اصلاح در `app/api/auth/magic/route.ts`.)
+توکن اتصال ۱۵ دقیقه اعتبار دارد، برای تلگرام و بله جدا صادر می‌شود و با اولین مصرف از Redis حذف می‌شود.
+
+> پس از انتشار این نسخه webhook قبلی باید یک‌بار دوباره ثبت شود، چون secret از query string به header منتقل شده است.
 
 ---
 
@@ -119,6 +124,8 @@ BALE_BOT_TOKEN=<...>
 BALE_BOT_USERNAME=gcamp_bot
 BOT_WEBHOOK_SECRET=<...>
 TELEGRAM_BOT_TOKEN=<...>
+TELEGRAM_BOT_USERNAME=<bot_username>
+OTP_HASH_SECRET=<حداقل ۳۲ بایت تصادفی؛ در نبود آن JWT_SECRET استفاده می‌شود>
 # اختیاری/وابسته به قابلیت: VAPID_* و BOT_API_SECRET
 ```
 
@@ -164,11 +171,16 @@ docker compose up -d --force-recreate app
 
 | نشانه | علت محتمل | راه‌حل |
 |-------|-----------|--------|
-| لینک بله به `localhost:3000` می‌رود | ریدایرکت از `req.url` ساخته شده | باید از `APP_PUBLIC_URL` باشد (در `magic/route.ts` رفع شده) |
+| لینک اتصال ربات ساخته نمی‌شود | `BALE_BOT_USERNAME` یا `TELEGRAM_BOT_USERNAME` خالی است | نام کاربری ربات را بدون `@` در env تنظیم کنید |
 | کد بعد از push دیده نمی‌شود | کش کهنهٔ mirror آروان | pull با دیجست دقیق (بخش ۷) |
 | خطای ۵۰۲ از CDN | مبدأ روی پورت/پروتکل موردانتظار پاسخ نمی‌دهد | اطمینان از بالا بودن Caddy روی 80 و 443 |
 | پیامک نمی‌رسد | `KAVENEGAR_*` ست نشده یا اعتبار تمام | بررسی env داخل کانتینر + پنل کاوه‌نگار |
 | OTP «اشتباه یا منقضی» | کد در Redis منقضی شده (۵ دقیقه) | دوباره درخواست کد |
+| `Cross-site request blocked` روی موبایل شبکهٔ محلی | صفحه و API با host متفاوت باز شده‌اند یا نسخهٔ قدیمی Proxy در حال اجراست | اپ را کامل با `http://<LAN-IP>:3000` باز کنید و dev server را پس از تغییرات restart کنید؛ wildcard/CORS لازم نیست |
+
+### تست روی موبایل در شبکهٔ محلی
+
+سرور dev روی همهٔ interfaceها گوش می‌دهد. IP شبکهٔ سیستم را پیدا کنید و همان نشانی را در مرورگر موبایل باز کنید؛ برای نمونه `http://192.168.1.20:3000`. fetchهای اپ نسبی‌اند و باید روی همین host باقی بمانند. Proxy برای درخواست‌های تغییردهنده، Origin را با Host واقعی ورودی (شامل protocol و port) تطبیق می‌دهد و Originهای متفاوت را همچنان با 403 رد می‌کند.
 
 ### دستورهای پرکاربرد
 ```bash

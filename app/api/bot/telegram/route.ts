@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleBotUpdate } from "@/lib/bot-handler";
+import { isBotWebhookAuthorized } from "@/lib/bot-webhook";
 
 export const dynamic = "force-dynamic";
 
-/** Webhook تلگرام. URL: /api/bot/telegram?secret=<BOT_WEBHOOK_SECRET> */
+/** Webhook تلگرام؛ secret_token ثبت‌شده را از header رسمی بررسی می‌کند. */
 export async function POST(req: NextRequest) {
-  const secret = req.nextUrl.searchParams.get("secret");
-  if (secret !== process.env.BOT_WEBHOOK_SECRET) {
+  if (!isBotWebhookAuthorized(req)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

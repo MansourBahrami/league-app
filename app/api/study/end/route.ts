@@ -5,6 +5,7 @@ import { calcRewards } from "@/lib/gamification";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
 import { processUserMissions, recalcUserLevel } from "@/lib/mission";
 import { getOnboardingState, tryCompleteOnboardingDay } from "@/lib/onboarding";
+import { getWeeklyMissionState } from "@/lib/weekly-mission";
 import { applyStreak } from "@/lib/streak";
 import { fireEvent } from "@/lib/notification-engine";
 import { tehranDayDiff } from "@/lib/date";
@@ -91,12 +92,12 @@ export async function POST(req: NextRequest) {
     select: { name: true, avatarUrl: true },
   });
   const log = await prisma.activityLog.create({
-    data: { userId: session.userId, type: "session_complete", metadata: { durationMin, xp, coins } },
+    data: { userId: session.userId, type: "session_complete", metadata: { durationMin, xp: totalXp, coins: totalCoins } },
   });
   broadcastActivity({ ...log, user: activityUser });
 
   // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به پایان جلسه مطالعه
-  await fireEvent("session_complete", session.userId, { durationMin, xp, coins, streak: streakResult.streak });
+  await fireEvent("session_complete", session.userId, { durationMin, xp: totalXp, coins: totalCoins, streak: streakResult.streak });
 
   // تلاش برای تکمیل روز آنبوردینگ (دقیقه‌ها + ویدیو). ویدیوی روز را در صورت پر شدن دقیقه‌ها باز می‌کند.
   let dayCompleted = false;
@@ -113,6 +114,47 @@ export async function POST(req: NextRequest) {
   const stateAfter = await getOnboardingState(session.userId);
   const newOnboardingDay = stateAfter?.currentDay ? stateAfter.currentDay - 1 : 0;
 
+  let dailyGoalMinutes = 0;
+  let stepMinutes = 0;
+  let remainingMinutes = 0;
+  let tomorrowGoalMinutes = 0;
+
+  if (inOnboarding) {
+    dailyGoalMinutes = stateAfter?.goalMinutes ?? 0;
+    stepMinutes = stateAfter?.stepMinutes ?? 0;
+    remainingMinutes = Math.max(0, dailyGoalMinutes - stepMinutes);
+    tomorrowGoalMinutes = stateAfter?.inOnboarding ? stateAfter.goalMinutes : 0;
+  } else {
+    // بررسی ماموریت روزانه فعال یا تکمیل‌شده امروز
+    const activeDaily = await prisma.userMission.findFirst({
+      where: { userId: session.userId, status: { in: ["active", "completed"] }, mission: { kind: "daily" } },
+      include: { mission: true },
+      orderBy: { activatesAt: "desc" },
+    });
+
+    if (activeDaily) {
+      const aggregate = await prisma.studySession.aggregate({
+        where: { userId: session.userId, startTime: { gte: activeDaily.activatesAt, lt: activeDaily.expiresAt } },
+        _sum: { durationMin: true },
+      });
+      dailyGoalMinutes = activeDaily.mission.targetHours * 60;
+      stepMinutes = aggregate._sum.durationMin ?? 0;
+      remainingMinutes = Math.max(0, dailyGoalMinutes - stepMinutes);
+      dayCompleted = stepMinutes >= dailyGoalMinutes || activeDaily.status === "completed";
+      tomorrowGoalMinutes = 0;
+    } else {
+      // بررسی ماموریت هفتگی
+      const weekly = await getWeeklyMissionState(session.userId);
+      if (weekly && !weekly.pending) {
+        dailyGoalMinutes = weekly.dailyGoalMin;
+        stepMinutes = weekly.dailyStudiedMin;
+        remainingMinutes = Math.max(0, dailyGoalMinutes - stepMinutes);
+        dayCompleted = (stepMinutes >= dailyGoalMinutes && dailyGoalMinutes > 0) || weekly.isRestDay;
+        tomorrowGoalMinutes = weekly.dailyGoalMin;
+      }
+    }
+  }
+
   // ویدیوی پاداش روز: باز شده ولی هنوز دیده نشده (مرتبط با روزی که الان کامل شد یا روز جاری)
   const rewardVideo =
     stateAfter?.video && stateAfter.videoUnlocked && !stateAfter.videoWatched
@@ -122,22 +164,21 @@ export async function POST(req: NextRequest) {
   // ویدیو دیگر شرط تکمیل روز نیست؛ صرفاً جایزه‌ی اختیاری است.
   const needsVideo = false;
 
-  const tomorrowGoalMinutes = stateAfter?.inOnboarding ? stateAfter.goalMinutes : 0;
-
   // لید پس از تکمیل ماموریت روز اول و قبل از ویدیوی جایزه (طبق PRD)
   const needsLeadCapture = dayCompleted && newOnboardingDay === 1 && !userBefore.isLeadComplete;
 
   return NextResponse.json({
-    xpEarned: xp,
-    coinsEarned: coins,
+    // نتیجه‌ی جلسه باید کل پاداش همان جلسه را نشان دهد؛ بخشی از آن ممکن است
+    // پیش‌تر با tick پرداخت شده باشد و `xp`/`coins` فقط مانده‌ی پرداخت در end است.
+    xpEarned: totalXp,
+    coinsEarned: totalCoins,
     durationMin,
     dayCompleted,
     onboardingDay: newOnboardingDay,
     inOnboarding,
-    dailyGoalMinutes: stateAfter?.goalMinutes ?? 0,
-    stepMinutes: stateAfter?.stepMinutes ?? 0,
-    // باقیمانده‌ی واقعی بر اساس دقیقه‌های همین روز (بعد از احتساب این جلسه/ریست روز جدید)
-    remainingMinutes: Math.max(0, (stateAfter?.goalMinutes ?? 0) - (stateAfter?.stepMinutes ?? 0)),
+    dailyGoalMinutes,
+    stepMinutes,
+    remainingMinutes,
     needsVideo,
     needsLeadCapture,
     tomorrowGoalMinutes,

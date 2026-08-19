@@ -16,7 +16,6 @@ interface Entry {
 
 interface Props {
   entries: Entry[];
-  currentUserId: string;
 }
 
 export default function LeaderboardList({ entries }: Props) {
@@ -95,14 +94,12 @@ export default function LeaderboardList({ entries }: Props) {
       box.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [entries.length, rolling]);
+  }, [entries, rolling]);
+
+  if (entries.length === 0) return null;
 
   return (
-    <section className="flex flex-col gap-2">
-      <div className="flex justify-between items-center px-2 mb-2">
-        <span className="text-[14px] text-on-surface-variant">موقعیت سایر کاربران</span>
-      </div>
-
+    <section>
       {/* باکس تا سقفِ ارتفاع رشد می‌کند؛ از آن بیشتر شد، اسکرولِ غلتکی فعال می‌شود.
           ماسکِ لبه‌ها فقط در حالت غلتکی اعمال می‌شود تا لیست کوتاه محو نشود. */}
       <div

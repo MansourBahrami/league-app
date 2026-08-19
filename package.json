@@ -11,7 +11,9 @@
     "db:studio": "npx prisma studio",
     "test:gamification": "npx tsx scripts/test-gamification.ts",
     "test:onboarding": "npx tsx scripts/test-onboarding.ts",
-    "test:levels": "npx tsx scripts/test-levels.ts"
+    "test:levels": "npx tsx scripts/test-levels.ts",
+    "test:mission-rooms": "npx tsx scripts/test-mission-rooms.ts",
+    "test:auth": "npx tsx scripts/test-auth.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

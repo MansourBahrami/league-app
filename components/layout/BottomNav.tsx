@@ -4,9 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/dashboard", icon: "center_focus_strong", label: "تمرکز", tour: "nav-dashboard" },
-  { href: "/feed", icon: "bolt", label: "بورد زنده", tour: "nav-feed" },
-  { href: "/leaderboard", icon: "leaderboard", label: "جدول‌برتر", tour: "nav-leaderboard" },
+  { href: "/mission-rooms", icon: "meeting_room", label: "اتاق مأموریت", tour: "nav-rooms" },
+  { href: "/videos", icon: "school", label: "آموزش‌ها", tour: "nav-videos" },
+  { href: "/dashboard", icon: "center_focus_strong", label: "مطالعه", tour: "nav-dashboard" },
+  { href: "/leaderboard", icon: "leaderboard", label: "رده‌بندی", tour: "nav-leaderboard" },
   { href: "/profile", icon: "person", label: "پروفایل", tour: "nav-profile" },
 ];
 
@@ -19,21 +20,26 @@ export default function BottomNav() {
       style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 0.5rem)" }}
     >
       {NAV_ITEMS.map((item) => {
-        const isActive = pathname === item.href;
+        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+
         return (
           <Link
             key={item.href}
             href={item.href}
             data-tour={item.tour}
-            className={`flex flex-col items-center justify-center gap-0.5 px-3.5 py-2 rounded-[20px] transition-all duration-200 ${
+            aria-current={isActive ? "page" : undefined}
+            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-2 transition-all duration-200 ${
               isActive
                 ? "bg-primary text-on-primary shadow-[0_3px_10px_color-mix(in_oklab,var(--color-primary)_40%,transparent)]"
                 : "text-on-surface-variant hover:text-primary active:scale-95"
             }`}
           >
             <span
-              className="material-symbols-outlined text-[22px]"
-              style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}
+              className="material-symbols-outlined"
+              style={{
+                fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
+                fontSize: "22px",
+              }}
             >
               {item.icon}
             </span>

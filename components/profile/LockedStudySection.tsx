@@ -7,16 +7,15 @@ interface Props {
   targetUserId: string;
   cost: number;
   userCoins: number;
+  durationHours: number;
 }
 
-// ارتفاع نسبی میله‌های نمونه (فقط برای نمای مات پشت قفل)
-const MOCK_BARS = [40, 70, 30, 90, 55, 80, 45];
-
-export default function LockedStudySection({ targetUserId, cost, userCoins }: Props) {
+export default function LockedStudySection({ targetUserId, cost, userCoins, durationHours }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const canAfford = userCoins >= cost;
+  const missingCoins = Math.max(0, cost - userCoins);
 
   async function handleUnlock() {
     if (!canAfford || loading) return;
@@ -38,76 +37,59 @@ export default function LockedStudySection({ targetUserId, cost, userCoins }: Pr
   }
 
   return (
-    <section className="relative rounded-xl overflow-hidden">
-      {/* نمای مات (teaser) — داده‌ی واقعی نیست */}
-      <div className="blur-[6px] select-none pointer-events-none" aria-hidden>
-        <div className="flex flex-col gap-2">
-          {/* کارت‌های زنجیره + مجموع ۷ روز */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-tertiary-container/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-tertiary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-              </div>
-              <h3 className="text-[14px] font-semibold text-on-surface-variant">زنجیره مطالعه</h3>
-              <p className="text-[18px] font-bold text-on-surface">۱۲ روز</p>
-            </div>
-            <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
-              <div className="w-12 h-12 rounded-full bg-primary-fixed/40 flex items-center justify-center">
-                <span className="material-symbols-outlined text-primary text-3xl">schedule</span>
-              </div>
-              <h3 className="text-[14px] font-semibold text-on-surface-variant">مجموع ۷ روز</h3>
-              <p className="text-[18px] font-bold text-on-surface">۱۸ ساعت</p>
-            </div>
-          </div>
+    <section className="glass-card overflow-hidden rounded-xl" aria-labelledby="locked-study-title">
+      <div className="flex flex-col items-center bg-gradient-to-b from-primary-fixed/55 to-transparent px-5 pb-5 pt-6 text-center">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-surface-container-lowest text-primary shadow-sm">
+          <span className="material-symbols-outlined text-[26px]" aria-hidden="true">lock</span>
+        </div>
+        <h2 id="locked-study-title" className="mt-3 text-[16px] font-bold text-on-surface">گزارش مطالعه قفل است</h2>
+        <p className="mt-1 max-w-[320px] text-[12px] leading-5 text-on-surface-variant">
+          با بازکردن گزارش، عملکرد واقعی این کاربر در ۷ روز اخیر را می‌بینی.
+        </p>
 
-          {/* نمودار نمونه */}
-          <div className="glass-card rounded-xl p-4">
-            <div className="flex items-end justify-between gap-1.5 h-[104px]" dir="rtl">
-              {MOCK_BARS.map((h, i) => (
-                <div key={i} className="flex-1 rounded-t-md bg-gradient-to-t from-primary/70 to-primary/30" style={{ height: `${h}%` }} />
-              ))}
-            </div>
-          </div>
-
-          {/* لاگ نمونه */}
-          <div className="glass-card rounded-xl p-4 flex flex-col gap-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="flex justify-between items-center bg-white/60 rounded-lg p-3">
-                <span className="text-[13px] text-outline">چند ساعت پیش</span>
-                <span className="text-[14px] font-bold text-primary">۲ ساعت و ۱۵ دقیقه</span>
-              </div>
-            ))}
-          </div>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-1.5" aria-label="محتوای گزارش">
+          {["نمودار ۷ روزه", "زنجیره مطالعه", "جزئیات سشن‌ها"].map((item) => (
+            <span key={item} className="rounded-full bg-surface-container-lowest/80 px-2.5 py-1 text-[10px] font-semibold text-on-surface-variant">
+              {item}
+            </span>
+          ))}
         </div>
       </div>
 
-      {/* لایه‌ی قفل روی نما */}
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/40 backdrop-blur-[1px] text-center px-6">
-        <div className="w-14 h-14 rounded-full bg-primary-fixed flex items-center justify-center shadow-md">
-          <span className="material-symbols-outlined text-primary text-[28px]">lock</span>
-        </div>
-        <h3 className="text-[16px] font-bold text-on-surface">بخش مطالعه قفل است</h3>
-        <p className="text-[13px] text-on-surface-variant max-w-[280px]">
-          زنجیره، مجموع و نمودار ۷ روز اخیر و لاگ مطالعه‌ی این کاربر را با پرداخت{" "}
-          {cost.toLocaleString("fa-IR")} سکه تا ۱ ساعت ببین.
-        </p>
-        {error && <p className="text-error text-[13px]">{error}</p>}
+      <div className="border-t border-outline-variant/35 p-4">
+        <dl className="grid grid-cols-2 divide-x divide-x-reverse divide-outline-variant/45 rounded-xl bg-surface-container-low/70 py-2.5 text-center">
+          <div>
+            <dt className="text-[10px] text-on-surface-variant">هزینه</dt>
+            <dd className="mt-0.5 text-[13px] font-bold text-on-surface">{cost.toLocaleString("fa-IR")} سکه</dd>
+          </div>
+          <div>
+            <dt className="text-[10px] text-on-surface-variant">مدت دسترسی</dt>
+            <dd className="mt-0.5 text-[13px] font-bold text-on-surface">{durationHours.toLocaleString("fa-IR")} ساعت</dd>
+          </div>
+        </dl>
+
+        {error && <p className="mt-3 text-center text-[12px] text-error" role="alert">{error}</p>}
         <button
+          type="button"
           onClick={handleUnlock}
           disabled={!canAfford || loading}
-          className={`gamified-btn w-full max-w-[300px] py-3 rounded-xl text-[15px] font-bold flex items-center justify-center gap-2 ${
-            canAfford ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-outline-variant text-outline cursor-not-allowed"
+          className={`gamified-btn mt-3 flex w-full items-center justify-center gap-2 rounded-xl py-3 text-[14px] font-bold ${
+            canAfford ? "bg-primary text-on-primary shadow-lg shadow-primary/20" : "cursor-not-allowed bg-surface-container-high text-outline"
           }`}
         >
           {loading ? (
-            <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
+            <>
+              <span className="material-symbols-outlined animate-spin text-[18px]" aria-hidden="true">progress_activity</span>
+              در حال بازکردن...
+            </>
           ) : (
             <>
-              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>lock_open</span>
-              {canAfford ? `باز کن (${cost.toLocaleString("fa-IR")} سکه)` : "سکه کافی نیست"}
+              <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">lock_open</span>
+              {canAfford ? `بازکردن با ${cost.toLocaleString("fa-IR")} سکه` : `${missingCoins.toLocaleString("fa-IR")} سکه کم داری`}
             </>
           )}
         </button>
+        <p className="mt-2 text-center text-[10px] text-outline">موجودی تو: {userCoins.toLocaleString("fa-IR")} سکه</p>
       </div>
     </section>
   );

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "سرویس ربات تلگرام/بله (Magic Link) — مجزا از اپ اصلی Next.js",
+  "description": "سرویس اتصال کانال تلگرام/بله به حساب موبایلی G-camp",
   "scripts": {
     "start": "node index.js"
   },

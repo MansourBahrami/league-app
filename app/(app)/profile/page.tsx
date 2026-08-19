@@ -11,6 +11,8 @@ import NotificationToggle from "@/components/push/NotificationToggle";
 import StarBadge from "@/components/ui/StarBadge";
 import AvatarPicker from "@/components/profile/AvatarPicker";
 import LevelInfoButton from "@/components/profile/LevelInfoButton";
+import MessengerConnections from "@/components/profile/MessengerConnections";
+import StudyReportCard from "@/components/dashboard/StudyReportCard";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +23,7 @@ export default async function ProfilePage() {
   const [user, totalStudyAgg, userMedals, totalUsers] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
-      select: { name: true, avatarUrl: true, xp: true, coins: true, level: true, stars: true, phone: true, grade: true, field: true, role: true, streak: true, lastStudyDate: true },
+      select: { name: true, avatarUrl: true, xp: true, coins: true, level: true, stars: true, phone: true, grade: true, field: true, role: true, streak: true, lastStudyDate: true, telegramId: true, baleId: true },
     }),
     prisma.studySession.aggregate({
       where: { userId: session.userId },
@@ -61,11 +63,11 @@ export default async function ProfilePage() {
   return (
     <div className="flex flex-col gap-4 px-5 pb-6">
       {/* Profile Header */}
-      <section className="glass-card rounded-xl p-6 flex flex-col items-center relative overflow-hidden">
+      <section className="glass-card rounded-xl p-5 flex flex-col items-center relative overflow-hidden">
         <div className="absolute top-0 right-0 w-full h-24 bg-gradient-to-b from-tertiary-fixed to-transparent opacity-50 z-0" />
         <div className="relative z-10 flex flex-col items-center w-full">
           <AvatarPicker currentUrl={user.avatarUrl} name={user.name} />
-          <h2 className="text-[20px] font-bold text-on-surface mb-1">{user.name ?? "نام وارد نشده"}</h2>
+          <h1 className="text-[20px] font-bold text-on-surface mb-1">{user.name ?? "نام وارد نشده"}</h1>
           <p className="text-[14px] text-on-surface-variant mb-1">
             {[user.grade, user.field].filter(Boolean).join(" • ") || user.phone}
           </p>
@@ -76,15 +78,8 @@ export default async function ProfilePage() {
             <StarBadge stars={user.stars} total={3} size={16} />
             <LevelInfoButton levels={levelRows} currentLevel={user.level} currentStars={user.stars} />
           </div>
-          {streak > 0 && (
-            <div className="flex items-center gap-1 mb-4 text-tertiary">
-              <span className="material-symbols-outlined text-[16px] streak-flame" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-              <span className="text-[13px] font-bold">زنجیره {streak.toLocaleString("fa-IR")} روزه</span>
-            </div>
-          )}
-
           {/* Level progress bar */}
-          <div className="w-full flex flex-col gap-2 mt-3">
+          <div className="w-full flex flex-col gap-2 mt-4">
             <div className="flex justify-between items-center px-1">
               <span className="text-[13px] font-semibold text-primary">{user.xp.toLocaleString("fa-IR")} XP</span>
               {nextReq ? (
@@ -114,49 +109,71 @@ export default async function ProfilePage() {
         </div>
       </section>
 
-      {/* بازار ماموریت‌ها */}
-      <a href="/missions" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/10 transition-colors">
-        <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
-        <div className="text-right flex-1">
-          <p className="text-[15px] font-bold text-on-surface">بازار ماموریت‌ها</p>
-          <p className="text-[12px] text-on-surface-variant">ماموریت هفتگی انتخاب کن و جایزه بگیر</p>
-        </div>
-        <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
-      </a>
-
-      {/* آموزش‌ها (ویدیوهای آموزشی) — دسترسی دائمی بعد از پایان آنبوردینگ */}
-      <Link href="/videos" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-primary hover:bg-primary-fixed/40 transition-colors">
-        <span className="material-symbols-outlined text-primary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>school</span>
-        <div className="text-right flex-1">
-          <p className="text-[15px] font-bold text-on-surface">آموزش‌ها</p>
-          <p className="text-[12px] text-on-surface-variant">ویدیوهای آموزشی مطالعه و تکنیک‌ها</p>
-        </div>
-        <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
-      </Link>
-
-      {/* Notifications */}
-      <NotificationToggle />
-
-      {/* Edit / Logout */}
-      <ProfileActions user={{ name: user.name, grade: user.grade, field: user.field }} />
-
-      {/* Admin panel link (admins only) */}
-      {user.role === "admin" && (
-        <a href="/admin" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/30 transition-colors">
-          <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
-          <div className="text-right flex-1">
-            <p className="text-[15px] font-bold text-on-surface">پنل مدیریت</p>
-            <p className="text-[12px] text-on-surface-variant">مدیریت ویدیوها و محتوا</p>
-          </div>
-          <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
-        </a>
-      )}
-
-      {/* Stats */}
+      {/* خلاصه‌ی سریع پیش از جزئیات نمودار */}
       <StatsGrid totalHours={totalHours} streak={streak} rank={userRank + 1} totalUsers={totalUsers} />
 
-      {/* Medals */}
+      {/* روند مطالعه، مهم‌ترین داده‌ی عملکردی پروفایل */}
+      <StudyReportCard userId={session.userId} />
+
+      {/* دستاوردها پیش از میانبرها و تنظیمات */}
       <MedalsSection medals={userMedals.map((um) => ({ id: um.id, name: um.medal.name, targetHours: um.medal.targetHours, earnedAt: um.earnedAt }))} />
+
+      {/* میانبرهای مرتبط با مسیر مطالعه */}
+      <section className="glass-card rounded-xl p-3.5" aria-labelledby="profile-shortcuts-title">
+        <div className="mb-3 flex items-center gap-2 px-1">
+          <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">apps</span>
+          <h2 id="profile-shortcuts-title" className="text-[14px] font-bold text-on-surface">میانبرها</h2>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Link href="/mission-rooms" className="flex min-w-0 items-center gap-2 rounded-xl bg-tertiary-fixed/35 p-3 transition-colors hover:bg-tertiary-fixed/55">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container-lowest text-tertiary">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">meeting_room</span>
+            </span>
+            <div className="min-w-0 text-right">
+              <p className="truncate text-[13px] font-bold text-on-surface">اتاق مأموریت</p>
+              <p className="truncate text-[10px] text-on-surface-variant">هم‌هدف‌ها و پیشرفت</p>
+            </div>
+          </Link>
+          <Link href="/videos" className="flex min-w-0 items-center gap-2 rounded-xl bg-primary-fixed/45 p-3 transition-colors hover:bg-primary-fixed/70">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container-lowest text-primary">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">school</span>
+            </span>
+            <div className="min-w-0 text-right">
+              <p className="truncate text-[13px] font-bold text-on-surface">آموزش‌ها</p>
+              <p className="truncate text-[10px] text-on-surface-variant">ویدیو و تکنیک</p>
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* تنظیمات و اتصال‌های حساب در انتهای صفحه */}
+      <section className="flex flex-col gap-3" aria-labelledby="account-settings-title">
+        <div className="flex items-center gap-2 px-1">
+          <span className="material-symbols-outlined text-on-surface-variant text-[18px]" aria-hidden="true">settings</span>
+          <h2 id="account-settings-title" className="text-[14px] font-bold text-on-surface">تنظیمات حساب</h2>
+        </div>
+
+        <NotificationToggle />
+
+        <MessengerConnections
+          connected={{ telegram: !!user.telegramId, bale: !!user.baleId }}
+          available={{ telegram: !!process.env.TELEGRAM_BOT_USERNAME, bale: !!process.env.BALE_BOT_USERNAME }}
+        />
+
+        {/* Admin panel link (admins only) */}
+        {user.role === "admin" && (
+          <a href="/admin" className="glass-card rounded-xl p-4 flex items-center gap-3 border-r-4 border-r-tertiary-fixed-dim hover:bg-tertiary-fixed/30 transition-colors">
+            <span className="material-symbols-outlined text-tertiary text-[22px]" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
+            <div className="text-right flex-1">
+              <p className="text-[15px] font-bold text-on-surface">پنل مدیریت</p>
+              <p className="text-[12px] text-on-surface-variant">مدیریت ویدیوها و محتوا</p>
+            </div>
+            <span className="material-symbols-outlined text-outline" style={{ transform: "scaleX(-1)" }}>chevron_left</span>
+          </a>
+        )}
+
+        <ProfileActions user={{ name: user.name, grade: user.grade, field: user.field }} />
+      </section>
     </div>
   );
 }

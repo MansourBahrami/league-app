@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { redis } from "@/lib/redis";
 import { signToken, setSessionCookie } from "@/lib/auth";
 import { normalizePhone, normalizeDigits } from "@/lib/phone";
+import { consumeOtp } from "@/lib/otp";
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,14 +14,17 @@ export async function POST(req: NextRequest) {
     const normalized = normalizePhone(String(phone));
     // کد ممکن است با ارقام فارسی وارد شده باشد
     const normalizedCode = normalizeDigits(String(code)).trim();
-    const storedOtp = await redis.get(`otp:${normalized}`);
-
-    if (!storedOtp || storedOtp !== normalizedCode) {
-      return NextResponse.json({ error: "کد تأیید اشتباه یا منقضی شده است" }, { status: 401 });
+    if (!/^09[0-9]{9}$/.test(normalized) || !/^\d{6}$/.test(normalizedCode)) {
+      return NextResponse.json({ error: "شماره یا کد تأیید نامعتبر است" }, { status: 400 });
     }
 
-    await redis.del(`otp:${normalized}`);
-    await prisma.otpToken.deleteMany({ where: { phone: normalized } });
+    const otpResult = await consumeOtp(normalized, normalizedCode);
+    if (otpResult !== "valid") {
+      const error = otpResult === "locked"
+        ? "تعداد تلاش ناموفق زیاد بود؛ یک کد تازه بگیر"
+        : "کد تأیید اشتباه یا منقضی شده است";
+      return NextResponse.json({ error }, { status: 401 });
+    }
 
     const user = await prisma.user.upsert({
       where: { phone: normalized },
@@ -29,7 +32,7 @@ export async function POST(req: NextRequest) {
       create: { phone: normalized },
     });
 
-    const token = await signToken({ userId: user.id, phone: user.phone ?? "" });
+    const token = await signToken({ userId: user.id, sessionVersion: user.sessionVersion });
     const { name, value, options } = setSessionCookie(token);
     const response = NextResponse.json({
       message: "ورود موفق",

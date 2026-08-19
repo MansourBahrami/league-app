@@ -16,6 +16,7 @@ export interface WeeklyMissionState {
   /** ماموریت خریده شده ولی هنوز فعال نشده (از فردا شروع می‌شود) */
   pending: boolean;
   targetHours: number;
+  xpReward: number;
   weeklyGoalMin: number;
   weeklyStudiedMin: number;
   dayIndex: number; // ۱..۷ (روز فعال در بازه‌ی ماموریت)
@@ -44,6 +45,7 @@ export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissi
       hasActive: false,
       pending: true,
       targetHours: um.mission.targetHours,
+      xpReward: um.mission.xpReward,
       weeklyGoalMin,
       weeklyStudiedMin: 0,
       dayIndex: 0,
@@ -85,6 +87,7 @@ export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissi
     hasActive: true,
     pending: false,
     targetHours: um.mission.targetHours,
+    xpReward: um.mission.xpReward,
     weeklyGoalMin,
     weeklyStudiedMin,
     dayIndex,

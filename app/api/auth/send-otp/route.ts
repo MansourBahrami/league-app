@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { redis } from "@/lib/redis";
 import { sendOtpSms } from "@/lib/sms";
 import { normalizePhone } from "@/lib/phone";
-
-function generateOtp(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
+import { deleteOtp, generateOtp, rateLimitIdentity, storeOtp, takeRateLimit } from "@/lib/otp";
 
 function isValidIranPhone(phone: string): boolean {
   return /^09[0-9]{9}$/.test(phone);
@@ -14,7 +10,7 @@ function isValidIranPhone(phone: string): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const { phone } = await req.json();
+    const { phone } = await req.json().catch(() => ({}));
     // ارقام فارسی/عربی پشتیبانی می‌شوند: اول نرمال‌سازی، بعد اعتبارسنجی
     const normalized = normalizePhone(String(phone ?? ""));
     if (!normalized || !isValidIranPhone(normalized)) {
@@ -24,26 +20,24 @@ export async function POST(req: NextRequest) {
     // محدودیت نرخ: حداکثر ۱ کد هر ۶۰ ثانیه و ۵ کد در ساعت برای هر شماره
     // (جلوگیری از اسپم پیامک و بمباران شماره)
     const cooldownKey = `otp_cd:${normalized}`;
-    if (await redis.get(cooldownKey)) {
+    const cooldownTaken = await redis.set(cooldownKey, "1", "EX", 60, "NX");
+    if (!cooldownTaken) {
       return NextResponse.json({ error: "کمی صبر کن و دوباره تلاش کن" }, { status: 429 });
     }
-    const hourKey = `otp_rl:${normalized}`;
-    const count = await redis.incr(hourKey);
-    if (count === 1) await redis.expire(hourKey, 3600);
-    if (count > 5) {
+
+    const forwarded = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+    const clientIp = req.headers.get("x-real-ip") ?? forwarded ?? "unknown";
+    const [phoneAllowed, ipAllowed] = await Promise.all([
+      takeRateLimit(`otp_rl:${normalized}`, 5, 3600),
+      takeRateLimit(`otp_ip_rl:${rateLimitIdentity(clientIp)}`, 20, 3600),
+    ]);
+    if (!phoneAllowed || !ipAllowed) {
       return NextResponse.json({ error: "تعداد درخواست زیاد است؛ یک ساعت دیگر تلاش کن" }, { status: 429 });
     }
-    await redis.set(cooldownKey, "1", "EX", 60);
 
     const otp = generateOtp();
     const expirySeconds = parseInt(process.env.OTP_EXPIRY_SECONDS ?? "300");
-
-    await redis.set(`otp:${normalized}`, otp, "EX", expirySeconds);
-    await prisma.otpToken.upsert({
-      where: { phone: normalized },
-      update: { code: otp, expiresAt: new Date(Date.now() + expirySeconds * 1000) },
-      create: { phone: normalized, code: otp, expiresAt: new Date(Date.now() + expirySeconds * 1000) },
-    });
+    await storeOtp(normalized, otp, Number.isFinite(expirySeconds) ? expirySeconds : 300);
 
     // در محیط dev کد را مستقیم برمی‌گردانیم (بدون مصرف پیامک)
     if (process.env.NODE_ENV !== "production") {
@@ -54,6 +48,7 @@ export async function POST(req: NextRequest) {
     // در production کد واقعاً با پیامک کاوه‌نگار فرستاده می‌شود
     const sent = await sendOtpSms(normalized, otp);
     if (!sent) {
+      await deleteOtp(normalized);
       return NextResponse.json(
         { error: "ارسال پیامک با مشکل مواجه شد، لطفاً کمی بعد دوباره تلاش کنید" },
         { status: 502 }

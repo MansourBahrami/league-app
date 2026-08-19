@@ -12,11 +12,10 @@
 | فیچر | فایل‌های اصلی |
 |------|----------------|
 | احراز هویت (OTP) | `app/api/auth/{send-otp,verify-otp,logout}`, `lib/auth.ts`, `lib/sms.ts`, `app/login/page.tsx` |
-| ورود با ربات (Magic Link) | `app/api/bot/bale`, `lib/bot-handler.ts`, `lib/bot.ts`, `lib/magic.ts`, `app/api/auth/magic` |
-| ورود مینی‌اپ | `app/api/auth/miniapp`, `lib/miniapp.ts`, `components/auth/MiniAppAutoLogin.tsx` |
+| اتصال ربات برای اعلان | `app/api/profile/bot-link`, `app/api/bot/link`, `lib/bot-link.ts`, `lib/bot-handler.ts` |
 | تایمر و جلسهٔ مطالعه | `components/dashboard/StudyTimer.tsx`, `app/api/study/*` |
 | گیمیفیکیشن (XP/سکه/سطح/مدال) | `lib/gamification.ts`, `lib/mission.ts`, `lib/streak.ts` |
-| ماموریت‌ها | `app/(app)/missions`, `app/api/missions/buy`, `components/missions/MissionCard.tsx` |
+| اتاق مأموریت | `app/(app)/mission-rooms`, `app/api/mission-rooms`, `app/api/missions/buy`, `components/mission-rooms/*`, `lib/mission-room.ts` |
 | لیدربورد | `app/(app)/leaderboard`, `components/leaderboard/*` |
 | فید زنده | `app/api/feed/stream`, `components/feed/LiveFeed.tsx` |
 | ویدیو/LMS | `app/(app)/videos/*`, `components/videos/*`, `lib/onboarding.ts` |
@@ -37,7 +36,8 @@
 |------|-------|
 | `package.json` | وابستگی‌ها و اسکریپت‌ها (`dev`, `build`, `db:seed`, `test:*`). |
 | `next.config.ts` | پیکربندی Next.js 16. |
-| `proxy.ts` 🟢 | **میدلور احراز هویت** (در Next.js 16 جایگزین `middleware.ts`). مسیرهای عمومی را رد می‌کند، بقیه نیازمند کوکی JWT‌اند؛ توکن را تمدید خودکار (sliding) می‌کند و هدرهای `x-user-id`/`x-user-phone` را ست می‌کند. |
+| `proxy.ts` 🟢 | **میدلور احراز هویت** (در Next.js 16 جایگزین `middleware.ts`). بررسی خوش‌بینانه JWT، پاسخ 401 برای API، تمدید sliding و جلوگیری از درخواست cross-site. |
+| `lib/request-security.ts` 🟢 | تطبیق Origin درخواست‌های تغییردهنده با URL عمومی یا Host واقعی؛ سازگار با IP شبکهٔ محلی و reverse proxy، بدون CORS wildcard. |
 | `tsconfig.json`, `next-env.d.ts` | پیکربندی TypeScript و alias `@/*`. |
 | `eslint.config.mjs`, `postcss.config.mjs` | لینت و PostCSS (Tailwind v4). |
 | `prisma.config.ts` | پیکربندی Prisma 7 (مسیر schema و seed). |
@@ -65,17 +65,17 @@
 | فایل | توضیح |
 |------|-------|
 | `lib/db.ts` 🟢 | کلاینت Prisma (singleton) با driver adapter `@prisma/adapter-pg`. |
-| `lib/redis.ts` 🟢 | کلاینت ioredis (singleton) برای OTP و توکن‌های magic. |
+| `lib/redis.ts` 🟢 | کلاینت ioredis (singleton) برای OTP هش‌شده و توکن اتصال ربات. |
 | `lib/auth.ts` 🟢 | امضا/اعتبارسنجی JWT با `jose`، کوکی `league_session` (۳۰ روز، sliding refresh)، helperهای سشن سمت سرور. |
 
 ### احراز هویت و ورود
 | فایل | توضیح |
 |------|-------|
 | `lib/sms.ts` 🟢 | **ارسال پیامک OTP با کاوه‌نگار** (endpoint `sms/send.json`). از سرور ایران در دسترس است. |
-| `lib/magic.ts` 🟢 | توکن یکبارمصرف Magic Link (Redis، TTL ۱۵ دقیقه): `createMagicToken` / `consumeMagicToken`. |
+| `lib/otp.ts` 🟢 | تولید رمزنگاری‌شده، ذخیره هش، rate limit و مصرف اتمیک OTP با سقف تلاش. |
+| `lib/bot-link.ts` 🟢 | توکن یکبارمصرف ۱۵دقیقه‌ای و اتصال امن شناسه تلگرام/بله به User موبایلی موجود. |
 | `lib/bot.ts` 🟢 | کلاینت Bot API برای تلگرام و بله (`sendMessage`, `sendMessageWithButtons`, `setWebhook`, `miniAppButton`). |
-| `lib/bot-handler.ts` 🟢 | منطق مشترک پردازش `/start` و `/link`: کاربر را پیدا/می‌سازد و لینک ورود (magic) با دکمه می‌فرستد. |
-| `lib/miniapp.ts` 🟡 | اعتبارسنجی HMAC `initData` مینی‌اپ تلگرام/بله (برای ورود خودکار داخل پیام‌رسان). |
+| `lib/bot-handler.ts` 🟢 | پردازش `/start <token>`؛ فقط اتصال کانال پیام‌رسان و بدون ساخت User یا سشن. |
 
 ### موتور گیمیفیکیشن
 | فایل | توضیح |
@@ -113,14 +113,16 @@
 | `app/layout.tsx` 🟢 | layout ریشه: فونت Vazirmatn، `dir="rtl"`، Material Symbols، ثبت PWA. |
 | `app/page.tsx` 🟢 | صفحهٔ ریشه — ریدایرکت به `/dashboard` یا `/login`. |
 | `app/globals.css` 🟢 | توکن‌های طراحی Tailwind v4 در `@theme inline` (رنگ، شیشه، دکمه). |
-| `app/login/page.tsx` 🟢 | صفحهٔ ورود: شماره موبایل → OTP. fetch با مسیر نسبی. پشتیبانی از `?mp=` (مینی‌اپ) و `?error=magic`. |
+| `app/login/page.tsx` 🟢 | تنها مسیر ثبت‌نام/ورود: شماره موبایل → OTP با fetch نسبی. |
 
 ### گروه کاربر `(app)/` — همه پشت احراز هویت + `AppShell`
 | فایل | فیچر |
 |------|------|
 | `app/(app)/layout.tsx` 🟢 | واکشی user، تخصیص A/B، AppShell، GuidedTour، قفل lead و PushRegister. |
 | `app/(app)/dashboard/page.tsx` 🟢 | داشبورد: تایمر، ماموریت روزانه/هفتگی، استریک، رقبای نزدیک و گزارش مطالعه. |
-| `app/(app)/missions/page.tsx` 🟢 | بازارچهٔ ماموریت‌ها (قفل تا پایان آنبوردینگ، خرید با سکه). |
+| `app/(app)/missions/page.tsx` 🟢 | redirect مسیر قدیمی به `/mission-rooms`. |
+| `app/(app)/mission-rooms/page.tsx` 🟢 | ورود مستقیم به اتاق جاری؛ در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی. |
+| `app/(app)/mission-rooms/[id]/page.tsx` 🟢 | جزئیات اتاق، پیشرفت/رتبهٔ زندهٔ اعضا، تشویق و فید فیلترشدهٔ اتاق. |
 | `app/(app)/feed/page.tsx` 🟢 | بورد زندهٔ فعالیت‌ها (SSE). |
 | `app/(app)/leaderboard/page.tsx` 🟢 | لیدربورد هفتگی هم‌سطح + تب «لیگ آزاد» برای cold start. |
 | `app/(app)/profile/page.tsx` 🟢 | پروفایل خود: آمار، مدال، ویرایش، خروج، دعوت دوستان. |
@@ -150,18 +152,17 @@
 ### احراز هویت
 | مسیر | توضیح |
 |------|-------|
-| `auth/send-otp` 🟢 | ساخت کد ۶ رقمی در Redis (TTL ۵ دقیقه). در dev کد را برمی‌گرداند؛ در production با **کاوه‌نگار** پیامک می‌کند. |
-| `auth/verify-otp` 🟢 | تأیید کد، upsert کاربر، ست کوکی JWT. |
-| `auth/logout` 🟢 | پاک کردن کوکی سشن. |
-| `auth/magic` 🟢 | مصرف Magic Link ربات → ست کوکی → ریدایرکت `/dashboard`. (ریدایرکت از `APP_PUBLIC_URL` ساخته می‌شود تا پشت CDN درست باشد.) |
-| `auth/miniapp` 🟡 | ورود خودکار مینی‌اپ با `initData` امضاشده. |
+| `auth/send-otp` 🟢 | OTP رمزنگاری‌شده در Redis (TTL پنج دقیقه) با rate limit شماره و IP؛ پیامک کاوه‌نگار در production. |
+| `auth/verify-otp` 🟢 | مصرف اتمیک OTP با سقف پنج تلاش، upsert کاربر و ست کوکی JWT نسخه‌دار. |
+| `auth/logout` 🟢 | ابطال JWTهای قبلی کاربر و پاک کردن کوکی. |
 
 ### ربات
 | مسیر | توضیح |
 |------|-------|
-| `bot/bale` 🟢 | **Webhook بله** (`?secret=...`) → `handleBotUpdate("bale", …)`. مسیر فعال در production. |
+| `bot/bale` 🟢 | **Webhook بله** با `secret_token` در header → `handleBotUpdate("bale", …)`. |
 | `bot/telegram` 🟡 | Webhook تلگرام (مشابه بله؛ ارسال از ایران به api.telegram.org بلاک است). |
-| `bot/magic-link` 🟡 | API برای سرویس ربات مجزا (`bot/`): با `BOT_API_SECRET` لینک ورود می‌سازد. |
+| `bot/link` 🟡 | API سرویس ربات مجزا: مصرف توکن اتصال با `BOT_API_SECRET`. |
+| `profile/bot-link` 🟢 | ساخت deep link یکبارمصرف، وضعیت اتصال و ثبت «فعلاً نه». |
 
 ### مطالعه و گیمیفیکیشن
 | مسیر | توضیح |
@@ -170,7 +171,9 @@
 | `study/tick` 🟢 | پاداش هر ۱۵ دقیقه با **اعتبارسنجی سمت سرور** (زمان واقعی منهای pause، سقف `plannedMin`). |
 | `study/pause` / `study/resume` 🟢 | مدیریت pause سمت سرور (`pausedSec`). |
 | `study/end` 🟢 | پایان جلسه (idempotent) + محاسبهٔ نهایی، سطح، استریک، آنبوردینگ. |
-| `missions/buy` 🟢 | خرید ماموریت (کسر سکه، وضعیت `pending`). |
+| `missions/buy` 🟢 | انتخاب مأموریت، کسر سکه و عضویت اتمیک در اتاق هم‌هدف‌ها. |
+| `mission-rooms/[id]` 🟢 | snapshot زندهٔ اتاق برای اعضا. |
+| `mission-rooms/[id]/cheer` 🟢 | ارسال تشویق محدود و ساخت Inbox/Web Push. |
 | `streak/freeze` 🟢 | خرید مرخصی استریک با ۵۰ سکه. |
 | `videos/[id]/buy` 🟢 | خرید ویدیو برای گروه A/B `paid`. |
 | `videos/[id]/progress` 🟢 | ثبت پیشرفت ویدیو + پاداش ۹۰٪ (۲× در ۲۴ ساعت اول). |
@@ -199,18 +202,17 @@
 
 | گروه | فایل‌ها | فیچر |
 |------|---------|------|
-| `layout/` 🟢 | `AppShell`, `Header`, `BottomNav` | پوستهٔ اپ، نوار بالا و ناوبری پایین ۴ تب. |
+| `layout/` 🟢 | `AppShell`, `Header`, `BottomNav` | پوستهٔ اپ، نوار بالا و ناوبری پایین ۵ تب؛ مطالعه در مرکز و بورد زنده خارج از ناوبری. |
 | `dashboard/` 🟢 | `StudyTimer`, `DailyMissionCard`, `WeeklyMissionCard`, `StreakBar`, `StudyReport*`, `CloseCompetitors` | تایمر، ماموریت، استریک، نمودار و رقبا. |
 | `onboarding/` 🟢 | `GuidedTour`, `LeadCaptureModal`, `GoalSettingModal` | تور درون‌اپ، فرم اطلاعات/موبایل و هدف فردا. |
-| `missions/` 🟢 | `MissionCard` | کارت ماموریت با دکمهٔ خرید. |
+| `mission-rooms/` 🟢 | `MissionRoomChooser`, `MissionRoomRoster`, `RoomCheerButton` | انتخاب اتاق، رتبه/پیشرفت زنده و تعامل امن. |
 | `leaderboard/` 🟢 | `Podium`, `LeaderboardList` | سکوی تاپ ۳ + فهرست با focus روی کاربر. |
 | `feed/` | `LiveFeed` 🟢, `FeedItem` ⚪️ | فید زنده SSE (`FeedItem` میراث/بلااستفاده). |
-| `profile/` 🟢 | `StatsGrid`, `MedalsSection`, `ProfileActions`, `AvatarPicker`, `LockedStudySection`, `LevelInfoButton` | آمار، مدال، آواتار، ویرایش/خروج و قفل گزارش. |
+| `profile/` 🟢 | `StatsGrid`, `MedalsSection`, `ProfileActions`, `MessengerConnections`, `AvatarPicker`, `LockedStudySection`, `LevelInfoButton` | آمار، مدال، اتصال پیام‌رسان، آواتار، ویرایش/خروج و قفل گزارش. |
 | `videos/` 🟢 | `VideoPlayerClient`, `VideoCard` | پخش HLS با anti-seek + کارت ویدیو. |
 | `social/` 🟢 | `InviteFriends` | اشتراک کد دعوت. |
 | `tournament/` 🟢 | `JoinButton` | دکمهٔ شرکت در تورنومنت. |
 | `push/` 🟡 | `PushRegister`, `NotificationToggle` | ثبت Service Worker و کلید subscription Web Push. |
-| `auth/` 🟡 | `MiniAppAutoLogin` | ورود خودکار وقتی اپ داخل مینی‌اپ باز می‌شود. |
 | `admin/` 🟢 | فرم/فهرست ویدیو، تورنومنت و قانون اعلان + خروجی لید | ابزارهای پنل ادمین. |
 | `ui/` 🟢 | `Confetti` | انیمیشن کانفتی (level up / مدال). |
 
@@ -220,7 +222,7 @@
 
 | فایل | توضیح |
 |------|-------|
-| `prisma/schema.prisma` 🟢 | تعریف همهٔ مدل‌ها (User, StudySession, Mission, UserMission, Medal, UserMedal, Video, VideoProgress, ProfileUnlock, Friendship, ActivityLog, OtpToken, PushSubscription, Tournament و…). |
+| `prisma/schema.prisma` 🟢 | تعریف همهٔ مدل‌ها (User، StudySession، Mission، UserMission، Medal، Video، Friendship، PushSubscription، Tournament و…). OTP فقط در Redis است. |
 | `prisma/seed.ts` 🟢 | داده‌های اولیه: مدال‌ها، ماموریت‌ها، ویدیوهای آنبوردینگ. |
 | `prisma/migrations/` 🟢 | تاریخچهٔ ۱۵ migration از init تا اعلان، A/B، واکنش/صندوق، ماموریت روزانه و AvatarImage. |
 | `app/generated/prisma/` | کلاینت تولیدشدهٔ Prisma (در `.gitignore`؛ در build با `prisma generate` ساخته می‌شود). |
@@ -244,7 +246,7 @@
 
 | فایل | توضیح |
 |------|-------|
-| `bot/index.js` | ربات long-polling: روی `/start` از `/api/bot/magic-link` لینک می‌گیرد و می‌فرستد. |
+| `bot/index.js` | ربات long-polling: توکن `/start` را به `/api/bot/link` می‌فرستد تا کانال به User موجود متصل شود. |
 | `bot/package.json`, `bot/.env.example`, `bot/README.md` | وابستگی، الگوی env، راهنما. |
 
 ---

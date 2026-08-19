@@ -26,13 +26,13 @@ const REFRESH_THRESHOLD_SECONDS = 15 * 24 * 60 * 60;
 
 export interface JwtPayload {
   userId: string;
-  phone: string;
+  sessionVersion: number;
   exp?: number;
   iat?: number;
 }
 
-export async function signToken(payload: { userId: string; phone: string }): Promise<string> {
-  return new SignJWT({ userId: payload.userId, phone: payload.phone })
+export async function signToken(payload: { userId: string; sessionVersion: number }): Promise<string> {
+  return new SignJWT({ userId: payload.userId, sessionVersion: payload.sessionVersion })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DAYS}d`)
@@ -41,8 +41,11 @@ export async function signToken(payload: { userId: string; phone: string }): Pro
 
 export async function verifyToken(token: string): Promise<JwtPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, jwtSecret());
-    return payload as unknown as JwtPayload;
+    const { payload } = await jwtVerify(token, jwtSecret(), { algorithms: ["HS256"] });
+    if (typeof payload.userId !== "string") return null;
+    // توکن‌های قدیمی فاقد sessionVersion تا اولین refresh با نسخه صفر پذیرفته می‌شوند.
+    const sessionVersion = typeof payload.sessionVersion === "number" ? payload.sessionVersion : 0;
+    return { userId: payload.userId, sessionVersion, exp: payload.exp, iat: payload.iat };
   } catch {
     return null;
   }
@@ -59,7 +62,16 @@ export async function getSession(): Promise<JwtPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
-  return verifyToken(token);
+  const payload = await verifyToken(token);
+  if (!payload) return null;
+
+  // اعتبارسنجی امن نزدیک داده: logout با افزایش sessionVersion همه توکن‌های قبلی را باطل می‌کند.
+  const { prisma } = await import("@/lib/db");
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+    select: { sessionVersion: true },
+  });
+  return user?.sessionVersion === payload.sessionVersion ? payload : null;
 }
 
 /** سشن را برمی‌گرداند فقط اگر کاربر ادمین باشد، در غیر این صورت null. */
@@ -82,10 +94,9 @@ export function setSessionCookie(token: string): { name: string; value: string; 
     value: token,
     options: {
       httpOnly: true,
-      // در production کوکی باید secure + SameSite=None باشد تا داخل WebView مینی‌اپ
-      // تلگرام/بله هم ارسال شود. در dev (http) از lax استفاده می‌کنیم.
+      // ورود فقط در دامنه خود اپ انجام می‌شود؛ Lax سطح حمله CSRF را کاهش می‌دهد.
       secure: isProd,
-      sameSite: (isProd ? "none" : "lax") as "none" | "lax",
+      sameSite: "lax" as const,
       path: "/",
       maxAge: SESSION_MAX_AGE,
     },

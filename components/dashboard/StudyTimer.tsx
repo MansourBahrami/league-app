@@ -1,12 +1,35 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnboarding";
+import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 
 type TimerState = "idle" | "running" | "paused" | "done";
+
+export type FocusMission =
+  | {
+      kind: "onboarding" | "daily";
+      dailyGoalMin: number;
+      dailyStudiedMin: number;
+      coinReward?: number;
+    }
+  | {
+      kind: "weekly";
+      pending: boolean;
+      isRestDay: boolean;
+      targetHours: number;
+      dailyGoalMin: number;
+      dailyStudiedMin: number;
+      weeklyGoalMin: number;
+      weeklyStudiedMin: number;
+      xpReward: number;
+    }
+  | null;
 
 interface SessionResult {
   xpEarned: number;
@@ -25,17 +48,131 @@ interface SessionResult {
 }
 
 interface Props {
+  mission: FocusMission;
   userId: string;
-  isLeadComplete: boolean;
 }
 
 const TIMER_OPTIONS = [30, 60, 90, 120];
 const TICK_INTERVAL = 15 * 60;
 
-interface FloatReward { id: number; }
+interface FloatReward { id: number }
 
-export default function StudyTimer({ userId, isLeadComplete }: Props) {
+function formatMinutes(minutes: number): string {
+  const value = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(value / 60);
+  const remaining = value % 60;
+  if (hours === 0) return `${remaining.toLocaleString("fa-IR")} دقیقه`;
+  if (remaining === 0) return `${hours.toLocaleString("fa-IR")} ساعت`;
+  return `${hours.toLocaleString("fa-IR")} ساعت و ${remaining.toLocaleString("fa-IR")} دقیقه`;
+}
+
+function ProgressBar({ value, tone = "gold" }: { value: number; tone?: "gold" | "navy" }) {
+  return (
+    <div className="h-2 w-full rounded-full bg-surface-container overflow-hidden" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(value)}>
+      <div
+        className={`h-full rounded-full transition-[width] duration-500 ${tone === "gold" ? "bg-tertiary-fixed-dim" : "bg-primary"}`}
+        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+      />
+    </div>
+  );
+}
+
+function MissionContext({ mission }: { mission: FocusMission }) {
+  if (!mission) {
+    return (
+      <div className="text-center pb-4 border-b border-outline-variant/35">
+        <p className="text-[15px] font-extrabold text-on-surface">فعلاً ماموریت فعالی نداری</p>
+        <p className="text-[12px] text-on-surface-variant mt-1">بدون ماموریت هم می‌تونی مطالعه کنی</p>
+        <Link
+          href="/mission-rooms"
+          className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-xl border border-tertiary text-tertiary px-3.5 py-2 text-[12.5px] font-bold hover:bg-tertiary-fixed/35 transition-colors"
+        >
+          <span className="material-symbols-outlined text-[17px]" style={{ fontVariationSettings: "'FILL' 1" }}>target</span>
+          انتخاب اتاق مأموریت
+        </Link>
+      </div>
+    );
+  }
+
+  if (mission.kind === "weekly") {
+    if (mission.pending) {
+      return (
+        <div className="pb-4 border-b border-outline-variant/35">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[15px] font-extrabold text-on-surface">ماموریت {mission.targetHours.toLocaleString("fa-IR")} ساعته‌ات از فردا شروع می‌شه</p>
+            <span className="shrink-0 rounded-full bg-primary-fixed px-2.5 py-1 text-[11px] font-bold text-primary">هفتگی</span>
+          </div>
+          <p className="text-[12px] text-on-surface-variant mt-1.5">امروز هم می‌تونی آزاد مطالعه کنی</p>
+        </div>
+      );
+    }
+
+    const dailyProgress = mission.dailyGoalMin > 0 ? (mission.dailyStudiedMin / mission.dailyGoalMin) * 100 : 100;
+    const weeklyProgress = mission.weeklyGoalMin > 0 ? (mission.weeklyStudiedMin / mission.weeklyGoalMin) * 100 : 0;
+
+    return (
+      <div className="pb-4 border-b border-outline-variant/35">
+        <div className="flex items-start justify-between gap-3">
+          <div className="text-right min-w-0">
+            <p className="text-[17px] font-extrabold text-on-surface leading-snug">
+              {mission.isRestDay ? "امروز روز استراحت یا جبرانه" : `امروز ${formatMinutes(mission.dailyGoalMin)} مطالعه کن`}
+            </p>
+            <p className="text-[11.5px] text-tertiary font-bold mt-1">جایزه: {mission.xpReward.toLocaleString("fa-IR")} XP + مدال</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-primary-fixed px-2.5 py-1 text-[11px] font-bold text-primary">هفتگی</span>
+        </div>
+
+        {!mission.isRestDay && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between gap-2 mb-1.5 text-[11.5px] text-on-surface-variant">
+              <span>پیشرفت امروز</span>
+              <span>{formatMinutes(mission.dailyStudiedMin)} از {formatMinutes(mission.dailyGoalMin)}</span>
+            </div>
+            <ProgressBar value={dailyProgress} />
+          </div>
+        )}
+
+        <div className="mt-2.5">
+          <div className="flex items-center justify-between gap-2 mb-1.5 text-[11.5px] text-on-surface-variant">
+            <span>پیشرفت هفته</span>
+            <span>{formatMinutes(mission.weeklyStudiedMin)} از {formatMinutes(mission.weeklyGoalMin)}</span>
+          </div>
+          <ProgressBar value={weeklyProgress} tone="navy" />
+        </div>
+      </div>
+    );
+  }
+
+  const progress = mission.dailyGoalMin > 0 ? (mission.dailyStudiedMin / mission.dailyGoalMin) * 100 : 100;
+  const completed = mission.dailyStudiedMin >= mission.dailyGoalMin;
+
+  return (
+    <div className="pb-4 border-b border-outline-variant/35">
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-right min-w-0">
+          <p className="text-[18px] font-extrabold text-on-surface leading-snug">
+            {completed ? "ماموریت امروز رو انجام دادی!" : `امروز ${formatMinutes(mission.dailyGoalMin)} مطالعه کن`}
+          </p>
+          {mission.kind === "daily" && mission.coinReward ? (
+            <p className="text-[11.5px] text-tertiary font-bold mt-1">جایزه: {mission.coinReward.toLocaleString("fa-IR")} سکه</p>
+          ) : null}
+        </div>
+        <span className="shrink-0 rounded-full bg-tertiary-fixed/55 px-2.5 py-1 text-[11px] font-bold text-tertiary">روزانه</span>
+      </div>
+      <div className="mt-3">
+        <div className="flex items-center justify-between gap-2 mb-1.5 text-[11.5px] text-on-surface-variant">
+          <span>{progress.toLocaleString("fa-IR", { maximumFractionDigits: 0 })}٪</span>
+          <span>{formatMinutes(mission.dailyStudiedMin)} از {formatMinutes(mission.dailyGoalMin)}</span>
+        </div>
+        <ProgressBar value={progress} />
+      </div>
+    </div>
+  );
+}
+
+export default function StudyTimer({ mission, userId }: Props) {
   const router = useRouter();
+  const { hasHint, markHints, reportStudyState } = useProgressiveOnboarding();
   const [selectedMinutes, setSelectedMinutes] = useState(60);
   const [timerState, setTimerState] = useState<TimerState>("idle");
   const [secondsLeft, setSecondsLeft] = useState(60 * 60);
@@ -43,59 +180,51 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
   const [showGoalSetting, setShowGoalSetting] = useState(false);
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
   const [floats, setFloats] = useState<FloatReward[]>([]);
+  const [error, setError] = useState("");
+  const [restored, setRestored] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
-
-  // اندازه‌ی واقعی قاب برای کشیدن فریم شمارش‌معکوس بدون اعوجاج
-  const frameRef = useRef<HTMLElement | null>(null);
-  const [box, setBox] = useState({ w: 0, h: 0 });
-  useEffect(() => {
-    const el = frameRef.current;
-    if (!el) return;
-    const update = () => setBox({ w: el.offsetWidth, h: el.offsetHeight });
-    update();
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+  const storageKey = `study_session:${userId}`;
 
   const totalSeconds = selectedMinutes * 60;
-  const progress = ((secondsLeft / totalSeconds) * 100).toFixed(1);
   const mins = Math.floor(secondsLeft / 60);
   const secs = secondsLeft % 60;
-  const secsToNextReward = TICK_INTERVAL - (Math.floor((totalSeconds - secondsLeft)) % TICK_INTERVAL);
+  const elapsedRatio = totalSeconds > 0
+    ? Math.min(1, Math.max(0, (totalSeconds - secondsLeft) / totalSeconds))
+    : 0;
+  const secsToNextReward = TICK_INTERVAL - (Math.floor(totalSeconds - secondsLeft) % TICK_INTERVAL);
   const minToNext = Math.ceil(secsToNextReward / 60);
 
   function showFloat() {
     const id = Date.now() + Math.random();
-    setFloats((f) => [...f, { id }]);
-    setTimeout(() => setFloats((f) => f.filter((x) => x.id !== id)), 2000);
+    setFloats((items) => [...items, { id }]);
+    window.setTimeout(() => setFloats((items) => items.filter((item) => item.id !== id)), 2000);
   }
 
   function setTimer(minutes: number) {
-    if (timerState === "running") return;
-    clearInterval(intervalRef.current!);
+    if (timerState === "running" || timerState === "paused") return;
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setSelectedMinutes(minutes);
     setSecondsLeft(minutes * 60);
     setTimerState("idle");
     setSessionId(null);
+    setError("");
   }
 
-  async function endSession(sid: string) {
-    const res = await fetch("/api/study/end", {
+  const endSession = useCallback(async (id: string) => {
+    const response = await fetch("/api/study/end", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: sid }),
+      body: JSON.stringify({ sessionId: id }),
     }).catch(() => null);
-    if (!res) return;
-    const data: SessionResult = await res.json().catch(() => null);
+    if (!response) return;
+    const data: SessionResult = await response.json().catch(() => null);
     if (!data) return;
     setSessionResult(data);
-    localStorage.removeItem("study_session");
-    // لید (موبایل اجباری) از طریق گیتِ AppShell بعد از router.refresh مدیریت می‌شود
+    localStorage.removeItem(storageKey);
     setShowGoalSetting(true);
-  }
+  }, [storageKey]);
 
   const tick = useCallback(async () => {
     const now = Date.now();
@@ -105,185 +234,220 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
 
     if (sessionId && now - lastTickRef.current >= TICK_INTERVAL * 1000) {
       lastTickRef.current = now;
-      const res = await fetch("/api/study/tick", {
+      const response = await fetch("/api/study/tick", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
-      }).then((r) => r.json()).catch(() => null);
-      // جایزه لحظه‌ای فقط وقتی سرور واقعاً پاداش داد (ضد تقلب)
-      if (res?.granted > 0) showFloat();
+      }).then((result) => result.json()).catch(() => null);
+      if (response?.granted > 0) showFloat();
     }
 
     if (newSecondsLeft <= 0) {
-      clearInterval(intervalRef.current!);
+      if (intervalRef.current) clearInterval(intervalRef.current);
       setTimerState("done");
       if (sessionId) await endSession(sessionId);
     }
-  }, [totalSeconds, sessionId]);
+  }, [endSession, totalSeconds, sessionId]);
 
   useEffect(() => {
-    if (timerState === "running") {
-      intervalRef.current = setInterval(tick, 1000);
-    }
-    return () => clearInterval(intervalRef.current!);
+    if (timerState === "running") intervalRef.current = setInterval(tick, 1000);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, [timerState, tick]);
 
   useEffect(() => {
-    const saved = localStorage.getItem("study_session");
-    if (saved) {
+    const restore = window.setTimeout(() => {
+      const saved = localStorage.getItem(storageKey);
+      if (!saved) {
+        setRestored(true);
+        return;
+      }
       try {
         const { sid, startTime, totalSecs } = JSON.parse(saved);
         const elapsedSecs = Math.floor((Date.now() - startTime) / 1000);
         const remaining = totalSecs - elapsedSecs;
-        if (remaining > 0) {
-          setSessionId(sid);
-          setSecondsLeft(remaining);
-          setSelectedMinutes(Math.round(totalSecs / 60));
-          setTimerState("running");
-          startTimeRef.current = startTime;
-          lastTickRef.current = startTime;
-        } else {
-          localStorage.removeItem("study_session");
+        if (remaining <= 0) {
+          localStorage.removeItem(storageKey);
+          return;
         }
+        setSessionId(sid);
+        setSecondsLeft(remaining);
+        setSelectedMinutes(Math.round(totalSecs / 60));
+        setTimerState("running");
+        startTimeRef.current = startTime;
+        lastTickRef.current = startTime;
       } catch {
-        localStorage.removeItem("study_session");
+        localStorage.removeItem(storageKey);
+      } finally {
+        setRestored(true);
       }
-    }
-  }, []);
+    }, 0);
+
+    return () => window.clearTimeout(restore);
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (!restored) return;
+    reportStudyState(timerState === "running" || timerState === "paused" || showGoalSetting);
+  }, [reportStudyState, restored, showGoalSetting, timerState]);
 
   async function handleToggle() {
+    setError("");
     if (timerState === "idle") {
-      const res = await fetch("/api/study/start", {
+      const response = await fetch("/api/study/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ durationMin: selectedMinutes }),
-      });
-      const data = await res.json();
-      const sid = data.sessionId;
+      }).catch(() => null);
+      if (!response?.ok) {
+        setError("شروع تایمر انجام نشد؛ دوباره تلاش کن.");
+        return;
+      }
+      const data = await response.json();
+      const id = data.sessionId as string;
       const now = Date.now();
-      setSessionId(sid);
+      setSessionId(id);
       startTimeRef.current = now;
       lastTickRef.current = now;
-      localStorage.setItem("study_session", JSON.stringify({ sid, startTime: now, totalSecs: totalSeconds }));
+      localStorage.setItem(storageKey, JSON.stringify({ sid: id, startTime: now, totalSecs: totalSeconds }));
       setTimerState("running");
-    } else if (timerState === "running") {
-      clearInterval(intervalRef.current!);
+      void markHints(ONBOARDING_HINTS.TIMER_STARTED);
+      window.dispatchEvent(new Event("focus-session-changed"));
+      return;
+    }
+
+    if (timerState === "running") {
+      if (intervalRef.current) clearInterval(intervalRef.current);
       setTimerState("paused");
-      if (sessionId) fetch("/api/study/pause", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+      if (sessionId) void fetch("/api/study/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
-      }).catch(() => {});
-    } else if (timerState === "paused") {
-      // زمان pause شده را به startTime اضافه می‌کنیم تا شمارش درست بماند
+      }).catch(() => {}).finally(() => window.dispatchEvent(new Event("focus-session-changed")));
+      return;
+    }
+
+    if (timerState === "paused") {
       startTimeRef.current = Date.now() - (totalSeconds - secondsLeft) * 1000;
-      // پنجره tick هم باید نسبت به مکث جابه‌جا شود
       lastTickRef.current = Date.now() - ((totalSeconds - secondsLeft) % TICK_INTERVAL) * 1000;
       setTimerState("running");
       if (sessionId) {
-        fetch("/api/study/resume", {
-          method: "POST", headers: { "Content-Type": "application/json" },
+        void fetch("/api/study/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ sessionId }),
-        }).catch(() => {});
-        localStorage.setItem("study_session", JSON.stringify({ sid: sessionId, startTime: startTimeRef.current, totalSecs: totalSeconds }));
+        }).catch(() => {}).finally(() => window.dispatchEvent(new Event("focus-session-changed")));
+        localStorage.setItem(storageKey, JSON.stringify({ sid: sessionId, startTime: startTimeRef.current, totalSecs: totalSeconds }));
       }
-    } else if (timerState === "done") {
-      setTimerState("idle");
-      setSecondsLeft(selectedMinutes * 60);
-      setSessionId(null);
+      return;
     }
+
+    setTimerState("idle");
+    setSecondsLeft(selectedMinutes * 60);
+    setSessionId(null);
+    window.dispatchEvent(new Event("focus-session-changed"));
   }
 
   async function handleStop() {
-    clearInterval(intervalRef.current!);
+    if (intervalRef.current) clearInterval(intervalRef.current);
     if (sessionId) await endSession(sessionId);
     setTimerState("idle");
     setSecondsLeft(selectedMinutes * 60);
     setSessionId(null);
   }
 
-  const btnConfig = {
-    idle: { icon: "play_arrow", label: "شروع مطالعه", cls: "bg-primary text-on-primary shadow-primary/20" },
-    running: { icon: "pause", label: "در حال تمرکز...", cls: "bg-tertiary-fixed-dim text-on-tertiary-fixed shadow-tertiary-fixed-dim/20" },
-    paused: { icon: "play_arrow", label: "ادامه مطالعه", cls: "bg-primary text-on-primary shadow-primary/20" },
-    done: { icon: "replay", label: "ثبت شد ✓ دوباره شروع کن", cls: "bg-primary text-on-primary shadow-primary/20" },
-  };
-  const btn = btnConfig[timerState];
+  const button = {
+    idle: { icon: "play_arrow", label: "شروع مطالعه", cls: "bg-primary text-on-primary" },
+    running: { icon: "pause", label: "مکث", cls: "bg-tertiary-fixed-dim text-on-tertiary-fixed" },
+    paused: { icon: "play_arrow", label: "ادامه مطالعه", cls: "bg-primary text-on-primary" },
+    done: { icon: "replay", label: "دوباره شروع کن", cls: "bg-primary text-on-primary" },
+  }[timerState];
   const isActive = timerState === "running" || timerState === "paused";
+  const needsStartHint = !hasHint(ONBOARDING_HINTS.TIMER_STARTED);
+  const needsRewardLesson = !hasHint(ONBOARDING_HINTS.REWARDS_EXPLAINED);
+  const showsRewardLesson = needsRewardLesson && (sessionResult?.xpEarned ?? 0) > 0;
 
   return (
     <>
-      <section ref={frameRef} data-tour="timer" className="glass-card rounded-xl p-4 relative border border-primary/15">
-        {/* فریم شمارش‌معکوس: با اندازه‌ی واقعی قاب کشیده می‌شود (بدون اعوجاج) و با گذر زمان خالی می‌شود */}
-        {isActive && box.w > 0 && (
-          <svg className="absolute inset-0 pointer-events-none z-0" width={box.w} height={box.h} aria-hidden>
-            <rect
-              x={3} y={3} width={box.w - 6} height={box.h - 6} rx={45} fill="none"
-              stroke="var(--color-primary)" strokeWidth={6} strokeLinecap="round"
-              pathLength={1000}
-              strokeDasharray={1000}
-              strokeDashoffset={1000 * (1 - secondsLeft / totalSeconds)}
-              style={{ transition: timerState === "running" ? "stroke-dashoffset 1s linear" : "none" }}
-            />
-          </svg>
-        )}
+      <section data-tour="timer" className="glass-card rounded-[2rem] border border-tertiary-fixed/65 px-4 py-4 shadow-[0_12px_35px_color-mix(in_oklab,var(--color-primary)_9%,transparent)]">
+        <MissionContext mission={mission} />
 
-        <div className="relative z-10">
-          {/* ردیف بالا: عنوان + انتخاب مدت (مطابق طرح) */}
-          <div className="flex items-center justify-between gap-2 mb-3">
-            <h2 className="text-[15px] font-extrabold text-on-surface shrink-0">تایمر مطالعه</h2>
-            <div className="flex gap-1.5" dir="ltr">
-              {[...TIMER_OPTIONS].reverse().map((min) => (
-                <button
-                  key={min}
-                  onClick={() => setTimer(min)}
-                  disabled={timerState === "running"}
-                  className={`w-10 h-10 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center ${
-                    selectedMinutes === min
-                      ? "bg-primary text-on-primary shadow-md scale-105"
-                      : "border border-outline-variant text-on-surface-variant hover:bg-surface-container-high"
-                  } disabled:opacity-40 disabled:cursor-not-allowed`}
-                >
-                  {min.toLocaleString("fa-IR")}
-                </button>
-              ))}
-            </div>
+        <div className="pt-4">
+          <div
+            className={`focus-timer-halo mx-auto ${isActive ? "focus-timer-halo-active" : ""}`}
+            style={{ "--timer-elapsed-angle": `${elapsedRatio}turn` } as CSSProperties}
+          >
+            <span className="material-symbols-outlined focus-timer-spark text-tertiary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
+            <span className="focus-timer-progress-orbit" aria-hidden="true">
+              <span className="focus-timer-progress-dot" />
+            </span>
+            {floats.map((item) => (
+              <span key={item.id} className="reward-float absolute top-10 right-1/2 translate-x-1/2 text-[13px] font-extrabold text-tertiary whitespace-nowrap">
+                +۱ XP · +۱ سکه
+              </span>
+            ))}
+            <time className="text-[46px] leading-none font-extrabold text-primary" dir="ltr" style={{ fontVariantNumeric: "tabular-nums" }} aria-live="off">
+              {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
+            </time>
+            <p className="text-[11.5px] text-on-surface-variant mt-2 text-center px-2">
+              {timerState === "running"
+                ? `جایزه بعدی تا ${minToNext.toLocaleString("fa-IR")} دقیقه دیگر`
+                : timerState === "paused"
+                ? "تایمر متوقف شده"
+                : "تمرکز عمیق، پیشرفت واقعی"}
+            </p>
           </div>
 
-          {/* نمایش زمان هنگام اجرا */}
-          {isActive && (
-            <div className="text-center mb-3 relative">
-              {floats.map((f) => (
-                <span key={f.id} className="reward-float absolute -top-2 right-1/2 translate-x-1/2 text-[13px] font-extrabold text-tertiary whitespace-nowrap">
-                  +۱ XP · +۱ سکه
-                </span>
-              ))}
-              <span className="text-[44px] leading-none font-extrabold text-primary" dir="ltr" style={{ fontVariant: "tabular-nums" }}>
-                {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
-              </span>
-              {timerState === "running" && (
-                <p className="text-[12px] text-on-surface-variant mt-1.5">جایزه بعدی تا {minToNext.toLocaleString("fa-IR")} دقیقه دیگر</p>
-              )}
-              {timerState === "paused" && (
-                <p className="text-[12px] text-tertiary font-semibold mt-1.5">⏸ متوقف شده</p>
-              )}
+          <div className="grid grid-cols-4 gap-1.5 mt-4" dir="ltr" aria-label="انتخاب مدت مطالعه">
+            {[...TIMER_OPTIONS].reverse().map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                onClick={() => setTimer(minutes)}
+                disabled={isActive}
+                aria-pressed={selectedMinutes === minutes}
+                className={`h-11 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center ${
+                  selectedMinutes === minutes
+                    ? "bg-primary text-on-primary shadow-md"
+                    : "border border-outline-variant/70 text-on-surface-variant hover:bg-surface-container-high"
+                } disabled:opacity-40 disabled:cursor-not-allowed`}
+              >
+                {minutes.toLocaleString("fa-IR")}
+              </button>
+            ))}
+          </div>
+
+          {needsStartHint && timerState === "idle" && (
+            <div role="note" className="mt-3 flex items-center gap-3 rounded-2xl border border-primary/25 bg-primary-fixed/70 px-3 py-2.5 pop-in">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-[14px] font-extrabold text-on-primary">۱</span>
+              <div className="min-w-0 flex-1 text-right">
+                <p className="text-[13.5px] font-extrabold text-on-surface">اولین قدم: فقط تایمر رو شروع کن</p>
+                <p className="mt-0.5 text-[11.5px] leading-5 text-on-surface-variant">مدت رو انتخاب کن و روی «شروع مطالعه» بزن؛ بقیه رو سر وقت بهت نشون می‌دیم.</p>
+              </div>
+              <span className="material-symbols-outlined text-[20px] text-primary motion-safe:animate-bounce">arrow_downward</span>
             </div>
           )}
 
-          {/* دکمه اصلی (بزرگ) */}
           <button
+            type="button"
             onClick={handleToggle}
-            className={`gamified-btn w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${btn.cls}`}
+            data-onboarding="timer-start"
+            className={`gamified-btn mt-3 w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${button.cls}`}
           >
-            <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>{btn.icon}</span>
-            {btn.label}
+            <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>{button.icon}</span>
+            {button.label}
           </button>
+
+          {error && <p role="alert" className="text-[12px] text-error text-center mt-2">{error}</p>}
 
           {isActive && (
             <button
+              type="button"
               onClick={handleStop}
-              className="mt-2.5 w-full border border-outline-variant text-on-surface-variant py-3 rounded-xl text-[15px] font-bold hover:bg-surface-container transition-colors flex items-center justify-center gap-2"
+              className="mt-2 w-full border border-outline-variant text-on-surface-variant py-2.5 rounded-xl text-[13px] font-bold hover:bg-surface-container transition-colors flex items-center justify-center gap-2"
             >
-              <span className="material-symbols-outlined text-[18px]">stop</span>
+              <span className="material-symbols-outlined text-[17px]">stop</span>
               توقف و ثبت
             </button>
           )}
@@ -303,10 +467,11 @@ export default function StudyTimer({ userId, isLeadComplete }: Props) {
           needsVideo={sessionResult.needsVideo}
           tomorrowGoalMinutes={sessionResult.tomorrowGoalMinutes}
           rewardVideo={sessionResult.rewardVideo}
-          onClose={() => {
+          showRewardLesson={showsRewardLesson}
+          onClose={async () => {
+            if (showsRewardLesson) await markHints(ONBOARDING_HINTS.REWARDS_EXPLAINED);
             setShowGoalSetting(false);
             setSessionResult(null);
-            // به‌روزرسانی داشبورد سمت سرور (پراگرس‌بار، سکه/XP هدر، وضعیت روز)
             router.refresh();
           }}
         />

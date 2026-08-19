@@ -45,7 +45,7 @@ export default function Header({ user, xp, coins, unreadCount = 0 }: HeaderProps
         </div>
         <div className="flex flex-col items-start">
           <span className="text-[16px] font-bold text-primary leading-tight">
-            {user.name ?? "تمرکز"}
+            {user.name ?? "مطالعه"}
           </span>
           {/* سطح + قاب ۳ ستاره (خاموش/روشن) */}
           <span className="flex items-center gap-1 text-[11px] font-semibold text-on-surface-variant" dir="rtl">

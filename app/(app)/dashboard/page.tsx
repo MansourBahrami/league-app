@@ -1,218 +1,125 @@
+import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { redirect } from "next/navigation";
-import { getLeaderboardMessage, effectiveStreak, formatStudyMinutes, STREAK_FREEZE_COST } from "@/lib/gamification";
 import { getOnboardingState } from "@/lib/onboarding";
-import { getWeeklyMissionState } from "@/lib/weekly-mission";
 import { processUserMissions } from "@/lib/mission";
-import { tehranDayStart, tehranDayDiff } from "@/lib/date";
-import StudyTimer from "@/components/dashboard/StudyTimer";
-import DailyMissionCard from "@/components/dashboard/DailyMissionCard";
-import WeeklyMissionCard from "@/components/dashboard/WeeklyMissionCard";
-import StreakBar from "@/components/dashboard/StreakBar";
-import CloseCompetitors from "@/components/dashboard/CloseCompetitors";
-import StudyReportCard from "@/components/dashboard/StudyReportCard";
+import { getWeeklyMissionState } from "@/lib/weekly-mission";
+import { getActiveFocusCount } from "@/lib/focus";
+import StudyTimer, { type FocusMission } from "@/components/dashboard/StudyTimer";
+import FocusPulse, { type FocusPulseActivity } from "@/components/dashboard/FocusPulse";
 
 export const dynamic = "force-dynamic";
 
-const LEVEL_LABELS: Record<string, string> = {
-  "تازه‌نفس": "تازه‌نفس", "ثابت‌قدم": "ثابت‌قدم", "پیشرو": "پیشرو", "سرآمد": "سرآمد", "الگو": "الگو",
-};
+const PULSE_TYPES = ["session_complete", "medal_earn", "level_up", "streak"];
 
-async function getDashboardData(userId: string) {
-  const today = tehranDayStart(); // مرز روز به وقت تهران
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+function hasUsefulPulseMetadata(activity: FocusPulseActivity): boolean {
+  const metadata = activity.metadata ?? {};
+  if (activity.type === "session_complete") return Number(metadata.durationMin ?? 0) > 0;
+  if (activity.type === "medal_earn") return Number(metadata.targetHours ?? 0) > 0;
+  if (activity.type === "streak") return Number(metadata.streak ?? 0) > 0;
+  if (activity.type === "level_up") return String(metadata.level ?? "").trim().length > 0;
+  return false;
+}
 
-  const [user, todayAggregate] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        xp: true, coins: true, level: true, onboardingDay: true, isLeadComplete: true,
-        nextStudyTarget: true, streak: true, lastStudyDate: true,
-      },
-    }),
-    prisma.studySession.aggregate({
-      where: { userId, startTime: { gte: today } },
-      _sum: { durationMin: true },
-    }),
-  ]);
-
-  // رتبه بین هم‌سطح‌ها بر اساس XP هفت روز اخیر (هماهنگ با لیدربورد)
-  const myLevel = user?.level ?? "تازه‌نفس";
-  const sameLevel = await prisma.user.findMany({ where: { level: myLevel }, select: { id: true } });
-  const ids = sameLevel.map((u) => u.id);
-  const weekly = await prisma.studySession.groupBy({
-    by: ["userId"],
-    where: { userId: { in: ids }, startTime: { gte: sevenDaysAgo } },
-    _sum: { xpEarned: true },
+async function getPulseActivities(userIds?: string[]): Promise<FocusPulseActivity[]> {
+  const activities = await prisma.activityLog.findMany({
+    where: {
+      type: { in: PULSE_TYPES },
+      ...(userIds && userIds.length > 0 ? { userId: { in: userIds } } : {}),
+    },
+    orderBy: { createdAt: "desc" },
+    take: 40,
+    include: { user: { select: { name: true, avatarUrl: true } } },
   });
-  const myWeekly = weekly.find((w) => w.userId === userId)?._sum.xpEarned ?? 0;
-  const ahead = weekly.filter((w) => (w._sum.xpEarned ?? 0) > myWeekly).length;
 
-  const todayMinutes = todayAggregate._sum.durationMin ?? 0;
-  const leaderboardMsg = getLeaderboardMessage(ahead + 1, sameLevel.length, LEVEL_LABELS[myLevel] ?? myLevel);
+  return activities
+    .map((activity) => ({
+      id: activity.id,
+      userId: activity.userId,
+      type: activity.type,
+      metadata: (activity.metadata ?? null) as Record<string, unknown> | null,
+      createdAt: activity.createdAt.toISOString(),
+      user: activity.user,
+    }))
+    .filter(hasUsefulPulseMetadata)
+    .slice(0, 20);
+}
 
-  return { todayMinutes, leaderboardMsg, user };
+async function getActiveDailyMission(userId: string) {
+  const daily = await prisma.userMission.findFirst({
+    where: { userId, status: "active", mission: { kind: "daily" } },
+    include: { mission: true },
+    orderBy: { activatesAt: "desc" },
+  });
+  if (!daily) return null;
+
+  const aggregate = await prisma.studySession.aggregate({
+    where: { userId, startTime: { gte: daily.activatesAt, lt: daily.expiresAt } },
+    _sum: { durationMin: true },
+  });
+
+  return {
+    goalMin: daily.mission.targetHours * 60,
+    studiedMin: aggregate._sum.durationMin ?? 0,
+    coinReward: daily.mission.coinReward,
+  };
 }
 
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const { todayMinutes, leaderboardMsg, user } = await getDashboardData(session.userId);
-  const state = await getOnboardingState(session.userId);
+  const onboarding = await getOnboardingState(session.userId);
+  const inOnboarding = onboarding?.inOnboarding ?? false;
 
-  const inOnboarding = state?.inOnboarding ?? false;
-  const isDay1 = (user?.onboardingDay ?? 0) === 0;
-  const streak = effectiveStreak(user?.streak ?? 0, user?.lastStudyDate ?? null);
+  if (!inOnboarding) await processUserMissions(session.userId);
 
-  const dailyGoalMinutes = state?.goalMinutes ?? 120;
-  const progressMinutes = state?.stepMinutes ?? 0;
-  const progressPercent = Math.min(100, Math.round((progressMinutes / dailyGoalMinutes) * 100));
+  const [activeDaily, weekly, activities, activeFocusCount] = await Promise.all([
+    inOnboarding ? Promise.resolve(null) : getActiveDailyMission(session.userId),
+    inOnboarding ? Promise.resolve(null) : getWeeklyMissionState(session.userId),
+    getPulseActivities(),
+    getActiveFocusCount(),
+  ]);
 
-  // بعد از آنبوردینگ: فعال‌سازی ماموریت‌های pending + وضعیت ماموریت هفتگی + ماموریت روزانه‌ی فعال
-  let weeklyState = null;
-  let activeDaily: { targetHours: number; coinReward: number; studiedMin: number; goalMin: number } | null = null;
-  if (!inOnboarding) {
-    await processUserMissions(session.userId);
-    weeklyState = await getWeeklyMissionState(session.userId);
-
-    const daily = await prisma.userMission.findFirst({
-      where: { userId: session.userId, status: "active", mission: { kind: "daily" } },
-      include: { mission: true },
-    });
-    if (daily) {
-      const agg = await prisma.studySession.aggregate({
-        where: { userId: session.userId, startTime: { gte: daily.activatesAt } },
-        _sum: { durationMin: true },
-      });
-      activeDaily = {
-        targetHours: daily.mission.targetHours,
-        coinReward: daily.mission.coinReward,
-        studiedMin: agg._sum.durationMin ?? 0,
-        goalMin: daily.mission.targetHours * 60,
-      };
-    }
+  let mission: FocusMission = null;
+  if (inOnboarding && onboarding) {
+    mission = {
+      kind: "onboarding",
+      dailyGoalMin: onboarding.goalMinutes,
+      dailyStudiedMin: onboarding.stepMinutes,
+    };
+  } else if (activeDaily) {
+    // ماموریت روزانه کوتاه‌مدت‌تر است؛ اگر روزانه و هفتگی هم‌زمان فعال باشند،
+    // هدف فوری امروز در صفحه مطالعه اولویت دارد و جزئیات هفتگی در اتاق مأموریت می‌ماند.
+    mission = {
+      kind: "daily",
+      dailyGoalMin: activeDaily.goalMin,
+      dailyStudiedMin: activeDaily.studiedMin,
+      coinReward: activeDaily.coinReward,
+    };
+  } else if (weekly) {
+    mission = {
+      kind: "weekly",
+      pending: weekly.pending,
+      isRestDay: weekly.isRestDay,
+      targetHours: weekly.targetHours,
+      dailyGoalMin: weekly.dailyGoalMin,
+      dailyStudiedMin: weekly.dailyStudiedMin,
+      weeklyGoalMin: weekly.weeklyGoalMin,
+      weeklyStudiedMin: weekly.weeklyStudiedMin,
+      xpReward: weekly.xpReward,
+    };
   }
 
-  // مرخصی فقط وقتی زنجیره زنده است و امروز هنوز ثبت نشده (دیروز آخرین مطالعه بوده)
-  const lastDiff = user?.lastStudyDate ? tehranDayDiff(new Date(), new Date(user.lastStudyDate)) : null;
-  const canFreeze = !inOnboarding && streak > 0 && lastDiff === 1;
-
   return (
-    <div className="flex flex-col gap-2.5 px-4">
-      {/* رده‌بندی لحظه‌ای — بالای همه */}
-      <section className="glass-card rounded-xl p-3.5 border-r-4 border-r-tertiary-fixed-dim mt-1">
-        <div className="flex items-start gap-2.5">
-          <div className="bg-tertiary-fixed/30 p-2 rounded-full flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-tertiary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-              trending_up
-            </span>
-          </div>
-          <div className="text-right">
-            <h3 className="text-[15px] font-bold text-on-surface mb-0.5">رده‌بندی لحظه‌ای</h3>
-            <p className="text-[13px] text-on-surface-variant leading-relaxed">{leaderboardMsg}</p>
-          </div>
-        </div>
-      </section>
-
-      {/* نوار یک‌خطی زنجیره + دکمه مرخصی (بعد از آنبوردینگ) */}
-      {!inOnboarding && (
-        <StreakBar
-          streak={streak}
-          studiedToday={todayMinutes > 0}
-          canFreeze={canFreeze}
-          freezeCost={STREAK_FREEZE_COST}
-          coins={user?.coins ?? 0}
-        />
-      )}
-
-      {/* Streak banner (فقط حین آنبوردینگ) */}
-      {inOnboarding && streak > 0 && (
-        <section className="glass-card rounded-xl p-3 flex items-center gap-2.5 border-r-4 border-r-tertiary-fixed-dim">
-          <span className="material-symbols-outlined text-tertiary text-[20px] streak-flame" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-          <div className="text-right flex-1">
-            <p className="text-[12px] font-semibold text-tertiary">زنجیره مطالعه</p>
-            <p className="text-[14px] font-bold text-on-surface">
-              {streak.toLocaleString("fa-IR")} روز پیاپی! {streak >= 3 ? "نذار بسوزه 🔥" : "ادامه بده"}
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* Next Study Reminder */}
-      {user?.nextStudyTarget && new Date(user.nextStudyTarget) > new Date() && (
-        <section className="glass-card rounded-xl p-3 flex items-center gap-2.5 border-r-4 border-r-primary">
-          <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>alarm</span>
-          <div className="text-right">
-            <p className="text-[12px] font-semibold text-primary">یادآوری هدف فردا</p>
-            <p className="text-[14px] font-bold text-on-surface">
-              {new Date(user.nextStudyTarget).toLocaleTimeString("fa-IR", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Tehran" })} — آماده‌ای؟
-            </p>
-          </div>
-        </section>
-      )}
-
-      {/* ماموریت روزانه‌ی فعال (اگر باشد) */}
-      {activeDaily && (() => {
-        const pct = Math.min(100, Math.round((activeDaily.studiedMin / activeDaily.goalMin) * 100));
-        const done = activeDaily.studiedMin >= activeDaily.goalMin;
-        return (
-          <section className="glass-card rounded-xl p-3.5 border-r-4 border-r-tertiary-fixed-dim">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[14px] font-bold text-on-surface flex items-center gap-1.5">
-                <span className={`material-symbols-outlined text-[18px] ${done ? "text-tertiary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: done ? "'FILL' 1" : "'FILL' 0" }}>
-                  {done ? "check_circle" : "today"}
-                </span>
-                ماموریت روزانه: {activeDaily.targetHours.toLocaleString("fa-IR")} ساعت
-              </h3>
-              <span className="text-[12px] font-bold text-tertiary">+{activeDaily.coinReward.toLocaleString("fa-IR")} سکه</span>
-            </div>
-            <div className="h-2.5 w-full bg-surface-container rounded-full overflow-hidden mb-1.5">
-              <div className="h-full bg-gradient-to-l from-tertiary to-tertiary-fixed-dim rounded-full transition-all" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-[12px] text-on-surface-variant text-right">
-              {formatStudyMinutes(activeDaily.studiedMin)} از {formatStudyMinutes(activeDaily.goalMin)}
-              {done ? " · انجام شد! ✓" : ` · ${formatStudyMinutes(activeDaily.goalMin - activeDaily.studiedMin)} مونده`}
-            </p>
-          </section>
-        );
-      })()}
-
-      {/* آنبوردینگ: مسیر ۶ روزه + ماموریت روز | بعد از آن: ماموریت هفتگی (یا دعوت به انتخاب) */}
+    <div className="flex flex-col gap-3 px-4 pb-2">
       <div data-tour="mission">
-      {inOnboarding ? (
-        <DailyMissionCard
-          inOnboarding={inOnboarding}
-          currentDay={user?.onboardingDay ?? 0}
-          totalDays={state?.totalDays ?? 6}
-          progress={progressPercent}
-          studiedMinutes={progressMinutes}
-          goalMinutes={dailyGoalMinutes}
-          isDay1={isDay1}
-          variant={state?.variant ?? "free"}
-          userCoins={state?.userCoins ?? 0}
-          video={state?.video ? {
-            id: state.video.id,
-            title: state.video.title,
-            watched: state.videoWatched,
-            price: state.videoPrice,
-            purchased: state.videoPurchased,
-          } : null}
-        />
-      ) : (
-        <WeeklyMissionCard state={weeklyState} />
-      )}
+        <StudyTimer mission={mission} userId={session.userId} />
       </div>
-
-      {/* Study Timer */}
-      <StudyTimer userId={session.userId} isLeadComplete={user?.isLeadComplete ?? false} />
-
-      {/* Close Competitors */}
-      <CloseCompetitors userId={session.userId} />
-
-      {/* گزارش تقویم‌محور مطالعه (ته صفحه) */}
-      <StudyReportCard userId={session.userId} />
+      <FocusPulse
+        initialActivities={activities}
+        initialActiveCount={activeFocusCount}
+      />
     </div>
   );
 }

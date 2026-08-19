@@ -6,29 +6,48 @@ interface Props {
 }
 
 export default function StatsGrid({ totalHours, streak, rank, totalUsers }: Props) {
+  const stats = [
+    {
+      label: "کل مطالعه",
+      value: totalHours.toLocaleString("fa-IR"),
+      unit: "ساعت",
+      icon: "schedule",
+      iconClass: "bg-primary-fixed text-primary",
+    },
+    {
+      label: "زنجیره",
+      value: streak.toLocaleString("fa-IR"),
+      unit: "روز",
+      icon: "local_fire_department",
+      iconClass: "bg-tertiary-fixed text-tertiary",
+    },
+    {
+      label: "رتبه کلی",
+      value: rank.toLocaleString("fa-IR"),
+      unit: `از ${totalUsers.toLocaleString("fa-IR")}`,
+      icon: "emoji_events",
+      iconClass: "bg-secondary-container text-secondary",
+    },
+  ];
+
   return (
-    <section className="grid grid-cols-2 gap-2">
-      <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
-        <div className="w-12 h-12 rounded-full bg-primary-fixed/20 flex items-center justify-center">
-          <span className="material-symbols-outlined text-primary text-3xl">schedule</span>
+    <section className="grid grid-cols-3 gap-2" aria-label="خلاصه آمار مطالعه">
+      {stats.map((stat) => (
+        <div key={stat.label} className="glass-card flex min-w-0 flex-col items-center rounded-xl px-2 py-3 text-center">
+          <span className={`flex h-8 w-8 items-center justify-center rounded-full ${stat.iconClass}`}>
+            <span
+              className="material-symbols-outlined text-[18px]"
+              style={{ fontVariationSettings: "'FILL' 1" }}
+              aria-hidden="true"
+            >
+              {stat.icon}
+            </span>
+          </span>
+          <h2 className="mt-1.5 truncate text-[11px] font-semibold text-on-surface-variant">{stat.label}</h2>
+          <p className="mt-0.5 text-[16px] font-extrabold leading-tight text-on-surface">{stat.value}</p>
+          <span className="mt-0.5 text-[10px] text-outline">{stat.unit}</span>
         </div>
-        <h3 className="text-[14px] font-semibold text-on-surface-variant">ساعات مطالعه</h3>
-        <p className="text-[18px] font-bold text-on-surface">{totalHours.toLocaleString("fa-IR")} <span className="text-[13px] font-normal">ساعت</span></p>
-      </div>
-      <div className="glass-card rounded-xl p-4 flex flex-col items-center text-center gap-2">
-        <div className="w-12 h-12 rounded-full bg-tertiary-container/20 flex items-center justify-center">
-          <span className="material-symbols-outlined text-tertiary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>local_fire_department</span>
-        </div>
-        <h3 className="text-[14px] font-semibold text-on-surface-variant">زنجیره مطالعه</h3>
-        <p className="text-[18px] font-bold text-on-surface">{streak.toLocaleString("fa-IR")} <span className="text-[13px] font-normal">روز</span></p>
-      </div>
-      <div className="glass-card rounded-xl p-4 flex items-center gap-3 col-span-2">
-        <span className="material-symbols-outlined text-tertiary text-4xl">emoji_events</span>
-        <div className="text-right">
-          <h3 className="text-[14px] font-semibold text-on-surface-variant">رتبه در جدول برتر</h3>
-          <p className="text-[18px] font-bold text-on-surface">جایگاه {rank.toLocaleString("fa-IR")} از {totalUsers.toLocaleString("fa-IR")}</p>
-        </div>
-      </div>
+      ))}
     </section>
   );
 }

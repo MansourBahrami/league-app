@@ -3,6 +3,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureVariant } from "@/lib/ab";
 import { getUnreadCount } from "@/lib/inbox";
+import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import AppShell from "@/components/layout/AppShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -11,7 +12,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, hasSeenIntro: true, videoAccess: true, phone: true },
+    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, videoAccess: true, phone: true, telegramId: true, baleId: true, messengerPromptDismissedAt: true },
   });
 
   if (!user) redirect("/login");
@@ -24,10 +25,35 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // قفل اپ تا تکمیل لید (بعد از روز اول، اطلاعات + موبایلِ تأییدشده اجباری است)
   const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
 
+  const hasMessenger = !!(user.telegramId || user.baleId);
+  const setupHandled = user.onboardingHints.includes(ONBOARDING_HINTS.PUSH_PROMPTED)
+    && user.onboardingHints.includes(ONBOARDING_HINTS.INSTALL_PROMPTED);
+  const needsSessionCount = !setupHandled || (!hasMessenger && !user.messengerPromptDismissedAt);
+  const completedSessions = needsSessionCount
+    ? await prisma.studySession.count({
+        where: { userId: user.id, endTime: { not: null }, durationMin: { gt: 0 } },
+      })
+    : 0;
+  const botAvailability = {
+    telegram: !!process.env.TELEGRAM_BOT_USERNAME,
+    bale: !!process.env.BALE_BOT_USERNAME,
+  };
+  const hasAvailableBot = botAvailability.telegram || botAvailability.bale;
+  const showBotConnect = setupHandled && hasAvailableBot && completedSessions > 0 && !hasMessenger && !user.messengerPromptDismissedAt;
+
   const unreadCount = await getUnreadCount(user.id);
 
   return (
-    <AppShell user={user} showWelcome={!user.hasSeenIntro} needsLead={needsLead} hasPhone={!!user.phone} unreadCount={unreadCount}>
+    <AppShell
+      user={user}
+      onboardingHints={user.onboardingHints}
+      hasCompletedSession={completedSessions > 0}
+      needsLead={needsLead}
+      hasPhone={!!user.phone}
+      unreadCount={unreadCount}
+      showBotConnect={showBotConnect}
+      botAvailability={botAvailability}
+    >
       {children}
     </AppShell>
   );

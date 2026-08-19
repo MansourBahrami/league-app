@@ -16,7 +16,7 @@ export default function WeeklyMissionCard({ state }: { state: WeeklyMissionState
           یه ماموریت هفتگی انتخاب کن تا ساعت مطالعه‌ات به ۶ روز تقسیم شه و هر روز هدف روشنی داشته باشی.
         </p>
         <Link
-          href="/missions"
+          href="/mission-rooms"
           className="gamified-btn inline-flex items-center justify-center gap-2 bg-primary text-on-primary text-[14px] font-bold py-2.5 px-5 rounded-xl shadow-lg shadow-primary/20"
         >
           <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
