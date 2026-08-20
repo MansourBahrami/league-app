@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 
 interface Props {
@@ -13,7 +11,7 @@ interface Props {
   watchPct: number;
   isCompleted: boolean;
   isLocked?: boolean;
-  /** متن جایگزین برای حالت قفل (مثلاً راهنمای خرید در گروه paid) */
+  /** زمان باقی‌مانده تا بازشدن ویدیو */
   lockNote?: string;
   /** گروه paid: ویدیوی در دسترسِ خریده‌نشده — کارت به صفحه‌ی ویدیو برای خرید می‌رود */
   purchasable?: boolean;
@@ -55,7 +53,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
           {isLocked ? (
             <span className="text-[12px] text-outline flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px]">lock</span>
-              {lockNote ?? `روز ${video.day.toLocaleString("fa-IR")} — بعد از انجام ماموریت‌های اون روز باز میشه`}
+              {lockNote ?? "به‌زودی باز میشه."}
             </span>
           ) : purchasable ? (
             <span className="text-[12px] font-semibold text-tertiary flex items-center gap-1">
@@ -78,15 +76,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
   );
 
   if (isLocked) {
-    return (
-      <button
-        type="button"
-        className="text-right w-full"
-        onClick={() => alert(lockNote ?? `این ویدیو روز ${video.day.toLocaleString("fa-IR")} مسیره. بعد از انجام ماموریت‌های اون روز باز میشه.`)}
-      >
-        {inner}
-      </button>
-    );
+    return inner;
   }
 
   return <Link href={`/videos/${video.id}`}>{inner}</Link>;

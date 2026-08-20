@@ -77,7 +77,21 @@ export default async function VideosPage() {
             const watchPct = prog && video.durationMin > 0
               ? Math.round((prog.watchedSeconds / (video.durationMin * 60)) * 100)
               : 0;
-            return <VideoCard key={video.id} video={video} watchPct={watchPct} isCompleted={isCompleted} isLocked={isLocked} purchasable={purchasable} price={price} />;
+            const lockNote = isLocked
+              ? `${Math.max(1, video.day - daysSinceReg).toLocaleString("fa-IR")} روز دیگه باز میشه.`
+              : undefined;
+            return (
+              <VideoCard
+                key={video.id}
+                video={video}
+                watchPct={watchPct}
+                isCompleted={isCompleted}
+                isLocked={isLocked}
+                lockNote={lockNote}
+                purchasable={purchasable}
+                price={price}
+              />
+            );
           })
         )}
       </div>
