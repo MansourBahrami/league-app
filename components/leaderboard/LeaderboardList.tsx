@@ -117,6 +117,7 @@ export default function LeaderboardList({ entries }: Props) {
               key={entry.userId}
               ref={(el) => { rowsRef.current[i] = el; }}
               href={`/profile/${entry.userId}`}
+              data-onboarding={entry.isCurrentUser ? "current-rank" : undefined}
               style={{ willChange: "transform, opacity", transformOrigin: "center center" }}
               className={`flex items-center gap-3 p-3 rounded-xl border transition-[border-color] ${
                 entry.isCurrentUser

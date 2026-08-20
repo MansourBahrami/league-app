@@ -6,7 +6,7 @@ import Podium from "@/components/leaderboard/Podium";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
 import InviteFriends from "@/components/social/InviteFriends";
 import { ensureReferralCode, getFriendIds } from "@/lib/referral";
-import ActionGuidanceModal from "@/components/onboarding/ActionGuidanceModal";
+import ContextualSpotlight from "@/components/onboarding/ContextualSpotlight";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { tehranDayStartDaysAgo } from "@/lib/date";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
@@ -154,18 +154,14 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
         </Link>
       </div>
 
-      <ActionGuidanceModal
-        hint={ONBOARDING_HINTS.LEADERBOARD_EXPLAINED}
-        eyebrow="جدول رده‌بندی"
-        title="رتبه‌ات رو ببر بالا!"
-        description="اینجا رتبه‌ات با بچه‌های هم‌سطح خودت مقایسه می‌شه. با هر ۱۵ دقیقه مطالعه ۱ XP می‌گیری و میای بالاتر."
-        icon="leaderboard"
-        actionText="مشاهده رده‌بندی"
-        points={[
-          "هر ۱۵ دقیقه مطالعه تاییدشده = ۱ XP هفتگی.",
-          "توی تب دوستان می‌تونی رفقات رو هم دعوت کنی و مستقیم مسابقه بدی."
-        ]}
-      />
+      {!isFriends && (
+        <ContextualSpotlight
+          hint={ONBOARDING_HINTS.LEADERBOARD_EXPLAINED}
+          title="رتبه‌ات اینجاست"
+          description="هر ۱۵ دقیقه مطالعه، ۱ XP می‌گیری و بین هم‌سطح‌هات بالاتر می‌ری."
+          targetElementSelector='[data-onboarding="current-rank"]'
+        />
+      )}
 
       <div data-tour="leaderboard" className="flex flex-col gap-4">
         {/* Friends tab: invite when empty */}

@@ -69,6 +69,7 @@ export default function Podium({ top3 }: Props) {
             <Link
               key={entry.userId}
               href={`/profile/${entry.userId}`}
+              data-onboarding={entry.isCurrentUser ? "current-rank" : undefined}
               aria-label={`رتبه ${rank.toLocaleString("fa-IR")}: ${entry.name}`}
               className={`relative flex min-w-0 max-w-[10rem] flex-1 flex-col items-center rounded-[1.5rem] border px-2 pb-4 text-center transition-[box-shadow,border-color] hover:shadow-md ${cardClass} ${entry.isCurrentUser ? "ring-2 ring-primary/35 ring-offset-2 ring-offset-surface-container-low" : ""}`}
             >
