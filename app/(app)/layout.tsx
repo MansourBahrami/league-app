@@ -3,7 +3,8 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ensureVariant } from "@/lib/ab";
 import { getUnreadCount } from "@/lib/inbox";
-import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import { hasOnboardingHint, ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import { isMessengerPromptSnoozed } from "@/lib/messenger-prompt";
 import AppShell from "@/components/layout/AppShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -31,11 +32,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     bale: !!process.env.BALE_BOT_USERNAME,
   };
   const hasAvailableBot = botAvailability.telegram || botAvailability.bale;
-  const showBotConnect = hasAvailableBot && completedSessions > 0 && !hasMessenger && !user.messengerPromptDismissedAt;
+  const setupHandled = hasOnboardingHint(user.onboardingHints, ONBOARDING_HINTS.PUSH_PROMPTED)
+    && hasOnboardingHint(user.onboardingHints, ONBOARDING_HINTS.INSTALL_PROMPTED);
+  const showBotConnect = setupHandled
+    && hasAvailableBot
+    && completedSessions > 0
+    && !hasMessenger
+    && !isMessengerPromptSnoozed(user.messengerPromptDismissedAt);
 
   // روز دوم به بعد: اگر هنوز ماموریتی برای امروز فعال نکرده است
   let showDay2Mission = false;
-  if (user.onboardingDay >= 1 && !showBotConnect) {
+  if (setupHandled && user.onboardingDay >= 1 && !showBotConnect) {
     const activeMission = await prisma.userMission.findFirst({
       where: { userId: user.id, status: "active" },
     });

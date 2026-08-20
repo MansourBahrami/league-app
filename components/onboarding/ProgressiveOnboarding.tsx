@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 import { enablePush } from "@/components/push/PushRegister";
 import {
   ONBOARDING_HINTS,
@@ -40,7 +39,6 @@ export default function ProgressiveOnboarding({
   allowSetupPrompt,
   children,
 }: Props) {
-  const router = useRouter();
   const [hints, setHints] = useState(() => new Set(initialHints));
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
@@ -113,7 +111,6 @@ export default function ProgressiveOnboarding({
     await markHints(ONBOARDING_HINTS.PUSH_PROMPTED);
     setFeedback(result.ok ? "اعلان‌ها فعال شد." : (result.reason ?? "اعلان‌ها فعال نشد؛ بعداً از پروفایل می‌تونی دوباره امتحان کنی."));
     setBusy(null);
-    if (installHandled) router.refresh();
   }
 
   async function requestInstall() {
@@ -130,14 +127,12 @@ export default function ProgressiveOnboarding({
     setInstallPrompt(null);
     setFeedback(choice.outcome === "accepted" ? "G-camp به صفحهٔ اصلی اضافه شد." : "هر وقت خواستی می‌تونی از منوی مرورگر نصبش کنی.");
     setBusy(null);
-    if (pushHandled) router.refresh();
   }
 
   async function finishInstallHelp() {
     setBusy("install");
     await markHints(ONBOARDING_HINTS.INSTALL_PROMPTED);
     setBusy(null);
-    if (pushHandled) router.refresh();
   }
 
   async function dismissSetup() {
@@ -147,7 +142,6 @@ export default function ProgressiveOnboarding({
     if (!installHandled) remaining.push(ONBOARDING_HINTS.INSTALL_PROMPTED);
     await markHints(...remaining);
     setBusy(null);
-    router.refresh();
   }
 
   const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);

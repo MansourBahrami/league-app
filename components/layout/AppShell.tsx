@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import BottomNav from "./BottomNav";
 import LeadCaptureModal from "@/components/onboarding/LeadCaptureModal";
@@ -38,13 +38,15 @@ interface AppShellProps {
 
 export default function AppShell({ user, children, onboardingHints = [], hasCompletedSession = false, needsLead = false, hasPhone = false, unreadCount = 0, showBotConnect = false, showDay2Mission = false, botAvailability = { telegram: false, bale: false } }: AppShellProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [day2Dismissed, setDay2Dismissed] = useState(false);
+  const botConnectVisible = showBotConnect && pathname === "/dashboard";
   // مقادیر مستقیم از prop سرور؛ با router.refresh() (بعد از خرید/پایان جلسه) به‌روز می‌شوند
   return (
     <ProgressiveOnboarding
       initialHints={onboardingHints}
       hasCompletedSession={hasCompletedSession}
-      allowSetupPrompt={!needsLead && !showBotConnect && !showDay2Mission}
+      allowSetupPrompt={!needsLead && !showDay2Mission}
     >
       <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-28 md:pb-12">
         <PushRegister />
@@ -52,14 +54,14 @@ export default function AppShell({ user, children, onboardingHints = [], hasComp
         {needsLead && (
           <LeadCaptureModal hasPhone={hasPhone} onComplete={() => router.refresh()} />
         )}
-        {showBotConnect && !needsLead && (
+        {botConnectVisible && !needsLead && (
           <BotConnectModal
             available={botAvailability}
             onComplete={() => router.refresh()}
             onDismiss={() => router.refresh()}
           />
         )}
-        {showDay2Mission && !needsLead && !showBotConnect && !day2Dismissed && (
+        {showDay2Mission && !needsLead && !botConnectVisible && !day2Dismissed && (
           <Day2MissionModal onDismiss={() => setDay2Dismissed(true)} />
         )}
         {/* Cyber grid background */}

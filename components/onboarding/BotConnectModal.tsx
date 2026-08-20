@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type Messenger = "telegram" | "bale";
 
@@ -13,6 +13,13 @@ interface Props {
 export default function BotConnectModal({ available, onComplete, onDismiss }: Props) {
   const [loading, setLoading] = useState<Messenger | "dismiss" | null>(null);
   const [error, setError] = useState("");
+  const initialFocusRef = useRef<HTMLButtonElement>(null);
+  const hasBothMessengers = available.telegram && available.bale;
+  const title = hasBothMessengers
+    ? "یادآوری‌ها رو در پیام‌رسان بگیر"
+    : available.bale
+      ? "یادآوری‌ها رو در بله بگیر"
+      : "یادآوری‌ها رو در تلگرام بگیر";
 
   const refreshStatus = useCallback(async () => {
     const res = await fetch("/api/profile/bot-link", { cache: "no-store" }).catch(() => null);
@@ -20,6 +27,12 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
     const data = await res.json() as { telegram?: boolean; bale?: boolean };
     if (data.telegram || data.bale) onComplete();
   }, [onComplete]);
+
+  useEffect(() => {
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    initialFocusRef.current?.focus();
+    return () => previousFocus?.focus();
+  }, []);
 
   useEffect(() => {
     const onVisible = () => {
@@ -57,27 +70,38 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
   }
 
   return (
-    <div className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm">
-      <section role="dialog" aria-modal="true" aria-labelledby="bot-connect-title" className="glass-card w-full max-w-[460px] rounded-2xl p-6 text-center">
+    <div
+      className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+      onKeyDown={(event) => {
+        if (event.key === "Escape" && loading === null) void dismiss();
+      }}
+    >
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="bot-connect-title"
+        aria-describedby="bot-connect-description"
+        className="glass-card w-full max-w-[460px] rounded-2xl p-6 text-center"
+      >
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/25">
           <span className="material-symbols-outlined text-[32px]" style={{ fontVariationSettings: "'FILL' 1" }}>notifications_active</span>
         </div>
-        <h2 id="bot-connect-title" className="text-[21px] font-extrabold text-on-surface">جلسه اولت ثبت شد؛ آفرین!</h2>
-        <p className="mt-2 text-[14px] leading-7 text-on-surface-variant">
-          برای یادآوری زمان مطالعه، خبر ماموریت‌ها و هشدار حفظ زنجیره، حسابت رو به یکی از ربات‌های G-camp وصل کن.
+        <h2 id="bot-connect-title" className="text-[21px] font-extrabold text-on-surface">{title}</h2>
+        <p id="bot-connect-description" className="mt-2 text-[14px] leading-7 text-on-surface-variant">
+          برای زمان مطالعه، مأموریت‌ها و حفظ زنجیره.
         </p>
 
         <div className="mt-5 grid gap-3">
           {available.telegram && (
-            <button type="button" onClick={() => connect("telegram")} disabled={loading !== null} className="gamified-btn flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-[15px] font-bold text-on-primary disabled:opacity-60">
+            <button ref={initialFocusRef} type="button" onClick={() => connect("telegram")} disabled={loading !== null} className="gamified-btn flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3.5 text-[15px] font-bold text-on-primary disabled:opacity-60">
               <span className="material-symbols-outlined text-[20px]">send</span>
-              {loading === "telegram" ? "در حال ساخت لینک…" : "اتصال به ربات تلگرام"}
+              {loading === "telegram" ? "در حال آماده‌سازی…" : "اتصال تلگرام"}
             </button>
           )}
           {available.bale && (
-            <button type="button" onClick={() => connect("bale")} disabled={loading !== null} className="gamified-btn flex w-full items-center justify-center gap-2 rounded-xl bg-secondary py-3.5 text-[15px] font-bold text-on-secondary disabled:opacity-60">
+            <button ref={available.telegram ? undefined : initialFocusRef} type="button" onClick={() => connect("bale")} disabled={loading !== null} className="gamified-btn flex w-full items-center justify-center gap-2 rounded-xl bg-secondary py-3.5 text-[15px] font-bold text-on-secondary disabled:opacity-60">
               <span className="material-symbols-outlined text-[20px]">forum</span>
-              {loading === "bale" ? "در حال ساخت لینک…" : "اتصال به ربات بله"}
+              {loading === "bale" ? "در حال آماده‌سازی…" : "اتصال بله"}
             </button>
           )}
         </div>
@@ -88,7 +112,7 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
         {error && <p role="alert" className="mt-3 text-[13px] text-error">{error}</p>}
 
         <button type="button" onClick={dismiss} disabled={loading !== null} className="mt-4 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface disabled:opacity-50">
-          {loading === "dismiss" ? "در حال ثبت…" : "فعلاً نه"}
+          {loading === "dismiss" ? "در حال ثبت…" : "بعداً"}
         </button>
       </section>
     </div>
