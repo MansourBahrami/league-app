@@ -5,6 +5,7 @@ export const ONBOARDING_HINTS = {
   INSTALL_PROMPTED: "install_prompted",
   LEADERBOARD_EXPLAINED: "leaderboard_explained",
   MISSION_ROOMS_EXPLAINED: "mission_rooms_explained",
+  WEEKLY_MISSION_EXPLAINED: "weekly_mission_explained",
 } as const;
 
 export type OnboardingHint = (typeof ONBOARDING_HINTS)[keyof typeof ONBOARDING_HINTS];

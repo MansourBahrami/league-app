@@ -6,8 +6,6 @@ import { getCurrentMissionRoomSnapshots, pickMissionRoomToOpen } from "@/lib/mis
 import { formatJalaliLong, getNextTehranMissionWeek } from "@/lib/date";
 import { suggestMissions } from "@/lib/gamification";
 import MissionRoomChooser, { type MissionChoice } from "@/components/mission-rooms/MissionRoomChooser";
-import ActionGuidanceModal from "@/components/onboarding/ActionGuidanceModal";
-import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
 export const dynamic = "force-dynamic";
@@ -88,7 +86,7 @@ export default async function MissionRoomsPage() {
                 points={[
                   "مأموریت روزانه: برای هدف‌گذاری امروز و گرفتن سکه جایزه.",
                   "مأموریت هفتگی: برای ایجاد عادت خفن مطالعه، گرفتن کلی XP و مدال‌های ارتقای سطح.",
-                  "مأموریتی که می‌خری از فردا صبح فعال می‌شه."
+                  "مأموریت روزانه همان روز حساب می‌شود؛ ثبت‌نام هفتگی جمعه است و از شنبه شروع می‌شود."
                 ]}
               />
             </div>
@@ -97,21 +95,6 @@ export default async function MissionRoomsPage() {
           <span className="rounded-full bg-tertiary-fixed/60 px-2.5 py-1 text-[11px] font-bold text-tertiary">{user.coins.toLocaleString("fa-IR")} سکه</span>
         </div>
       </header>
-
-      <ActionGuidanceModal
-        hint={ONBOARDING_HINTS.MISSION_ROOMS_EXPLAINED}
-        eyebrow="اتاق‌های مأموریت"
-        title="مأموریتت رو انتخاب کن!"
-        description={user.onboardingDay < 1
-          ? "اتاق‌های مأموریت بعد از روز اول باز می‌شن. فعلاً ۱ ساعت مطالعه امروزت رو کامل کن تا بتونی مأموریت برداری."
-          : "یک مأموریت روزانه یا هفتگی بردار تا از فردا کنار بچه‌هایی که همین هدف رو دارن درس بخونی و مدال بگیری."}
-        icon="meeting_room"
-        actionText="انتخاب مأموریت"
-        points={[
-          "مأموریت روزانه سکه جایزه میده و مأموریت هفتگی XP بالا + مدال ارتقای سطح.",
-          "مأموریتی که می‌خری از فردا فعال می‌شه و مطالعه امروزت آزاده."
-        ]}
-      />
 
       <MissionRoomChooser
         daily={dailyChoices}

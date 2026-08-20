@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import ContextualSpotlight from "@/components/onboarding/ContextualSpotlight";
+import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 
 export interface MissionChoice {
   id: string;
@@ -35,6 +37,7 @@ export default function MissionRoomChooser({
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const choices = tab === "daily" ? daily : weekly;
+  const spotlightMissionId = choices.find((mission) => mission.recommended)?.id ?? choices[0]?.id;
 
   async function join(missionId: string) {
     setLoadingId(missionId);
@@ -61,7 +64,7 @@ export default function MissionRoomChooser({
           <span className="material-symbols-outlined text-[23px]" style={{ fontVariationSettings: "'FILL' 1" }}>groups_3</span>
         </span>
         <div className="min-w-0 flex-1 text-right">
-          <h2 id="mission-choice-title" className="text-[16px] font-extrabold text-on-surface">ماموریت بعدی‌ات را انتخاب کن</h2>
+          <h2 id="mission-choice-title" className="text-[16px] font-extrabold text-on-surface">مأموریت بعدی‌ات را انتخاب کن</h2>
           <p className="mt-0.5 text-[11.5px] text-on-surface-variant">با کسانی وارد اتاق شو که دقیقاً همین هدف را دارند.</p>
         </div>
       </div>
@@ -107,6 +110,9 @@ export default function MissionRoomChooser({
             return (
               <article
                 key={mission.id}
+                data-onboarding={mission.id === spotlightMissionId
+                  ? (tab === "daily" ? "recommended-daily-mission" : "recommended-weekly-mission")
+                  : undefined}
                 className={`rounded-2xl border p-3.5 transition-colors ${mission.recommended ? "border-primary/45 bg-primary-fixed/35" : "border-outline-variant/40 bg-surface-container-lowest/70"}`}
               >
                 <div className="flex items-center gap-3">
@@ -138,6 +144,24 @@ export default function MissionRoomChooser({
             );
           })}
         </div>
+      )}
+
+      {!onboardingLocked && tab === "daily" && spotlightMissionId && (
+        <ContextualSpotlight
+          hint={ONBOARDING_HINTS.MISSION_ROOMS_EXPLAINED}
+          title="مأموریت پیشنهادی تو"
+          description="این مأموریت از همین امروز حساب می‌شه. کاملش کن تا سکه بگیری و کنار هم‌هدف‌هات درس بخونی."
+          targetElementSelector='[data-onboarding="recommended-daily-mission"]'
+        />
+      )}
+
+      {!onboardingLocked && tab === "weekly" && spotlightMissionId && (
+        <ContextualSpotlight
+          hint={ONBOARDING_HINTS.WEEKLY_MISSION_EXPLAINED}
+          title="مأموریت هفتگی"
+          description="ثبت‌نام جمعه باز می‌شه و مأموریت از شنبه شروع می‌شه. جایزه‌اش XP و مداله."
+          targetElementSelector='[data-onboarding="recommended-weekly-mission"]'
+        />
       )}
 
       {error && <p role="alert" className="mt-3 rounded-xl bg-error/10 px-3 py-2 text-center text-[12px] text-error">{error}</p>}
