@@ -2,6 +2,7 @@ import { getDay1MissionHours, getFullDay1Hours, getOnboardingDailyGoalMinutes } 
 import { DEFAULT_ONBOARDING_DAYS } from "../lib/onboarding";
 import { gradeRequiresField, isStudentProfileComplete } from "../lib/student-profile";
 import { isSetupPromptSnoozed } from "../lib/setup-prompt";
+import { wasMissionPromptHandledToday } from "../lib/mission-prompt";
 
 console.log("🧪 تست منطق آنبوردینگ ۱ روزه (هدف ۱ ساعت مطالعه)\n");
 
@@ -58,3 +59,13 @@ const snoozeOk = isSetupPromptSnoozed(sixDaysAgo, now) && !isSetupPromptSnoozed(
 console.log(snoozeOk ? "  ✅ درخواست تا ۷ روز دوباره نمایش داده نمی‌شود" : "  ❌ خطا در بازهٔ تعویق درخواست");
 
 if (!snoozeOk) process.exitCode = 1;
+
+console.log("\n--- بررسی تکرار روزانه دعوت مأموریت ---");
+const afterTehranMidnight = new Date("2026-08-20T21:00:00.000Z");
+const sameTehranDay = new Date("2026-08-20T20:45:00.000Z");
+const previousTehranDay = new Date("2026-08-20T19:00:00.000Z");
+const missionPromptOk = wasMissionPromptHandledToday(sameTehranDay, afterTehranMidnight)
+  && !wasMissionPromptHandledToday(previousTehranDay, afterTehranMidnight);
+console.log(missionPromptOk ? "  ✅ دعوت در همان روز تکرار نمی‌شود و روز بعد برمی‌گردد" : "  ❌ خطا در مرز روز تهران برای دعوت مأموریت");
+
+if (!missionPromptOk) process.exitCode = 1;

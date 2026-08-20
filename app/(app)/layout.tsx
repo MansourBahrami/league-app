@@ -6,6 +6,7 @@ import { getUnreadCount } from "@/lib/inbox";
 import { hasOnboardingHint, ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { isMessengerPromptSnoozed } from "@/lib/messenger-prompt";
 import { isSetupPromptSnoozed } from "@/lib/setup-prompt";
+import { wasMissionPromptHandledToday } from "@/lib/mission-prompt";
 import AppShell from "@/components/layout/AppShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, videoAccess: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, messengerPromptDismissedAt: true },
+    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, videoAccess: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, missionPromptHandledAt: true, messengerPromptDismissedAt: true },
   });
 
   if (!user) redirect("/login");
@@ -41,13 +42,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     && !hasMessenger
     && !isMessengerPromptSnoozed(user.messengerPromptDismissedAt);
 
-  // روز دوم به بعد: اگر هنوز ماموریتی برای امروز فعال نکرده است
-  let showDay2Mission = false;
-  if (setupHandled && user.onboardingDay >= 1 && !showBotConnect) {
-    const activeMission = await prisma.userMission.findFirst({
-      where: { userId: user.id, status: "active" },
+  // بعد از روز اول: تا وقتی مأموریتی ندارد، هر روز یک‌بار دعوتش کن.
+  let showMissionPrompt = false;
+  if (user.onboardingDay >= 1 && user.isLeadComplete && !wasMissionPromptHandledToday(user.missionPromptHandledAt)) {
+    const currentMission = await prisma.userMission.findFirst({
+      where: {
+        userId: user.id,
+        status: { in: ["active", "pending"] },
+        expiresAt: { gt: new Date() },
+      },
+      select: { id: true },
     });
-    showDay2Mission = !activeMission;
+    showMissionPrompt = !currentMission;
   }
 
   const unreadCount = await getUnreadCount(user.id);
@@ -63,7 +69,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       hasPhone={!!user.phone}
       unreadCount={unreadCount}
       showBotConnect={showBotConnect}
-      showDay2Mission={showDay2Mission}
+      showMissionPrompt={showMissionPrompt}
       botAvailability={botAvailability}
     >
       {children}

@@ -36,6 +36,7 @@ model User {
   role                       String    @default("user") // user | admin
   sessionVersion             Int       @default(0) // افزایش در logout برای ابطال JWTهای قبلی
   setupPromptSnoozedAt       DateTime? // تعویق درخواست اعلان یا نصب اپ
+  missionPromptHandledAt     DateTime? // آخرین روزی که دعوت انتخاب مأموریت پاسخ داده شد
   messengerPromptDismissedAt DateTime? // تعویق پاپ‌آپ اتصال ربات
   // A/B تست مدل دسترسی به ویدیو: "free" (باز با پیشرفت روز) یا "paid" (خرید با سکه).
   // null = هنوز تخصیص نیافته؛ در اولین ورود به اپ مقداردهی می‌شود.
