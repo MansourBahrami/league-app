@@ -35,6 +35,9 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { name, grade, field, nextStudyTarget, hasSeenIntro, pastAvgStudyHours, avatarUrl } = body;
 
+  if (name !== undefined && (typeof name !== "string" || !name.trim())) {
+    return NextResponse.json({ error: "نام را وارد کن" }, { status: 400 });
+  }
   if (grade !== undefined && !isStudentGrade(grade)) {
     return NextResponse.json({ error: "پایه تحصیلی معتبر نیست" }, { status: 400 });
   }
@@ -43,7 +46,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   const updateData: Record<string, unknown> = {};
-  if (name !== undefined) updateData.name = name;
+  if (name !== undefined) updateData.name = name.trim();
   if (grade !== undefined) updateData.grade = grade;
   if (field !== undefined) updateData.field = field;
   if (grade !== undefined && !gradeRequiresField(grade)) updateData.field = null;
