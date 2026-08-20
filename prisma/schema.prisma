@@ -35,6 +35,7 @@ model User {
   referralCode               String?   @unique // کد دعوت دوستان
   role                       String    @default("user") // user | admin
   sessionVersion             Int       @default(0) // افزایش در logout برای ابطال JWTهای قبلی
+  setupPromptSnoozedAt       DateTime? // تعویق درخواست اعلان یا نصب اپ
   messengerPromptDismissedAt DateTime? // تعویق پاپ‌آپ اتصال ربات
   // A/B تست مدل دسترسی به ویدیو: "free" (باز با پیشرفت روز) یا "paid" (خرید با سکه).
   // null = هنوز تخصیص نیافته؛ در اولین ورود به اپ مقداردهی می‌شود.
@@ -417,4 +418,3 @@ model AppSetting {
   value     String
   updatedAt DateTime @updatedAt
 }
-

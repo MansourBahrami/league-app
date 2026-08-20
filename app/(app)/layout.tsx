@@ -5,6 +5,7 @@ import { ensureVariant } from "@/lib/ab";
 import { getUnreadCount } from "@/lib/inbox";
 import { hasOnboardingHint, ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { isMessengerPromptSnoozed } from "@/lib/messenger-prompt";
+import { isSetupPromptSnoozed } from "@/lib/setup-prompt";
 import AppShell from "@/components/layout/AppShell";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -13,7 +14,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const user = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, videoAccess: true, phone: true, telegramId: true, baleId: true, messengerPromptDismissedAt: true },
+    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, videoAccess: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, messengerPromptDismissedAt: true },
   });
 
   if (!user) redirect("/login");
@@ -57,6 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       user={user}
       onboardingHints={user.onboardingHints}
       hasCompletedSession={completedSessions > 0}
+      setupPromptSnoozed={isSetupPromptSnoozed(user.setupPromptSnoozedAt)}
       needsLead={needsLead}
       hasPhone={!!user.phone}
       unreadCount={unreadCount}

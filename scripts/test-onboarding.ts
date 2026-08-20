@@ -1,6 +1,7 @@
 import { getDay1MissionHours, getFullDay1Hours, getOnboardingDailyGoalMinutes } from "../lib/gamification";
 import { DEFAULT_ONBOARDING_DAYS } from "../lib/onboarding";
 import { gradeRequiresField, isStudentProfileComplete } from "../lib/student-profile";
+import { isSetupPromptSnoozed } from "../lib/setup-prompt";
 
 console.log("🧪 تست منطق آنبوردینگ ۱ روزه (هدف ۱ ساعت مطالعه)\n");
 
@@ -48,3 +49,12 @@ for (const item of profileCases) {
 console.log(profileOk ? "  ✅ شاخه‌بندی پایه و رشته درست است" : "  ❌ خطا در شاخه‌بندی پایه و رشته");
 
 if (!goalOk || totalDays !== 1 || !profileOk) process.exitCode = 1;
+
+console.log("\n--- بررسی تعویق درخواست اعلان و نصب ---");
+const now = new Date("2026-08-20T12:00:00.000Z").getTime();
+const sixDaysAgo = new Date(now - 6 * 24 * 60 * 60 * 1000);
+const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+const snoozeOk = isSetupPromptSnoozed(sixDaysAgo, now) && !isSetupPromptSnoozed(sevenDaysAgo, now);
+console.log(snoozeOk ? "  ✅ درخواست تا ۷ روز دوباره نمایش داده نمی‌شود" : "  ❌ خطا در بازهٔ تعویق درخواست");
+
+if (!snoozeOk) process.exitCode = 1;

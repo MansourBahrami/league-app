@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { enablePush } from "@/components/push/PushRegister";
 import {
   ONBOARDING_HINTS,
@@ -11,6 +11,8 @@ interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
+
+type SetupStep = "push" | "install";
 
 interface OnboardingContextValue {
   hasHint: (hint: OnboardingHint) => boolean;
@@ -28,9 +30,170 @@ export function useProgressiveOnboarding(): OnboardingContextValue {
   return context;
 }
 
+interface SetupPromptDialogProps {
+  step: SetupStep;
+  busy: SetupStep | "dismiss" | null;
+  feedback: string;
+  showInstallHelp: boolean;
+  onAction: () => void;
+  onInstallHelpDone: () => void;
+  onLater: () => void;
+  onAcknowledge: () => void;
+}
+
+function SetupPromptDialog({
+  step,
+  busy,
+  feedback,
+  showInstallHelp,
+  onAction,
+  onInstallHelpDone,
+  onLater,
+  onAcknowledge,
+}: SetupPromptDialogProps) {
+  const dialogRef = useRef<HTMLElement>(null);
+  const primaryButtonRef = useRef<HTMLButtonElement>(null);
+  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const title = step === "push" ? "اعلان‌ها رو روشن کن" : "G-camp رو به صفحهٔ اصلی اضافه کن";
+  const description = step === "push"
+    ? "برای یادآوری زمان مطالعه و هدفت."
+    : "سریع‌تر بازش کن و مستقیم به تایمر برس.";
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const focusTimer = window.setTimeout(() => primaryButtonRef.current?.focus(), 0);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus();
+    };
+  }, []);
+
+  useEffect(() => {
+    const focusTimer = window.setTimeout(() => primaryButtonRef.current?.focus(), 0);
+    return () => window.clearTimeout(focusTimer);
+  }, [feedback, showInstallHelp]);
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape" && busy === null) {
+      event.preventDefault();
+      if (feedback) onAcknowledge();
+      else onLater();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    );
+    if (!focusable?.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[78] flex items-end justify-center bg-on-surface/55 px-3 pb-[calc(5.75rem_+_env(safe-area-inset-bottom))] pt-16 backdrop-blur-[2px] sm:items-center sm:pb-4">
+      <section
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="setup-title"
+        aria-describedby="setup-description"
+        onKeyDown={handleKeyDown}
+        className="glass-card w-full max-w-[480px] rounded-[2rem] border border-outline-variant/45 p-5 shadow-2xl"
+      >
+        <div className="flex items-start gap-3">
+          <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl shadow-lg ${step === "push" ? "bg-secondary-container text-on-secondary-container shadow-secondary/15" : "bg-primary text-on-primary shadow-primary/20"}`}>
+            <span className="material-symbols-outlined text-[25px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+              {step === "push" ? "notifications_active" : "add_to_home_screen"}
+            </span>
+          </span>
+          <div className="min-w-0 flex-1 text-right">
+            <h2 id="setup-title" className="text-[19px] font-extrabold leading-8 text-on-surface">{title}</h2>
+            <p id="setup-description" className="mt-1 text-[13px] leading-6 text-on-surface-variant">{description}</p>
+          </div>
+        </div>
+
+        {feedback && (
+          <p role="status" className="mt-4 rounded-xl bg-surface-container-high px-3 py-2.5 text-[12.5px] leading-6 text-on-surface-variant">
+            {feedback}
+          </p>
+        )}
+
+        {step === "install" && showInstallHelp && !feedback && (
+          <div className="mt-4 rounded-xl bg-primary-fixed/65 p-3 text-[12.5px] leading-6 text-on-surface">
+            {isIOS
+              ? "در Safari بزن روی اشتراک‌گذاری ← Add to Home Screen"
+              : "از منوی مرورگر، «نصب برنامه» را بزن."}
+          </div>
+        )}
+
+        <div className="mt-5 grid gap-2">
+          {feedback ? (
+            <button
+              ref={primaryButtonRef}
+              type="button"
+              onClick={onAcknowledge}
+              disabled={busy !== null}
+              className="gamified-btn w-full rounded-xl bg-primary py-3.5 text-[14px] font-bold text-on-primary shadow-lg shadow-primary/20 disabled:opacity-50"
+            >
+              {busy === "dismiss" ? "در حال ثبت…" : "باشه"}
+            </button>
+          ) : step === "install" && showInstallHelp ? (
+            <button
+              ref={primaryButtonRef}
+              type="button"
+              onClick={onInstallHelpDone}
+              disabled={busy !== null}
+              className="gamified-btn w-full rounded-xl bg-primary py-3.5 text-[14px] font-bold text-on-primary shadow-lg shadow-primary/20 disabled:opacity-50"
+            >
+              {busy === "install" ? "در حال ثبت…" : "انجام شد"}
+            </button>
+          ) : (
+            <button
+              ref={primaryButtonRef}
+              type="button"
+              onClick={onAction}
+              disabled={busy !== null}
+              className="gamified-btn w-full rounded-xl bg-primary py-3.5 text-[14px] font-bold text-on-primary shadow-lg shadow-primary/20 disabled:opacity-50"
+            >
+              {busy === step
+                ? (step === "push" ? "در حال فعال‌سازی…" : "در حال نصب…")
+                : (step === "push" ? "فعال‌کردن اعلان‌ها" : "اضافه‌کردن")}
+            </button>
+          )}
+
+          {!feedback && (
+            <button
+              type="button"
+              onClick={onLater}
+              disabled={busy !== null}
+              className="w-full py-2 text-[13px] font-semibold text-on-surface-variant hover:text-on-surface disabled:opacity-50"
+            >
+              {busy === "dismiss" ? "در حال ثبت…" : "بعداً"}
+            </button>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
 interface Props {
   initialHints: string[];
   hasCompletedSession: boolean;
+  initialSetupSnoozed: boolean;
   allowSetupPrompt: boolean;
   children: React.ReactNode;
 }
@@ -38,17 +201,22 @@ interface Props {
 export default function ProgressiveOnboarding({
   initialHints,
   hasCompletedSession,
+  initialSetupSnoozed,
   allowSetupPrompt,
   children,
 }: Props) {
   const [hints, setHints] = useState(() => new Set(initialHints));
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
-  const [busy, setBusy] = useState<"push" | "install" | "dismiss" | null>(null);
+  const [busy, setBusy] = useState<SetupStep | "dismiss" | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [feedbackShouldSnooze, setFeedbackShouldSnooze] = useState(false);
+  const [lockedStep, setLockedStep] = useState<SetupStep | null>(null);
   const [studyActive, setStudyActive] = useState(false);
   const [studyStateKnown, setStudyStateKnown] = useState(false);
   const [setupSuppressed, setSetupSuppressed] = useState(false);
+  const [setupSnoozed, setSetupSnoozed] = useState(initialSetupSnoozed);
+  const [setupHandledThisVisit, setSetupHandledThisVisit] = useState(false);
 
   const hasHint = useCallback((hint: OnboardingHint) => hints.has(hint), [hints]);
 
@@ -57,6 +225,9 @@ export default function ProgressiveOnboarding({
     if (unique.length === 0) return true;
 
     setHints((current) => new Set([...current, ...unique]));
+    if (unique.some((hint) => hint === ONBOARDING_HINTS.PUSH_PROMPTED || hint === ONBOARDING_HINTS.INSTALL_PROMPTED)) {
+      setSetupSnoozed(false);
+    }
     const response = await fetch("/api/onboarding/hints", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -106,25 +277,59 @@ export default function ProgressiveOnboarding({
   const rewardsExplained = hasHint(ONBOARDING_HINTS.REWARDS_EXPLAINED);
   const pushHandled = hasHint(ONBOARDING_HINTS.PUSH_PROMPTED);
   const installHandled = hasHint(ONBOARDING_HINTS.INSTALL_PROMPTED);
+  const activeSetupStep: SetupStep = lockedStep ?? (pushHandled ? "install" : "push");
   const showSetup = allowSetupPrompt
     && !setupSuppressed
+    && !setupSnoozed
+    && !setupHandledThisVisit
     && hasCompletedSession
     && rewardsExplained
     && studyStateKnown
     && !studyActive
     && (!pushHandled || !installHandled);
 
+  function closeSetupForVisit() {
+    setSetupHandledThisVisit(true);
+    setFeedback("");
+    setFeedbackShouldSnooze(false);
+    setLockedStep(null);
+    setShowInstallHelp(false);
+  }
+
+  async function postponeSetup() {
+    setBusy("dismiss");
+    const response = await fetch("/api/onboarding/setup-snooze", { method: "POST" }).catch(() => null);
+    if (!response?.ok) {
+      setFeedback("تعویق یادآوری ثبت نشد؛ دوباره تلاش کن.");
+      setFeedbackShouldSnooze(true);
+      setBusy(null);
+      return;
+    }
+    setSetupSnoozed(true);
+    setBusy(null);
+    closeSetupForVisit();
+  }
+
   async function requestPush() {
+    setLockedStep("push");
     setBusy("push");
     setFeedback("");
-    const result = await enablePush().catch(() => ({ ok: false as const, reason: "درخواست نوتیفیکیشن انجام نشد" }));
-    await markHints(ONBOARDING_HINTS.PUSH_PROMPTED);
-    setFeedback(result.ok ? "اعلان‌ها فعال شد." : (result.reason ?? "اعلان‌ها فعال نشد؛ بعداً از پروفایل می‌تونی دوباره امتحان کنی."));
+    setFeedbackShouldSnooze(false);
+    const result = await enablePush().catch(() => ({ ok: false as const, reason: "درخواست اعلان انجام نشد." }));
+    const permission = typeof Notification === "undefined" ? "default" : Notification.permission;
+    if (result.ok || permission === "denied" || permission === "granted") {
+      await markHints(ONBOARDING_HINTS.PUSH_PROMPTED);
+    } else {
+      setFeedbackShouldSnooze(true);
+    }
+    setFeedback(result.ok ? "اعلان‌ها فعال شد." : (result.reason ?? "اعلان‌ها فعال نشد؛ بعداً دوباره امتحان کن."));
     setBusy(null);
   }
 
   async function requestInstall() {
+    setLockedStep("install");
     setFeedback("");
+    setFeedbackShouldSnooze(false);
     if (!installPrompt) {
       setShowInstallHelp(true);
       return;
@@ -133,9 +338,14 @@ export default function ProgressiveOnboarding({
     setBusy("install");
     await installPrompt.prompt();
     const choice = await installPrompt.userChoice.catch(() => ({ outcome: "dismissed" as const }));
-    await markHints(ONBOARDING_HINTS.INSTALL_PROMPTED);
     setInstallPrompt(null);
-    setFeedback(choice.outcome === "accepted" ? "G-camp به صفحهٔ اصلی اضافه شد." : "هر وقت خواستی می‌تونی از منوی مرورگر نصبش کنی.");
+    if (choice.outcome === "accepted") {
+      await markHints(ONBOARDING_HINTS.INSTALL_PROMPTED);
+      setFeedback("G-camp به صفحهٔ اصلی اضافه شد.");
+    } else {
+      setFeedbackShouldSnooze(true);
+      setFeedback("نصب انجام نشد؛ ۷ روز دیگه دوباره یادآوری می‌کنیم.");
+    }
     setBusy(null);
   }
 
@@ -143,89 +353,32 @@ export default function ProgressiveOnboarding({
     setBusy("install");
     await markHints(ONBOARDING_HINTS.INSTALL_PROMPTED);
     setBusy(null);
+    closeSetupForVisit();
   }
 
-  async function dismissSetup() {
-    setBusy("dismiss");
-    const remaining: OnboardingHint[] = [];
-    if (!pushHandled) remaining.push(ONBOARDING_HINTS.PUSH_PROMPTED);
-    if (!installHandled) remaining.push(ONBOARDING_HINTS.INSTALL_PROMPTED);
-    await markHints(...remaining);
-    setBusy(null);
+  async function acknowledgeFeedback() {
+    if (feedbackShouldSnooze) {
+      await postponeSetup();
+      return;
+    }
+    closeSetupForVisit();
   }
-
-  const isIOS = typeof navigator !== "undefined" && /iphone|ipad|ipod/i.test(navigator.userAgent);
 
   return (
     <OnboardingContext.Provider value={value}>
       {children}
 
       {showSetup && (
-        <div className="fixed inset-0 z-[78] flex items-end justify-center bg-on-surface/55 px-3 pb-[calc(5.75rem_+_env(safe-area-inset-bottom))] pt-16 backdrop-blur-[2px] sm:items-center sm:pb-4">
-          <section role="dialog" aria-modal="true" aria-labelledby="setup-title" className="glass-card w-full max-w-[480px] rounded-[2rem] border border-outline-variant/45 p-5 shadow-2xl">
-            <div className="flex items-start gap-3">
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20">
-                <span className="material-symbols-outlined text-[25px]" style={{ fontVariationSettings: "'FILL' 1" }}>rocket_launch</span>
-              </span>
-              <div className="min-w-0 flex-1 text-right">
-                <p className="text-[11px] font-bold text-tertiary">بعد از اولین جلسه</p>
-                <h2 id="setup-title" className="mt-0.5 text-[19px] font-extrabold text-on-surface">G-camp رو برای برگشتن آماده کن</h2>
-                <p className="mt-1 text-[12.5px] leading-6 text-on-surface-variant">این دو مورد اختیاری‌اند و هر زمان از پروفایل قابل تغییرند.</p>
-              </div>
-            </div>
-
-            {feedback && <p role="status" className="mt-3 rounded-xl bg-surface-container-high px-3 py-2 text-[12px] text-on-surface-variant">{feedback}</p>}
-
-            <div className="mt-4 grid gap-2.5">
-              {!pushHandled && (
-                <div className="rounded-2xl border border-outline-variant/55 bg-surface-container-lowest/75 p-3.5">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-secondary-container text-on-secondary-container">
-                      <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>notifications_active</span>
-                    </span>
-                    <div className="min-w-0 flex-1 text-right">
-                      <p className="text-[14px] font-extrabold text-on-surface">یادآوری مطالعه و زنجیره</p>
-                      <p className="mt-0.5 text-[11.5px] leading-5 text-on-surface-variant">فقط برای اتفاق‌های مهم؛ مثل زمان مطالعه یا جلو زدن رقیب.</p>
-                    </div>
-                    <button type="button" onClick={requestPush} disabled={busy !== null} className="shrink-0 rounded-xl bg-primary px-3 py-2 text-[12px] font-bold text-on-primary disabled:opacity-50">
-                      {busy === "push" ? "…" : "فعال کن"}
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {!installHandled && (
-                <div className="rounded-2xl border border-outline-variant/55 bg-surface-container-lowest/75 p-3.5">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-tertiary-fixed/55 text-tertiary">
-                      <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>add_to_home_screen</span>
-                    </span>
-                    <div className="min-w-0 flex-1 text-right">
-                      <p className="text-[14px] font-extrabold text-on-surface">اضافه به صفحهٔ اصلی</p>
-                      <p className="mt-0.5 text-[11.5px] leading-5 text-on-surface-variant">مثل یک اپ بازش کن و سریع‌تر به تایمر برگرد.</p>
-                    </div>
-                    <button type="button" onClick={requestInstall} disabled={busy !== null} className="shrink-0 rounded-xl border border-primary px-3 py-2 text-[12px] font-bold text-primary disabled:opacity-50">
-                      {busy === "install" ? "…" : installPrompt ? "نصب" : "راهنما"}
-                    </button>
-                  </div>
-
-                  {showInstallHelp && (
-                    <div className="mt-3 rounded-xl bg-primary-fixed/65 p-3 text-[12px] leading-6 text-on-surface">
-                      {isIOS
-                        ? "در Safari روی دکمهٔ اشتراک‌گذاری بزن و «Add to Home Screen» را انتخاب کن."
-                        : "منوی مرورگر را باز کن و «نصب برنامه» یا «افزودن به صفحهٔ اصلی» را بزن."}
-                      <button type="button" onClick={finishInstallHelp} disabled={busy !== null} className="mt-2 block w-full rounded-lg bg-primary py-2 font-bold text-on-primary disabled:opacity-50">متوجه شدم</button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <button type="button" onClick={dismissSetup} disabled={busy !== null} className="mt-3 w-full py-2 text-[12.5px] font-semibold text-on-surface-variant hover:text-on-surface disabled:opacity-50">
-              {busy === "dismiss" ? "در حال ثبت…" : "فعلاً نه"}
-            </button>
-          </section>
-        </div>
+        <SetupPromptDialog
+          step={activeSetupStep}
+          busy={busy}
+          feedback={feedback}
+          showInstallHelp={showInstallHelp}
+          onAction={activeSetupStep === "push" ? requestPush : requestInstall}
+          onInstallHelpDone={finishInstallHelp}
+          onLater={postponeSetup}
+          onAcknowledge={acknowledgeFeedback}
+        />
       )}
     </OnboardingContext.Provider>
   );

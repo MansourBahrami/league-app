@@ -109,6 +109,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | `referralCode` | String? (unique) | کد دعوت دوستان |
 | `role` | String | `user` یا `admin` (پیش‌فرض `user`) |
 | `sessionVersion` | Int | نسخه سشن؛ با logout افزایش می‌یابد و JWTهای قبلی را باطل می‌کند |
+| `setupPromptSnoozedAt` | DateTime? | زمان تعویق هفت‌روزهٔ درخواست اعلان یا نصب اپ |
 | `videoAccess` | String? | گروه A/B ویدیو: `free` یا `paid` |
 | `telegramId`, `baleId` | String? | کانال‌های اعلان متصل؛ روش ورود نیستند |
 | `lastWeeklyRank` | Int? | snapshot رتبه برای اعلان افت رتبه |

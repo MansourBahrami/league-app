@@ -27,6 +27,7 @@ interface AppShellProps {
   children: React.ReactNode;
   onboardingHints?: string[];
   hasCompletedSession?: boolean;
+  setupPromptSnoozed?: boolean;
   /** قفل اپ تا تکمیل لید (نام/پایه/رشته + موبایلِ تأییدشده) */
   needsLead?: boolean;
   hasPhone?: boolean;
@@ -36,7 +37,7 @@ interface AppShellProps {
   botAvailability?: { telegram: boolean; bale: boolean };
 }
 
-export default function AppShell({ user, children, onboardingHints = [], hasCompletedSession = false, needsLead = false, hasPhone = false, unreadCount = 0, showBotConnect = false, showDay2Mission = false, botAvailability = { telegram: false, bale: false } }: AppShellProps) {
+export default function AppShell({ user, children, onboardingHints = [], hasCompletedSession = false, setupPromptSnoozed = false, needsLead = false, hasPhone = false, unreadCount = 0, showBotConnect = false, showDay2Mission = false, botAvailability = { telegram: false, bale: false } }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [day2Dismissed, setDay2Dismissed] = useState(false);
@@ -46,6 +47,7 @@ export default function AppShell({ user, children, onboardingHints = [], hasComp
     <ProgressiveOnboarding
       initialHints={onboardingHints}
       hasCompletedSession={hasCompletedSession}
+      initialSetupSnoozed={setupPromptSnoozed}
       allowSetupPrompt={!needsLead && !showDay2Mission}
     >
       <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-28 md:pb-12">

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { isOnboardingHint } from "@/lib/onboarding-hints";
+import { isOnboardingHint, ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 
 export async function PATCH(req: NextRequest) {
   const session = await getSession();
@@ -21,9 +21,14 @@ export async function PATCH(req: NextRequest) {
   if (!current) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const onboardingHints = [...new Set([...current.onboardingHints, ...hints])];
+  const completedSetupStep = hints.includes(ONBOARDING_HINTS.PUSH_PROMPTED)
+    || hints.includes(ONBOARDING_HINTS.INSTALL_PROMPTED);
   await prisma.user.update({
     where: { id: session.userId },
-    data: { onboardingHints },
+    data: {
+      onboardingHints,
+      ...(completedSetupStep ? { setupPromptSnoozedAt: null } : {}),
+    },
   });
 
   return NextResponse.json({ onboardingHints });
