@@ -76,7 +76,17 @@ export default async function ProfilePage() {
               {user.level} ـ {user.stars.toLocaleString("fa-IR")} ستاره
             </span>
             <StarBadge stars={user.stars} total={3} size={16} />
-            <LevelInfoButton levels={levelRows} currentLevel={user.level} currentStars={user.stars} />
+            <LevelInfoButton
+              levels={levelRows}
+              currentLevel={user.level}
+              currentStars={user.stars}
+              nextLevel={nextReq ? {
+                level: nextReq.level,
+                stars: nextReq.stars,
+                studyNeeded: xpToNext > 0 ? formatStudyMinutes(xpToStudyMinutes(xpToNext)) : null,
+                missingMedals: nextReq.missingMedals,
+              } : null}
+            />
           </div>
           {/* Level progress bar */}
           <div className="w-full flex flex-col gap-2 mt-4">

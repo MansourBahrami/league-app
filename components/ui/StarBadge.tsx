@@ -11,12 +11,18 @@ export default function StarBadge({
   size?: number;
 }) {
   return (
-    <span className="inline-flex items-center gap-0.5" dir="ltr">
+    <span
+      className="inline-flex items-center gap-0.5"
+      dir="ltr"
+      role="img"
+      aria-label={`${stars.toLocaleString("fa-IR")} از ${total.toLocaleString("fa-IR")} ستاره`}
+    >
       {Array.from({ length: total }).map((_, i) => {
         const lit = i < stars;
         return (
           <span
             key={i}
+            aria-hidden="true"
             className={`material-symbols-outlined ${lit ? "text-tertiary-fixed-dim" : "text-outline-variant/50"}`}
             style={{ fontSize: size, fontVariationSettings: `'FILL' ${lit ? 1 : 0}` }}
           >
