@@ -12,7 +12,7 @@ export default function StarBadge({
 }) {
   return (
     <span
-      className="inline-flex items-center gap-0.5"
+      className="inline-flex items-center gap-0.5 rounded-full bg-tertiary-fixed/55 px-1.5 py-0.5 leading-none ring-1 ring-tertiary/15"
       dir="ltr"
       role="img"
       aria-label={`${stars.toLocaleString("fa-IR")} از ${total.toLocaleString("fa-IR")} ستاره`}
@@ -23,7 +23,7 @@ export default function StarBadge({
           <span
             key={i}
             aria-hidden="true"
-            className={`material-symbols-outlined ${lit ? "text-tertiary-fixed-dim" : "text-outline-variant/50"}`}
+            className={`material-symbols-outlined ${lit ? "text-tertiary" : "text-on-tertiary-fixed/25"}`}
             style={{ fontSize: size, fontVariationSettings: `'FILL' ${lit ? 1 : 0}` }}
           >
             star
