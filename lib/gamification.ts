@@ -58,6 +58,12 @@ export const STREAK_FREEZE_COST = 50;
 
 /** هر ۱۵ دقیقه مطالعه = 1 XP + 1 سکه */
 export const MINUTES_PER_XP = 15;
+
+/** جایزه‌ی تماشای ویدیو؛ در ۲۴ ساعت اول پس از بازشدن دوبرابر می‌شود. */
+export const VIDEO_BASE_REWARD_COINS = 15;
+export const VIDEO_FAST_REWARD_HOURS = 24;
+export const VIDEO_FAST_REWARD_COINS = VIDEO_BASE_REWARD_COINS * 2;
+
 export function calcRewards(minutes: number): { xp: number; coins: number } {
   const intervals = Math.floor(minutes / 15);
   return { xp: intervals, coins: intervals };

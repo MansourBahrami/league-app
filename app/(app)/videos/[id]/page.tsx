@@ -6,10 +6,53 @@ import BuyVideoButton from "@/components/videos/BuyVideoButton";
 import { getVideoPrice } from "@/lib/ab";
 import { getVideoUnlockMode } from "@/lib/settings";
 import { tehranDayDiff } from "@/lib/date";
+import {
+  VIDEO_BASE_REWARD_COINS,
+  VIDEO_FAST_REWARD_COINS,
+  VIDEO_FAST_REWARD_HOURS,
+} from "@/lib/gamification";
 import Link from "next/link";
 
 interface Props {
   params: Promise<{ id: string }>;
+}
+
+function VideoRewardCard({
+  rewardGiven,
+  fastRewardActive,
+  startsAfterPurchase = false,
+}: {
+  rewardGiven: boolean;
+  fastRewardActive: boolean;
+  startsAfterPurchase?: boolean;
+}) {
+  const reward = fastRewardActive || startsAfterPurchase
+    ? VIDEO_FAST_REWARD_COINS
+    : VIDEO_BASE_REWARD_COINS;
+
+  return (
+    <div className="flex w-full items-center gap-3 rounded-xl border border-tertiary/25 bg-tertiary-fixed/25 p-3.5 text-right">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-tertiary text-on-tertiary">
+        <span className="material-symbols-outlined text-[23px]" aria-hidden="true" style={{ fontVariationSettings: "'FILL' 1" }}>generating_tokens</span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[11.5px] font-semibold text-on-surface-variant">جایزه این ویدیو</p>
+        <p className="text-[18px] font-extrabold text-tertiary">{reward.toLocaleString("fa-IR")} سکه</p>
+        <p className="mt-0.5 text-[11.5px] leading-5 text-on-surface-variant">
+          {rewardGiven
+            ? "جایزه دریافت شده."
+            : startsAfterPurchase
+              ? `اگر تا ${VIDEO_FAST_REWARD_HOURS.toLocaleString("fa-IR")} ساعت بعد از خرید کاملش کنی.`
+              : fastRewardActive
+                ? `جایزه دوبرابرِ ${VIDEO_FAST_REWARD_HOURS.toLocaleString("fa-IR")} ساعت اول.`
+                : "با تماشای حداقل ۹۰٪ ویدیو."}
+        </p>
+      </div>
+      {rewardGiven && (
+        <span className="material-symbols-outlined shrink-0 text-[22px] text-tertiary" aria-hidden="true" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+      )}
+    </div>
+  );
 }
 
 export default async function VideoPlayerPage({ params }: Props) {
@@ -57,19 +100,25 @@ export default async function VideoPlayerPage({ params }: Props) {
               این ویدیو هنوز در دسترس قرار نگرفته است.
             </p>
           ) : (
-            <>
-              <p className="text-[14px] text-on-surface-variant">
-                برای تماشای این ویدیو و گرفتن سکه‌ی جایزه، اول آن را با سکه بخر.
-              </p>
-              <div className="w-full max-w-[360px] mt-2">
-                <BuyVideoButton videoId={video.id} price={price} userCoins={viewer?.coins ?? 0} />
-              </div>
-            </>
+            <p className="text-[14px] text-on-surface-variant">
+              برای تماشای این ویدیو و گرفتن سکه‌ی جایزه، اول آن را با سکه بخر.
+            </p>
+          )}
+          <div className="mt-2 w-full max-w-[360px]">
+            <VideoRewardCard rewardGiven={false} fastRewardActive={false} startsAfterPurchase />
+          </div>
+          {!isFuture && (
+            <div className="w-full max-w-[360px] mt-2">
+              <BuyVideoButton videoId={video.id} price={price} userCoins={viewer?.coins ?? 0} />
+            </div>
           )}
         </div>
       </div>
     );
   }
+
+  const fastRewardActive = !!progress?.unlockedAt
+    && new Date().getTime() - progress.unlockedAt.getTime() <= VIDEO_FAST_REWARD_HOURS * 3600 * 1000;
 
   return (
     <div className="flex flex-col gap-6 px-5 pb-6">
@@ -105,16 +154,10 @@ export default async function VideoPlayerPage({ params }: Props) {
           <p className="text-[16px] text-on-surface-variant leading-relaxed text-justify">{video.description}</p>
         )}
 
-        {/* Reward hint */}
-        <div className="glass-card p-4 rounded-xl flex items-center gap-4 border border-tertiary-fixed/30 bg-tertiary-fixed/10">
-          <div className="w-12 h-12 rounded-full bg-tertiary-container flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-white text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>stars</span>
-          </div>
-          <div>
-            <p className="text-[16px] font-bold text-on-surface">تا انتها تماشا کن و سکه جایزه بگیر!</p>
-            <p className="text-[14px] text-on-surface-variant">اگر همین امروز ببینی، سکه‌ات دوبرابر می‌شه.</p>
-          </div>
-        </div>
+        <VideoRewardCard
+          rewardGiven={progress?.rewardGiven ?? false}
+          fastRewardActive={fastRewardActive}
+        />
 
         {/* CTA دلخواه ادمین (مثلاً «درخواست مشاوره رایگان») */}
         {video.ctaLabel && video.ctaUrl && (

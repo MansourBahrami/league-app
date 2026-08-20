@@ -6,7 +6,6 @@ import { gradeFilter } from "@/lib/onboarding";
 import { getVideoPrice } from "@/lib/ab";
 import { getVideoUnlockMode } from "@/lib/settings";
 import { tehranDayDiff } from "@/lib/date";
-import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
 export const dynamic = "force-dynamic";
 
@@ -40,17 +39,7 @@ export default async function VideosPage() {
   return (
     <div className="flex flex-col px-5">
       <div className="mb-6 mt-2">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-[20px] font-bold text-primary">ویدیوهای آموزشی</h2>
-          <SectionInfoButton
-            title="ویدیوها و جایزه‌ها"
-            description="ویدیوهای مشاوره‌ای و تکنیک‌های درس خوندن متناسب با پایه و رشته خودت."
-            points={[
-              "با دیدن کامل هر ویدیو سکه جایزه می‌گیری.",
-              "اگه توی ۲۴ ساعت اول انتشار ویدیو رو ببینی، ۲ برابر سکه گیرت میاد!"
-            ]}
-          />
-        </div>
+        <h2 className="text-[20px] font-bold text-primary">ویدیوهای آموزشی</h2>
         <p className="text-[13px] text-on-surface-variant mt-1">آموزش‌های متناسب با پایه تو</p>
       </div>
 

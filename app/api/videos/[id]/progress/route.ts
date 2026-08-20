@@ -3,9 +3,11 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
 import { tryCompleteOnboardingDay } from "@/lib/onboarding";
-
-const BASE_REWARD = 15;
-const FAST_WATCH_HOURS = 24; // تماشا در ۲۴ ساعت اول باز شدن → سکه ۲×
+import {
+  VIDEO_BASE_REWARD_COINS,
+  VIDEO_FAST_REWARD_COINS,
+  VIDEO_FAST_REWARD_HOURS,
+} from "@/lib/gamification";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -42,8 +44,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (completed && !progress.rewardGiven) {
     // جایزه ۲× اگر در ۲۴ ساعت اول باز شدن دیده شده باشد
     const unlockedAt = progress.unlockedAt;
-    const fast = unlockedAt && Date.now() - unlockedAt.getTime() <= FAST_WATCH_HOURS * 3600 * 1000;
-    reward = fast ? BASE_REWARD * 2 : BASE_REWARD;
+    const fast = unlockedAt && Date.now() - unlockedAt.getTime() <= VIDEO_FAST_REWARD_HOURS * 3600 * 1000;
+    reward = fast ? VIDEO_FAST_REWARD_COINS : VIDEO_BASE_REWARD_COINS;
 
     const user = await prisma.user.findUnique({
       where: { id: session.userId },
