@@ -163,8 +163,8 @@ async function maybeGrantDailyReward(actorId: string): Promise<boolean> {
     metadata: { coins: REACTION_REWARD_COINS, targets: REACTION_REWARD_TARGETS },
   });
   await sendPushToUser(actorId, {
-    title: "جایزه‌ی تشویق 🎉",
-    body: `امروز به ${faNum(REACTION_REWARD_TARGETS)} نفر واکنش دادی و ${faNum(REACTION_REWARD_COINS)} سکه گرفتی!`,
+    title: `${faNum(REACTION_REWARD_COINS)} سکه جایزه گرفتی`,
+    body: `امروز ${faNum(REACTION_REWARD_TARGETS)} نفر رو تشویق کردی.`,
     url: "/inbox",
     tag: "reaction_reward",
   });

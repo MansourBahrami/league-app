@@ -38,7 +38,7 @@ function renderContent(it: InboxItem): { text: string; icon: string; bg: string;
       };
     case "reaction_reward":
       return {
-        text: `به ${faNum(meta.targets ?? 5)} نفر واکنش دادی و ${faNum(meta.coins ?? 5)} سکه گرفتی! 🎉`,
+        text: `${faNum(meta.targets ?? 5)} نفر رو تشویق کردی؛ ${faNum(meta.coins ?? 5)} سکه گرفتی.`,
         icon: "generating_tokens",
         bg: "var(--color-tertiary-fixed)",
         color: "var(--color-tertiary)",

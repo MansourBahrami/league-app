@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { faIR } from "date-fns/locale";
 
@@ -65,6 +66,7 @@ export default function LiveFeed({
   allowedUserIds,
   emptyLabel = "هنوز فعالیتی ثبت نشده. اول شروع کن!",
 }: Props) {
+  const router = useRouter();
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
   const [counts, setCounts] = useState<CountsMap>(initialCounts);
   const [mine, setMine] = useState<MineMap>(initialMine);
@@ -131,7 +133,10 @@ export default function LiveFeed({
         else delete copy[activityId];
         return copy;
       });
-      if (data.rewardGranted) setToast("۵ سکه‌ی تشویق گرفتی! 🎉");
+      if (data.rewardGranted) {
+        setToast("۵ نفر رو تشویق کردی؛ ۵ سکه گرفتی.");
+        router.refresh();
+      }
     } catch {
       // بازگردانی در صورت خطا
       setCounts((c) => ({ ...c, [activityId]: prevCounts }));
@@ -151,8 +156,16 @@ export default function LiveFeed({
   return (
     <div className="w-full space-y-3">
       {toast && (
-        <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[60] bg-secondary text-white text-[13px] font-bold px-4 py-2 rounded-full shadow-lg">
-          {toast}
+        <div
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="fixed bottom-28 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-1.5 whitespace-nowrap rounded-full bg-tertiary px-4 py-2 text-[13px] font-bold text-on-tertiary shadow-lg"
+        >
+          <span className="material-symbols-outlined text-[17px]" aria-hidden="true" style={{ fontVariationSettings: "'FILL' 1" }}>
+            generating_tokens
+          </span>
+          <span>{toast}</span>
         </div>
       )}
 
