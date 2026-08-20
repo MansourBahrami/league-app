@@ -428,3 +428,8 @@ body {
   100% { opacity: 0; transform: translateY(220px) rotateZ(360deg); }
 }
 .confetti-piece { position: absolute; width: 8px; height: 14px; border-radius: 2px; animation: confettiFall 1.6s ease-in forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti-piece { display: none; animation: none; }
+  .pop-in { animation: none; }
+}

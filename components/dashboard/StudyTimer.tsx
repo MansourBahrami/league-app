@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,14 +38,10 @@ interface SessionResult {
   coinsEarned: number;
   durationMin: number;
   dayCompleted: boolean;
-  inOnboarding: boolean;
   dailyGoalMinutes: number;
   stepMinutes: number;
   remainingMinutes: number;
-  needsVideo: boolean;
   needsLeadCapture: boolean;
-  onboardingDay: number;
-  tomorrowGoalMinutes: number;
   rewardVideo: { id: string; title: string } | null;
 }
 
@@ -213,6 +209,8 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
+  const timerCardRef = useRef<HTMLElement | null>(null);
+  const startButtonRef = useRef<HTMLButtonElement | null>(null);
   const storageKey = `study_session:${userId}`;
 
   const totalSeconds = selectedMinutes * 60;
@@ -393,13 +391,47 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   }[timerState];
   const isActive = timerState === "running" || timerState === "paused";
   const needsStartHint = !hasHint(ONBOARDING_HINTS.TIMER_STARTED);
+  const showsStartHint = needsStartHint && timerState === "idle";
   const needsRewardLesson = !hasHint(ONBOARDING_HINTS.REWARDS_EXPLAINED);
   const showsRewardLesson = needsRewardLesson && (sessionResult?.xpEarned ?? 0) > 0;
+
+  useEffect(() => {
+    if (!showsStartHint) return;
+
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const focusTimer = window.setTimeout(() => startButtonRef.current?.focus(), 0);
+
+    return () => {
+      window.clearTimeout(focusTimer);
+      previouslyFocused?.focus();
+    };
+  }, [showsStartHint]);
+
+  function trapStartHintFocus(event: KeyboardEvent<HTMLElement>) {
+    if (!showsStartHint || event.key !== "Tab") return;
+
+    const focusableElements = Array.from(
+      timerCardRef.current?.querySelectorAll<HTMLElement>("[data-start-hint-focus='true']") ?? [],
+    );
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements.at(-1)!;
+    if (event.shiftKey && document.activeElement === firstElement) {
+      event.preventDefault();
+      lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+      event.preventDefault();
+      firstElement.focus();
+    }
+  }
 
   return (
     <>
       {/* Spotlight Backdrop */}
-      {needsStartHint && timerState === "idle" && (
+      {showsStartHint && (
         <div
           className="fixed inset-0 z-[70] bg-black/65 backdrop-blur-[2px] transition-all"
           aria-hidden="true"
@@ -407,10 +439,16 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       )}
 
       <section
+        ref={timerCardRef}
         data-tour="timer"
+        role={showsStartHint ? "dialog" : undefined}
+        aria-modal={showsStartHint ? true : undefined}
+        aria-labelledby={showsStartHint ? "timer-start-hint-title" : undefined}
+        aria-describedby={showsStartHint ? "timer-start-hint-description" : undefined}
+        onKeyDown={trapStartHintFocus}
         className={`glass-card rounded-[2rem] px-4 py-4 transition-all duration-300 ${
-          needsStartHint && timerState === "idle"
-            ? "relative z-[75] bg-surface ring-4 ring-tertiary shadow-[0_0_60px_rgba(207,146,6,0.6)] border-2 border-tertiary"
+          showsStartHint
+            ? "relative z-[75] bg-surface ring-2 ring-tertiary/70 shadow-[0_0_40px_rgba(207,146,6,0.45)] border border-tertiary/60"
             : "border border-tertiary-fixed/65 shadow-[0_12px_35px_color-mix(in_oklab,var(--color-primary)_9%,transparent)]"
         }`}
       >
@@ -449,6 +487,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
                 type="button"
                 onClick={() => setTimer(minutes)}
                 disabled={isActive}
+                data-start-hint-focus={showsStartHint ? "true" : undefined}
                 aria-pressed={selectedMinutes === minutes}
                 className={`h-11 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center ${
                   selectedMinutes === minutes
@@ -461,32 +500,34 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             ))}
           </div>
 
-          {needsStartHint && timerState === "idle" && (
-            <div role="note" className="mt-3 flex items-start gap-3 rounded-2xl border-2 border-tertiary/70 bg-tertiary-fixed/85 p-3.5 shadow-xl pop-in">
+          {showsStartHint && (
+            <div role="note" className="mt-3 flex items-start gap-3 rounded-2xl border border-tertiary/45 bg-tertiary-fixed/70 p-3.5 shadow-md pop-in">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tertiary text-on-tertiary shadow-md">
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   play_circle
                 </span>
               </span>
               <div className="min-w-0 flex-1 text-right">
-                <p className="text-[11px] font-extrabold text-tertiary">قدم اول: شروع مطالعه</p>
-                <h4 className="text-[14px] font-extrabold text-on-surface mt-0.5">اینجا تایمر رو روشن کن!</h4>
-                <p className="mt-1 text-[12px] leading-5 text-on-surface-variant">
-                  هدف امروزت ۱ ساعت مطالعه‌ست. زمان رو مشخص کن و روی دکمهٔ «شروع مطالعه» بزن.
+                <h4 id="timer-start-hint-title" className="text-[14px] font-extrabold text-on-surface">اولین مطالعه‌ات رو شروع کن</h4>
+                <p id="timer-start-hint-description" className="mt-1 text-[12px] leading-5 text-on-surface-variant">
+                  مدت مطالعه رو انتخاب کن و «شروع مطالعه» رو بزن.
                 </p>
               </div>
-              <span className="material-symbols-outlined text-[22px] text-tertiary motion-safe:animate-bounce mt-1 shrink-0">
+              <span className="material-symbols-outlined text-[22px] text-tertiary mt-1 shrink-0">
                 arrow_downward
               </span>
             </div>
           )}
 
           <button
+            ref={startButtonRef}
             type="button"
             onClick={handleToggle}
             data-onboarding="timer-start"
+            data-start-hint-focus={showsStartHint ? "true" : undefined}
+            aria-describedby={showsStartHint ? "timer-start-hint-description" : undefined}
             className={`gamified-btn mt-3 w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${button.cls} ${
-              needsStartHint && timerState === "idle" ? "ring-2 ring-white/80 animate-pulse" : ""
+              showsStartHint ? "ring-2 ring-white/80 animate-pulse" : ""
             }`}
           >
             <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>{button.icon}</span>
@@ -513,13 +554,9 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
           xpEarned={sessionResult.xpEarned}
           coinsEarned={sessionResult.coinsEarned}
           durationMin={sessionResult.durationMin}
-          onboardingDay={sessionResult.onboardingDay}
           dayCompleted={sessionResult.dayCompleted}
-          inOnboarding={sessionResult.inOnboarding}
           dailyGoalMinutes={sessionResult.dailyGoalMinutes}
           remainingMinutes={sessionResult.remainingMinutes}
-          needsVideo={sessionResult.needsVideo}
-          tomorrowGoalMinutes={sessionResult.tomorrowGoalMinutes}
           rewardVideo={sessionResult.rewardVideo}
           showRewardLesson={showsRewardLesson}
           onClose={async () => {
