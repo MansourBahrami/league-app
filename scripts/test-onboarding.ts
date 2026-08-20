@@ -1,5 +1,6 @@
 import { getDay1MissionHours, getFullDay1Hours, getOnboardingDailyGoalMinutes } from "../lib/gamification";
-import { DEFAULT_ONBOARDING_DAYS, getOnboardingTotalDays } from "../lib/onboarding";
+import { DEFAULT_ONBOARDING_DAYS } from "../lib/onboarding";
+import { gradeRequiresField, isStudentProfileComplete } from "../lib/student-profile";
 
 console.log("🧪 تست منطق آنبوردینگ ۱ روزه (هدف ۱ ساعت مطالعه)\n");
 
@@ -26,3 +27,24 @@ if (totalDays === 1) {
   console.log("  ❌ طول مسیر باید ۱ روز باشد");
 }
 
+console.log("\n--- بررسی فرم پایه و رشته ---");
+const profileCases = [
+  { grade: "ابتدایی", field: null, expected: true },
+  { grade: "نهم", field: null, expected: true },
+  { grade: "دانشجو", field: null, expected: true },
+  { grade: "دهم", field: null, expected: false },
+  { grade: "دوازدهم", field: "تجربی", expected: true },
+  { grade: "پشت کنکور", field: "ریاضی", expected: true },
+] as const;
+
+let profileOk = true;
+for (const item of profileCases) {
+  const complete = isStudentProfileComplete({ phone: "09120000000", grade: item.grade, field: item.field });
+  const fieldLabel = gradeRequiresField(item.grade) ? "رشته لازم" : "بدون رشته";
+  console.log(`  ${item.grade} (${fieldLabel}) → ${complete ? "کامل" : "ناقص"}`);
+  if (complete !== item.expected) profileOk = false;
+}
+
+console.log(profileOk ? "  ✅ شاخه‌بندی پایه و رشته درست است" : "  ❌ خطا در شاخه‌بندی پایه و رشته");
+
+if (!goalOk || totalDays !== 1 || !profileOk) process.exitCode = 1;

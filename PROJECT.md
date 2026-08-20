@@ -91,7 +91,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 |------|-----|-------|
 | `id` | String (cuid) | شناسه |
 | `phone` | String? (unique) | هویت اصلی ثبت‌نام و ورود؛ nullable فقط برای سازگاری با حساب‌های رباتی قدیمی |
-| `name`, `grade`, `field` | String? | اطلاعات lead capture (نام، پایه، رشته) |
+| `name`, `grade`, `field` | String? | نام نمایشی و اطلاعات تحصیلی؛ فرم اجباری فقط پایه و، برای دهم تا پشت‌کنکور، رشته را می‌پرسد |
 | `avatarUrl` | String? | آواتار |
 | `xp` | Int | امتیاز تجربه |
 | `coins` | Int | سکه |
@@ -100,7 +100,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | `onboardingDay` | Int | روزهای **تکمیل‌شده** مسیر ۶ روزه (۰ تا ۶) |
 | `onboardingStepMinutes` | Int | دقایق انباشته روز جاری (روز با رسیدن به هدف تایید می‌شود) |
 | `nextStudyTarget` | DateTime? | هدف زمان مطالعه فردا |
-| `isLeadComplete` | Boolean | آیا فرم اطلاعات تکمیل شده |
+| `isLeadComplete` | Boolean | آیا پایه و رشتهٔ شرطی ثبت شده‌اند (شماره قبلاً هنگام ورود تأیید شده است) |
 | `hasSeenIntro` | Boolean | آیا اسلایدهای welcome دیده شده |
 | `pastAvgStudyHours` | Float? | میانگین ساعت مطالعه گذشته (از پرسش آنبوردینگ) — مبنای هدف روزانه |
 | `day1GoalMinutes` | Int? | **snapshot** هدف روز اول (هنگام پاسخ به پرسش میانگین، طبق قانون ساعت ۱۷/۲۱) تا در طول روز ثابت بماند |
@@ -373,7 +373,7 @@ league_proj_new/
 | POST | `/api/auth/verify-otp` | `{ phone, code }` | تأیید + کوکی JWT |
 | POST | `/api/auth/logout` | — | پاک کردن کوکی |
 | GET | `/api/profile` | — | اطلاعات کامل کاربر |
-| PATCH | `/api/profile` | `{ name?, grade?, field?, nextStudyTarget?, hasSeenIntro?, pastAvgStudyHours? }` | به‌روزرسانی + ست `isLeadComplete`؛ با `pastAvgStudyHours` هدف روز اول snapshot می‌شود |
+| PATCH | `/api/profile` | `{ name?, grade?, field?, nextStudyTarget?, hasSeenIntro?, pastAvgStudyHours? }` | به‌روزرسانی + محاسبهٔ `isLeadComplete` از پایه و رشتهٔ شرطی؛ با `pastAvgStudyHours` هدف روز اول snapshot می‌شود |
 | POST | `/api/profile/[id]/unlock` | — | باز کردن بخش مطالعه کاربر (۲۰ سکه، ۱ ساعت) |
 | POST | `/api/study/start` | `{ durationMin }` | شروع جلسه (بستن جلسات باز قبلی) + رویداد `timer_start` → `{ sessionId }` |
 | POST | `/api/study/tick` | `{ sessionId }` | پاداش هر ۱۵ دقیقه — **اعتبارسنجی سرور**: زمان واقعی منهای pause، سقف `plannedMin`، فقط مابه‌التفاوت → `{ granted }` |

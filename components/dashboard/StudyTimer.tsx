@@ -195,7 +195,7 @@ function MissionContext({ mission }: { mission: FocusMission }) {
 
 export default function StudyTimer({ mission, userId, hasPhone = false }: Props) {
   const router = useRouter();
-  const { hasHint, markHints, reportStudyState } = useProgressiveOnboarding();
+  const { hasHint, markHints, reportStudyState, suppressSetup, resumeSetup } = useProgressiveOnboarding();
   const [selectedMinutes, setSelectedMinutes] = useState(60);
   const [timerState, setTimerState] = useState<TimerState>("idle");
   const [secondsLeft, setSecondsLeft] = useState(60 * 60);
@@ -560,8 +560,9 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
           rewardVideo={sessionResult.rewardVideo}
           showRewardLesson={showsRewardLesson}
           onClose={async () => {
-            if (showsRewardLesson) await markHints(ONBOARDING_HINTS.REWARDS_EXPLAINED);
             const triggerLead = sessionResult.needsLeadCapture;
+            if (triggerLead) suppressSetup();
+            if (showsRewardLesson) await markHints(ONBOARDING_HINTS.REWARDS_EXPLAINED);
             setShowGoalSetting(false);
             if (triggerLead) {
               setShowLeadModal(true);
@@ -577,6 +578,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         <LeadCaptureModal
           hasPhone={hasPhone}
           onComplete={() => {
+            resumeSetup();
             setShowLeadModal(false);
             setSessionResult(null);
             router.refresh();

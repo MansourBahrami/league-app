@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { getDay1MissionHours } from "@/lib/gamification";
+import {
+  gradeRequiresField,
+  isStudentGrade,
+  isStudentProfileComplete,
+  isStudyField,
+} from "@/lib/student-profile";
 
 export async function GET() {
   const session = await getSession();
@@ -29,10 +35,18 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const { name, grade, field, nextStudyTarget, hasSeenIntro, pastAvgStudyHours, avatarUrl } = body;
 
+  if (grade !== undefined && !isStudentGrade(grade)) {
+    return NextResponse.json({ error: "پایه تحصیلی معتبر نیست" }, { status: 400 });
+  }
+  if (field !== undefined && field !== null && !isStudyField(field)) {
+    return NextResponse.json({ error: "رشته تحصیلی معتبر نیست" }, { status: 400 });
+  }
+
   const updateData: Record<string, unknown> = {};
   if (name !== undefined) updateData.name = name;
   if (grade !== undefined) updateData.grade = grade;
   if (field !== undefined) updateData.field = field;
+  if (grade !== undefined && !gradeRequiresField(grade)) updateData.field = null;
   // فقط آواتارهای آماده‌ی محلی پذیرفته می‌شوند (بدون آپلود)
   if (avatarUrl !== undefined && typeof avatarUrl === "string" && /^\/avatars\/[a-z0-9-]+\.svg$/.test(avatarUrl)) {
     updateData.avatarUrl = avatarUrl;
@@ -46,15 +60,20 @@ export async function PATCH(req: NextRequest) {
     updateData.day1GoalMinutes = getDay1MissionHours(pastAvgStudyHours, hourOfDay) * 60;
   }
 
-  // تکمیل لید فقط وقتی نام + پایه + رشته + موبایلِ تأییدشده موجود باشد
+  // شماره هنگام ورود تأیید شده؛ رشته فقط برای دهم تا پشت‌کنکور لازم است.
   const current = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { name: true, grade: true, field: true, phone: true, isLeadComplete: true },
+    select: { grade: true, field: true, phone: true },
   });
-  const mergedName = name ?? current?.name;
   const mergedGrade = grade ?? current?.grade;
-  const mergedField = field ?? current?.field;
-  if (mergedName && mergedGrade && mergedField && current?.phone) updateData.isLeadComplete = true;
+  const mergedField = grade !== undefined && !gradeRequiresField(grade)
+    ? null
+    : (field !== undefined ? field : current?.field);
+  updateData.isLeadComplete = isStudentProfileComplete({
+    phone: current?.phone,
+    grade: mergedGrade,
+    field: mergedField,
+  });
 
   const user = await prisma.user.update({
     where: { id: session.userId },

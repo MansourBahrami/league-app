@@ -50,13 +50,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const unreadCount = await getUnreadCount(user.id);
+  const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
 
   return (
     <AppShell
       user={user}
       onboardingHints={user.onboardingHints}
       hasCompletedSession={completedSessions > 0}
-      needsLead={false}
+      needsLead={needsLead}
       hasPhone={!!user.phone}
       unreadCount={unreadCount}
       showBotConnect={showBotConnect}

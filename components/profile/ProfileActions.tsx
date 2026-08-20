@@ -2,9 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
-const GRADES = ["دهم", "یازدهم", "دوازدهم", "فارغ‌التحصیل"];
-const FIELDS = ["ریاضی", "تجربی", "انسانی", "هنر", "فنی-حرفه‌ای"];
+import { gradeRequiresField, STUDENT_GRADES, STUDY_FIELDS } from "@/lib/student-profile";
 
 interface Props {
   user: {
@@ -22,13 +20,14 @@ export default function ProfileActions({ user }: Props) {
   const [field, setField] = useState(user.field ?? "");
   const [saving, setSaving] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const canSave = !!grade && (!gradeRequiresField(grade) || !!field);
 
   async function handleSave() {
     setSaving(true);
     await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, grade, field }),
+      body: JSON.stringify({ name, grade, field: gradeRequiresField(grade) ? field : null }),
     });
     setSaving(false);
     setShowEdit(false);
@@ -85,29 +84,29 @@ export default function ProfileActions({ user }: Props) {
               <div className="flex flex-col gap-1.5">
                 <label className="text-[14px] font-semibold text-on-surface text-right">پایه</label>
                 <div className="grid grid-cols-4 gap-2">
-                  {GRADES.map((g) => (
-                    <button key={g} type="button" onClick={() => setGrade(g)}
+                  {STUDENT_GRADES.map((g) => (
+                    <button key={g} type="button" aria-pressed={grade === g} onClick={() => { setGrade(g); if (!gradeRequiresField(g)) setField(""); }}
                       className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${grade === g ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"}`}
                     >{g}</button>
                   ))}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-1.5">
+              {gradeRequiresField(grade) && <div className="flex flex-col gap-1.5">
                 <label className="text-[14px] font-semibold text-on-surface text-right">رشته</label>
                 <div className="grid grid-cols-3 gap-2">
-                  {FIELDS.map((f) => (
-                    <button key={f} type="button" onClick={() => setField(f)}
+                  {STUDY_FIELDS.map((f) => (
+                    <button key={f} type="button" aria-pressed={field === f} onClick={() => setField(f)}
                       className={`py-2.5 rounded-xl text-[13px] font-semibold transition-all border ${field === f ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"}`}
                     >{f}</button>
                   ))}
                 </div>
-              </div>
+              </div>}
 
               <button
                 onClick={handleSave}
-                disabled={saving}
-                className="gamified-btn w-full bg-primary text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 mt-2 shadow-lg shadow-primary/20"
+                disabled={saving || !canSave}
+                className="gamified-btn w-full bg-primary text-white font-bold text-[16px] py-4 rounded-xl flex items-center justify-center gap-2 mt-2 shadow-lg shadow-primary/20 disabled:opacity-50"
               >
                 {saving ? <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span> : "ذخیره تغییرات"}
               </button>

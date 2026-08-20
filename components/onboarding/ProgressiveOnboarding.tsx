@@ -16,6 +16,8 @@ interface OnboardingContextValue {
   hasHint: (hint: OnboardingHint) => boolean;
   markHints: (...hints: OnboardingHint[]) => Promise<boolean>;
   reportStudyState: (active: boolean) => void;
+  suppressSetup: () => void;
+  resumeSetup: () => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -46,6 +48,7 @@ export default function ProgressiveOnboarding({
   const [feedback, setFeedback] = useState("");
   const [studyActive, setStudyActive] = useState(false);
   const [studyStateKnown, setStudyStateKnown] = useState(false);
+  const [setupSuppressed, setSetupSuppressed] = useState(false);
 
   const hasHint = useCallback((hint: OnboardingHint) => hints.has(hint), [hints]);
 
@@ -66,6 +69,9 @@ export default function ProgressiveOnboarding({
     setStudyActive(active);
     setStudyStateKnown(true);
   }, []);
+
+  const suppressSetup = useCallback(() => setSetupSuppressed(true), []);
+  const resumeSetup = useCallback(() => setSetupSuppressed(false), []);
 
   useEffect(() => {
     const capture = (event: Event) => {
@@ -93,11 +99,15 @@ export default function ProgressiveOnboarding({
     }
   }, [hasHint, markHints]);
 
-  const value = useMemo(() => ({ hasHint, markHints, reportStudyState }), [hasHint, markHints, reportStudyState]);
+  const value = useMemo(
+    () => ({ hasHint, markHints, reportStudyState, suppressSetup, resumeSetup }),
+    [hasHint, markHints, reportStudyState, resumeSetup, suppressSetup],
+  );
   const rewardsExplained = hasHint(ONBOARDING_HINTS.REWARDS_EXPLAINED);
   const pushHandled = hasHint(ONBOARDING_HINTS.PUSH_PROMPTED);
   const installHandled = hasHint(ONBOARDING_HINTS.INSTALL_PROMPTED);
   const showSetup = allowSetupPrompt
+    && !setupSuppressed
     && hasCompletedSession
     && rewardsExplained
     && studyStateKnown

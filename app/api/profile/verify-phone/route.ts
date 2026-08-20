@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { normalizePhone, normalizeDigits } from "@/lib/phone";
 import { consumeOtp } from "@/lib/otp";
+import { isStudentProfileComplete } from "@/lib/student-profile";
 
 /**
  * اتصال و تأیید شماره موبایل به حسابِ کاربرِ واردشده (برای lead capture بعد از روز اول).
@@ -36,9 +37,9 @@ export async function POST(req: NextRequest) {
 
   const cur = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { name: true, grade: true, field: true },
+    select: { grade: true, field: true },
   });
-  const leadComplete = !!(cur?.name && cur?.grade && cur?.field);
+  const leadComplete = isStudentProfileComplete({ phone: normalized, grade: cur?.grade, field: cur?.field });
 
   const user = await prisma.user.update({
     where: { id: session.userId },
