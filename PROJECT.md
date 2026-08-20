@@ -122,8 +122,8 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 #### `Mission` / `UserMission` — ماموریت‌ها
 - `Mission`: تعریف ماموریت (هدف ساعت هفتگی، حداقل میانگین، هزینه سکه، جایزه XP، مدال مرتبط).
 - `UserMission`: ماموریت خریداری‌شده با `activatesAt` (ابتدای روز بعد)، `expiresAt` (۷ روز بعد از فعال‌سازی)، `status` (`pending`/`active`/`completed`/`failed`). چرخه عمر در `lib/mission.ts`.
-- `MissionRoom`: اتاق مشترک یک تعریف مأموریت در یک بازهٔ دقیق؛ کاربران هم‌هدف را کنار هم می‌آورد، بدون ادغام پیشرفت یا پاداش فردی.
-- `MissionRoomMember`: اتصال یک‌به‌یک `UserMission` به اتاق و عضو؛ پیشرفت اتاق از جلسه‌های تأییدشدهٔ همان بازه محاسبه می‌شود.
+- `MissionRoom`: کمپ مشترک یک تعریف مأموریت در یک بازهٔ دقیق؛ کاربران هم‌هدف را کنار هم می‌آورد، بدون ادغام پیشرفت یا پاداش فردی.
+- `MissionRoomMember`: اتصال یک‌به‌یک `UserMission` به کمپ و عضو؛ پیشرفت کمپ از جلسه‌های تأییدشدهٔ همان بازه محاسبه می‌شود.
 
 #### `Medal` / `UserMedal` — مدال‌ها
 `Medal` بر اساس `targetHours` (۲۰ تا ۷۰ ساعت، یکتا). `UserMedal` رکورد کسب مدال (تکرارپذیر — هر تکمیل ماموریت یک رکورد جدید).
@@ -254,7 +254,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
   │         └─ سپس → GoalSettingModal (فردا ساعت چند شروع می‌کنی؟)
   ▼
 ناوبری اصلی (BottomNav):
-  /mission-rooms → ورود مستقیم به اتاق جاری؛ فقط در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی
+  /mission-rooms → ورود مستقیم به کمپ جاری؛ فقط در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی
   /videos        → آموزش‌های متناسب با پایه
   /dashboard     → مطالعه، ماموریت روز و تایمر
   /leaderboard   → رده‌بندی هفتگی (XP هفت روز اخیر، سکوی تاپ ۳)
@@ -284,7 +284,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 | ۴ | داشبورد + تایمر مقاوم آفلاین | ✅ | `StudyTimer.tsx`, `app/api/study/*` |
 | ۵ | موتور گیمیفیکیشن | ✅ | `lib/gamification.ts` |
 | ۶ | آنبوردینگ + Lead Capture | ✅ | `components/onboarding/*` |
-| ۷ | اتاق مأموریت روزانه/هفتگی | ✅ | `mission-rooms/*`, `app/api/missions/buy` |
+| ۷ | کمپ مأموریت روزانه/هفتگی | ✅ | `mission-rooms/*`, `app/api/missions/buy` |
 | ۸ | لیدربورد | ✅ | `Podium.tsx`, `LeaderboardList.tsx` |
 | ۹ | بورد زنده (SSE) | ✅ | `app/api/feed/stream`, `LiveFeed.tsx` |
 | ۱۰ | ویدیو + anti-seek | ✅ | `VideoPlayerClient.tsx` |
@@ -301,12 +301,12 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 | جدید | A/B دسترسی ویدیو | ✅ | `lib/ab.ts`, `/admin/analytics` |
 | جدید | ماموریت روزانه + مرخصی استریک | ✅ | `DAILY_MISSION_TABLE`, `/api/streak/freeze` |
 | جدید | آپلود آواتار در DB | ✅ | `AvatarImage`, `/api/profile/avatar` |
-| جدید | اتاق مأموریت اجتماعی | ✅ | `MissionRoom`, `MissionRoomMember`, `/mission-rooms` |
+| جدید | کمپ مأموریت اجتماعی | ✅ | `MissionRoom`, `MissionRoomMember`, `/mission-rooms` |
 
 ### جزئیات قابل‌توجه پیاده‌سازی
 - **تایمر مقاوم آفلاین**: مدت زمان از `startTime` محاسبه می‌شود نه شمارنده؛ در `localStorage` ذخیره و در reload بازیابی می‌شود.
 - **تایید روز آنبوردینگ**: روز وقتی پیش می‌رود که `onboardingStepMinutes` همان روز تقویمی تهران به هدف برسد. ویدیوی روز اختیاری است و در گروه paid خریدنی است.
-- **حلقه ماموریت**: انتخاب هدف → عضویت در اتاق هم‌هدف‌ها → پیشرفت فردی با زمان تأییدشده → تکمیل (`completed` + XP/سکه/مدال) یا انقضا (`failed`). مأموریت هفتگی جمعه انتخاب و شنبه شروع می‌شود؛ منطق پاداش فردی در `lib/mission.ts` باقی مانده است.
+- **حلقه ماموریت**: انتخاب هدف → عضویت در کمپ هم‌هدف‌ها → پیشرفت فردی با زمان تأییدشده → تکمیل (`completed` + XP/سکه/مدال) یا انقضا (`failed`). مأموریت هفتگی جمعه انتخاب و شنبه شروع می‌شود؛ منطق پاداش فردی در `lib/mission.ts` باقی مانده است.
 - **بورد زنده با SSE**: `broadcastActivity()` در `app/api/feed/stream/route.ts` به subscriberها push می‌کند. هنگام جلسه، خرید ماموریت، مدال، و ارتقای سطح فراخوانی می‌شود.
 - **لیدربورد هم‌سطح**: هرکس فقط با کاربران هم‌`level` خودش رقابت می‌کند (شامل تازه‌نفس).
 - **Anti-seek ویدیو**: کاربر نمی‌تواند جلوتر از بیشترین نقطه دیده‌شده برود. جایزه ۱۵ سکه در ۹۰٪ تماشا.
@@ -382,8 +382,8 @@ league_proj_new/
 | POST | `/api/study/pause` | `{ sessionId }` | ثبت شروع pause سمت سرور |
 | POST | `/api/study/resume` | `{ sessionId }` | پایان pause → افزودن مدت به `pausedSec` |
 | POST | `/api/study/end` | `{ sessionId }` | پایان (idempotent، رد جلسه بسته) + نتیجه (XP، `dayCompleted`، `needsVideo`، `rewardVideo`، `streak`، `streakMilestone`، ...) |
-| POST | `/api/missions/buy` | `{ missionId }` | انتخاب مأموریت، کسر هزینه، عضویت در اتاق → `{ roomId }` |
-| GET | `/api/mission-rooms/[id]` | — | snapshot مجاز اتاق، رتبه و پیشرفت زندهٔ اعضا |
+| POST | `/api/missions/buy` | `{ missionId }` | انتخاب مأموریت، کسر هزینه، عضویت در کمپ → `{ roomId }` |
+| GET | `/api/mission-rooms/[id]` | — | snapshot مجاز کمپ، رتبه و پیشرفت زندهٔ اعضا |
 | POST | `/api/mission-rooms/[id]/cheer` | `{ targetUserId, cheer }` | تشویق از پیش‌تعریف‌شده با محدودیت یک‌ساعته |
 | POST | `/api/streak/freeze` | — | خرید مرخصی استریک با ۵۰ سکه |
 | POST | `/api/videos/[id]/buy` | — | خرید ویدیوی روز برای گروه `paid` |

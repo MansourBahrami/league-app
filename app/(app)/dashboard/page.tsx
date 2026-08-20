@@ -91,7 +91,7 @@ export default async function DashboardPage() {
     };
   } else if (activeDaily) {
     // ماموریت روزانه کوتاه‌مدت‌تر است؛ اگر روزانه و هفتگی هم‌زمان فعال باشند،
-    // هدف فوری امروز در صفحه مطالعه اولویت دارد و جزئیات هفتگی در اتاق مأموریت می‌ماند.
+    // هدف فوری امروز در صفحه مطالعه اولویت دارد و جزئیات هفتگی در کمپ مأموریت می‌ماند.
     mission = {
       kind: "daily",
       dailyGoalMin: activeDaily.goalMin,

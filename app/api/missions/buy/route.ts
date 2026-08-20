@@ -112,5 +112,5 @@ export async function POST(req: NextRequest) {
   });
   broadcastActivity({ ...log, user: activityUser });
 
-  return NextResponse.json({ message: "وارد اتاق ماموریت شدی", roomId: joined.roomId });
+  return NextResponse.json({ message: "وارد کمپ مأموریت شدی", roomId: joined.roomId });
 }

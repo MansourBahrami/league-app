@@ -50,7 +50,7 @@ export default function MissionRoomChooser({
     const data = await response?.json().catch(() => ({})) as { error?: string; roomId?: string } | undefined;
     setLoadingId(null);
     if (!response?.ok || !data?.roomId) {
-      setError(data?.error ?? "ورود به اتاق انجام نشد؛ دوباره تلاش کن.");
+      setError(data?.error ?? "ورود به کمپ انجام نشد؛ دوباره تلاش کن.");
       return;
     }
     router.push(`/mission-rooms/${data.roomId}`);
@@ -65,7 +65,7 @@ export default function MissionRoomChooser({
         </span>
         <div className="min-w-0 flex-1 text-right">
           <h2 id="mission-choice-title" className="text-[16px] font-extrabold text-on-surface">مأموریت بعدی‌ات را انتخاب کن</h2>
-          <p className="mt-0.5 text-[11.5px] text-on-surface-variant">با کسانی وارد اتاق شو که دقیقاً همین هدف را دارند.</p>
+          <p className="mt-0.5 text-[11.5px] text-on-surface-variant">با کسانی وارد کمپ شو که دقیقاً همین هدف را دارند.</p>
         </div>
       </div>
 
@@ -90,7 +90,7 @@ export default function MissionRoomChooser({
       {tab === "weekly" && (
         <div className={`mb-3 rounded-xl px-3 py-2.5 text-[12px] ${weeklyEnrollmentOpen ? "bg-secondary-container text-on-secondary-container" : "bg-surface-container text-on-surface-variant"}`}>
           {weeklyEnrollmentOpen
-            ? `ثبت‌نام باز است؛ اتاق از ${weeklyStartsLabel} شروع می‌شود.`
+            ? `ثبت‌نام باز است؛ کمپ از ${weeklyStartsLabel} شروع می‌شود.`
             : `ثبت‌نام جمعه باز می‌شود؛ شروع مأموریت ${weeklyStartsLabel} است.`}
         </div>
       )}
@@ -98,7 +98,7 @@ export default function MissionRoomChooser({
       {onboardingLocked ? (
         <div className="rounded-2xl bg-primary-fixed/70 p-4 text-center">
           <span className="material-symbols-outlined text-[28px] text-primary">lock_clock</span>
-          <p className="mt-1 text-[13px] font-bold text-primary">اتاق‌های مأموریت بعد از روز اول باز می‌شوند</p>
+          <p className="mt-1 text-[13px] font-bold text-primary">کمپ مأموریت بعد از روز اول باز می‌شود</p>
           <p className="mt-1 text-[11.5px] text-on-surface-variant">فعلاً هدف ۱ ساعته امروزت را در صفحه مطالعه کامل کن.</p>
         </div>
       ) : (
@@ -137,7 +137,7 @@ export default function MissionRoomChooser({
                     disabled={disabled}
                     className="gamified-btn shrink-0 rounded-xl bg-secondary px-3 py-2.5 text-[12px] font-bold text-on-secondary disabled:cursor-not-allowed disabled:opacity-45"
                   >
-                    {loadingId === mission.id ? "در حال ورود…" : insufficient ? "سکه کم است" : isWeeklyClosed ? "جمعه" : "ورود به اتاق"}
+                    {loadingId === mission.id ? "در حال ورود…" : insufficient ? "سکه کم است" : isWeeklyClosed ? "جمعه" : "ورود به کمپ"}
                   </button>
                 </div>
               </article>

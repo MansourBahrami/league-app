@@ -10,6 +10,6 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
   const { id } = await context.params;
   const room = await getMissionRoomSnapshot(id, session.userId);
-  if (!room) return NextResponse.json({ error: "اتاق پیدا نشد" }, { status: 404 });
+  if (!room) return NextResponse.json({ error: "کمپ پیدا نشد" }, { status: 404 });
   return NextResponse.json(room);
 }

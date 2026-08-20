@@ -42,7 +42,7 @@ export default function MissionRoomRoster({ initialRoom }: { initialRoom: Missio
       <div className="flex items-center justify-between px-1">
         <h2 id="room-members-title" className="flex items-center gap-1.5 text-[15px] font-extrabold text-on-surface">
           <span className="material-symbols-outlined text-[19px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>groups</span>
-          اعضای اتاق
+          اعضای کمپ
         </h2>
         <span className="text-[11px] text-on-surface-variant">به‌روزرسانی زنده</span>
       </div>

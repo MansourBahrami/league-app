@@ -79,9 +79,9 @@ export default async function MissionRoomsPage() {
           </span>
           <div className="min-w-0 flex-1 text-right">
             <div className="flex items-center gap-1.5">
-              <h1 className="text-[18px] font-extrabold text-on-surface">اتاق مأموریت</h1>
+              <h1 className="text-[18px] font-extrabold text-on-surface">کمپ مأموریت</h1>
               <SectionInfoButton
-                title="اتاق مأموریت چطوری کار می‌کنه؟"
+                title="کمپ مأموریت چطوری کار می‌کنه؟"
                 description="اینجا هدفت رو انتخاب می‌کنی و کنار بچه‌هایی که دقیقاً همین هدف رو دارن درس می‌خونی."
                 points={[
                   "مأموریت روزانه: برای هدف‌گذاری امروز و گرفتن سکه جایزه.",

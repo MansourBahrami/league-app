@@ -28,7 +28,7 @@ function faNum(v: unknown): string {
 const TYPE_LABEL: Record<string, (m: Record<string, unknown>) => string> = {
   timer_start: (m) => `تایمر ${faNum(m.durationMin)} دقیقه‌ای رو شروع کرد`,
   session_complete: (m) => `${faNum(m.durationMin)} دقیقه مطالعه کرد`,
-  mission_buy: (m) => `به اتاق ماموریت ${faNum(m.targetHours)} ساعته پیوست`,
+  mission_buy: (m) => `به کمپ مأموریت ${faNum(m.targetHours)} ساعته پیوست`,
   medal_earn: (m) => `مدال ${faNum(m.targetHours)} ساعته گرفت`,
   level_up: (m) => `به سطح ${m.level ?? ""} رسید`,
   streak: (m) => `به زنجیره ${faNum(m.streak)} روزه رسید 🔥`,

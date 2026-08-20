@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
   const members = await prisma.missionRoomMember.count({
     where: { roomId, userId: { in: [session.userId, targetUserId] } },
   });
-  if (members !== 2) return NextResponse.json({ error: "عضو این اتاق نیستید" }, { status: 403 });
+  if (members !== 2) return NextResponse.json({ error: "عضو این کمپ نیستید" }, { status: 403 });
 
   const cooldownStart = new Date(Date.now() - 60 * 60 * 1000);
   const recent = await prisma.inboxItem.findFirst({
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest, context: { params: Promise<{ id: st
     metadata: { roomId, cheer },
   });
   await sendPushToUser(targetUserId, {
-    title: `تشویق از ${actor?.name ?? "هم‌اتاقی‌ات"}`,
+    title: `تشویق از ${actor?.name ?? "هم‌کمپی‌ات"}`,
     body: message,
     url: `/mission-rooms/${roomId}`,
     tag: `room-cheer-${roomId}`,

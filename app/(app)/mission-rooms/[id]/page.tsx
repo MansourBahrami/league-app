@@ -67,7 +67,7 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
             </span>
             <div className="min-w-0 flex-1 text-right">
               <p className="text-[11px] text-on-primary/75">{room.kind === "daily" ? "ماموریت امروز" : "ماموریت هفتگی"}</p>
-              <h1 className="text-[21px] font-extrabold">اتاق {room.targetHours.toLocaleString("fa-IR")} ساعت مطالعه</h1>
+              <h1 className="text-[21px] font-extrabold">کمپ {room.targetHours.toLocaleString("fa-IR")} ساعت مطالعه</h1>
               <p className="mt-1 text-[10.5px] text-on-primary/75">
                 {formatJalaliLong(new Date(room.startsAt), true)} تا {formatJalaliLong(new Date(room.endsAt))}
               </p>
@@ -85,7 +85,7 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
       <section className="glass-card rounded-2xl p-4">
         <div className="flex items-center justify-between">
           <div className="text-right">
-            <p className="text-[12px] font-bold text-on-surface-variant">پیشرفت شما در اتاق</p>
+            <p className="text-[12px] font-bold text-on-surface-variant">پیشرفت شما در کمپ</p>
             <p className="mt-1 text-[16px] font-extrabold text-on-surface">رتبه {room.myRank.toLocaleString("fa-IR")} از {room.memberCount.toLocaleString("fa-IR")}</p>
           </div>
           <span className="text-[24px] font-extrabold text-primary">{room.myProgress.toLocaleString("fa-IR")}٪</span>
@@ -100,7 +100,7 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
         {!hasRunningTimer && (
           <Link href="/dashboard" className="gamified-btn mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-[14px] font-extrabold text-on-primary">
             <span className="material-symbols-outlined text-[19px]" style={{ fontVariationSettings: "'FILL' 1" }}>center_focus_strong</span>
-            {pending ? "مطالعه آزاد تا شروع اتاق" : "شروع جلسه مطالعه"}
+            {pending ? "مطالعه آزاد تا شروع کمپ" : "شروع جلسه مطالعه"}
           </Link>
         )}
       </section>
@@ -111,7 +111,7 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
         <div className="flex items-center justify-between px-1">
           <h2 id="room-activity-title" className="flex items-center gap-1.5 text-[15px] font-extrabold text-on-surface">
             <span className="material-symbols-outlined text-[19px] text-secondary" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
-            اتفاق‌های اتاق
+            اتفاق‌های کمپ
           </h2>
           <span className="text-[10.5px] text-on-surface-variant">برای تشویق واکنش بده</span>
         </div>
@@ -121,7 +121,7 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
           initialCounts={counts}
           initialMine={mine}
           allowedUserIds={memberIds}
-          emptyLabel="هنوز اتفاقی در این اتاق ثبت نشده؛ اولین جلسه را تو شروع کن."
+          emptyLabel="هنوز اتفاقی در این کمپ ثبت نشده؛ اولین جلسه را تو شروع کن."
         />
       </section>
     </div>

@@ -101,7 +101,7 @@ function MissionContext({ mission }: { mission: FocusMission }) {
           className="mt-3 inline-flex items-center justify-center gap-1.5 rounded-xl border border-tertiary text-tertiary px-3.5 py-2 text-[12.5px] font-bold hover:bg-tertiary-fixed/35 transition-colors"
         >
           <span className="material-symbols-outlined text-[17px]" style={{ fontVariationSettings: "'FILL' 1" }}>target</span>
-          انتخاب اتاق مأموریت
+          انتخاب کمپ مأموریت
         </Link>
       </div>
     );

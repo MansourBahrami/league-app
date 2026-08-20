@@ -15,7 +15,7 @@
 | اتصال ربات برای اعلان | `app/api/profile/bot-link`, `app/api/bot/link`, `lib/bot-link.ts`, `lib/bot-handler.ts` |
 | تایمر و جلسهٔ مطالعه | `components/dashboard/StudyTimer.tsx`, `app/api/study/*` |
 | گیمیفیکیشن (XP/سکه/سطح/مدال) | `lib/gamification.ts`, `lib/mission.ts`, `lib/streak.ts` |
-| اتاق مأموریت | `app/(app)/mission-rooms`, `app/api/mission-rooms`, `app/api/missions/buy`, `components/mission-rooms/*`, `lib/mission-room.ts` |
+| کمپ مأموریت | `app/(app)/mission-rooms`, `app/api/mission-rooms`, `app/api/missions/buy`, `components/mission-rooms/*`, `lib/mission-room.ts` |
 | لیدربورد | `app/(app)/leaderboard`, `components/leaderboard/*` |
 | فید زنده | `app/api/feed/stream`, `components/feed/LiveFeed.tsx` |
 | ویدیو/LMS | `app/(app)/videos/*`, `components/videos/*`, `lib/onboarding.ts` |
@@ -121,8 +121,8 @@
 | `app/(app)/layout.tsx` 🟢 | واکشی user، تخصیص A/B، AppShell، GuidedTour، قفل lead و PushRegister. |
 | `app/(app)/dashboard/page.tsx` 🟢 | داشبورد: تایمر، ماموریت روزانه/هفتگی، استریک، رقبای نزدیک و گزارش مطالعه. |
 | `app/(app)/missions/page.tsx` 🟢 | redirect مسیر قدیمی به `/mission-rooms`. |
-| `app/(app)/mission-rooms/page.tsx` 🟢 | ورود مستقیم به اتاق جاری؛ در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی. |
-| `app/(app)/mission-rooms/[id]/page.tsx` 🟢 | جزئیات اتاق، پیشرفت/رتبهٔ زندهٔ اعضا، تشویق و فید فیلترشدهٔ اتاق. |
+| `app/(app)/mission-rooms/page.tsx` 🟢 | ورود مستقیم به کمپ جاری؛ در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی. |
+| `app/(app)/mission-rooms/[id]/page.tsx` 🟢 | جزئیات کمپ، پیشرفت/رتبهٔ زندهٔ اعضا، تشویق و فید فیلترشدهٔ کمپ. |
 | `app/(app)/feed/page.tsx` 🟢 | بورد زندهٔ فعالیت‌ها (SSE). |
 | `app/(app)/leaderboard/page.tsx` 🟢 | لیدربورد هفتگی هم‌سطح + تب «لیگ آزاد» برای cold start. |
 | `app/(app)/profile/page.tsx` 🟢 | پروفایل خود: آمار، مدال، ویرایش، خروج، دعوت دوستان. |
@@ -171,8 +171,8 @@
 | `study/tick` 🟢 | پاداش هر ۱۵ دقیقه با **اعتبارسنجی سمت سرور** (زمان واقعی منهای pause، سقف `plannedMin`). |
 | `study/pause` / `study/resume` 🟢 | مدیریت pause سمت سرور (`pausedSec`). |
 | `study/end` 🟢 | پایان جلسه (idempotent) + محاسبهٔ نهایی، سطح، استریک، آنبوردینگ. |
-| `missions/buy` 🟢 | انتخاب مأموریت، کسر سکه و عضویت اتمیک در اتاق هم‌هدف‌ها. |
-| `mission-rooms/[id]` 🟢 | snapshot زندهٔ اتاق برای اعضا. |
+| `missions/buy` 🟢 | انتخاب مأموریت، کسر سکه و عضویت اتمیک در کمپ هم‌هدف‌ها. |
+| `mission-rooms/[id]` 🟢 | snapshot زندهٔ کمپ برای اعضا. |
 | `mission-rooms/[id]/cheer` 🟢 | ارسال تشویق محدود و ساخت Inbox/Web Push. |
 | `streak/freeze` 🟢 | خرید مرخصی استریک با ۵۰ سکه. |
 | `videos/[id]/buy` 🟢 | خرید ویدیو برای گروه A/B `paid`. |
@@ -205,7 +205,7 @@
 | `layout/` 🟢 | `AppShell`, `Header`, `BottomNav` | پوستهٔ اپ، نوار بالا و ناوبری پایین ۵ تب؛ مطالعه در مرکز و بورد زنده خارج از ناوبری. |
 | `dashboard/` 🟢 | `StudyTimer`, `DailyMissionCard`, `WeeklyMissionCard`, `StreakBar`, `StudyReport*`, `CloseCompetitors` | تایمر، ماموریت، استریک، نمودار و رقبا. |
 | `onboarding/` 🟢 | `GuidedTour`, `LeadCaptureModal`, `GoalSettingModal` | تور درون‌اپ، فرم اطلاعات/موبایل و هدف فردا. |
-| `mission-rooms/` 🟢 | `MissionRoomChooser`, `MissionRoomRoster`, `RoomCheerButton` | انتخاب اتاق، رتبه/پیشرفت زنده و تعامل امن. |
+| `mission-rooms/` 🟢 | `MissionRoomChooser`, `MissionRoomRoster`, `RoomCheerButton` | انتخاب کمپ، رتبه/پیشرفت زنده و تعامل امن. |
 | `leaderboard/` 🟢 | `Podium`, `LeaderboardList` | سکوی تاپ ۳ + فهرست با focus روی کاربر. |
 | `feed/` | `LiveFeed` 🟢, `FeedItem` ⚪️ | فید زنده SSE (`FeedItem` میراث/بلااستفاده). |
 | `profile/` 🟢 | `StatsGrid`, `MedalsSection`, `ProfileActions`, `MessengerConnections`, `AvatarPicker`, `LockedStudySection`, `LevelInfoButton` | آمار، مدال، اتصال پیام‌رسان، آواتار، ویرایش/خروج و قفل گزارش. |

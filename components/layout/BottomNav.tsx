@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/mission-rooms", icon: "meeting_room", label: "اتاق مأموریت", tour: "nav-rooms" },
+  { href: "/mission-rooms", icon: "meeting_room", label: "کمپ مأموریت", tour: "nav-rooms" },
   { href: "/videos", icon: "school", label: "آموزش‌ها", tour: "nav-videos" },
   { href: "/dashboard", icon: "center_focus_strong", label: "مطالعه", tour: "nav-dashboard" },
   { href: "/leaderboard", icon: "leaderboard", label: "رده‌بندی", tour: "nav-leaderboard" },
