@@ -153,8 +153,9 @@ SENTRY_AUTH_TOKEN=sntrys_...
 
 این توکن محرمانه و اختیاری است و فقط هنگام build برای آپلود Source Map استفاده
 می‌شود. نباید با `NEXT_PUBLIC_` شروع شود، در repository ثبت شود یا داخل image
-باقی بماند. Dockerfile آمادهٔ دریافت آن از BuildKit secret است، ولی خود توکن
-هنوز ساخته و به GitHub Actions متصل نشده است.
+باقی بماند. فعلاً توکن ساخته یا به GitHub Actions متصل نشده و Docker build بدون
+آپلود Source Map انجام می‌شود. هنگام فعال‌سازی باید توکن با GitHub Actions secret
+و BuildKit secret به مرحلهٔ build داده شود.
 
 ## چک‌لیست انتشار
 

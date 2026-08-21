@@ -30,8 +30,8 @@ ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
-# توکن آپلود source map فقط هنگام build mount می‌شود و در لایه‌های image باقی نمی‌ماند.
-RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN,env=SENTRY_AUTH_TOKEN,required=false npm run build
+# Source Map فعلاً اختیاری و غیرفعال است؛ build نباید به توکن Sentry وابسته باشد.
+RUN npm run build
 
 # Stage 2: Runner
 FROM node:22-slim AS runner
