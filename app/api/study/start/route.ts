@@ -5,6 +5,8 @@ import { broadcastActivity } from "@/app/api/feed/stream/route";
 import { getDay1MissionHours } from "@/lib/gamification";
 import { tehranParts } from "@/lib/date";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import { after } from "next/server";
+import { captureServerEvent } from "@/lib/analytics-server";
 
 const ALLOWED_DURATIONS = [30, 60, 90, 120];
 
@@ -61,6 +63,13 @@ export async function POST(req: NextRequest) {
     data: { userId: session.userId, type: "timer_start", metadata: { durationMin: plannedMin } },
   });
   broadcastActivity({ ...log, user });
+
+  after(() => captureServerEvent({
+    distinctId: session.userId,
+    event: "study_started",
+    properties: { planned_minutes: plannedMin },
+    insertId: `study-started:${studySession.id}`,
+  }));
 
   return NextResponse.json({ sessionId: studySession.id });
 }

@@ -127,9 +127,30 @@ TELEGRAM_BOT_TOKEN=<...>
 TELEGRAM_BOT_USERNAME=<bot_username>
 OTP_HASH_SECRET=<حداقل ۳۲ بایت تصادفی؛ در نبود آن JWT_SECRET استفاده می‌شود>
 # اختیاری/وابسته به قابلیت: VAPID_* و BOT_API_SECRET
+
+# تحلیل محصول و پایش خطا (SDK keyهای public کلاینت در build-args workflow هم قرار دارند)
+POSTHOG_PROJECT_TOKEN=<PostHog project token>
+POSTHOG_HOST=https://us.i.posthog.com
+SENTRY_DSN=<Sentry DSN>
+APP_ENV=production
 ```
 
-> مقادیر واقعی فقط روی سرور و در GitHub Secrets نگهداری می‌شوند، نه در گیت.
+> رازهای واقعی فقط روی سرور و در GitHub Secrets نگهداری می‌شوند. PostHog project
+> token و Sentry DSN راز مدیریتی نیستند و طبق طراحی داخل bundle مرورگر دیده می‌شوند.
+
+### پایش رفتار و خطا
+
+- PostHog فقط page view و رویدادهای صریح `signed_in`، `signed_out`،
+  `study_started` و `study_completed` را نگه می‌دارد. Autocapture، heatmap و
+  session recording برای کاهش هزینه و محافظت از حریم خصوصی خاموش‌اند.
+- Sentry خطاهای مرورگر، route handler و render را ثبت می‌کند. شماره موبایل،
+  cookie، header و query string پیش از ارسال حذف می‌شوند و Replay فعال نیست.
+- کلیدهای public کلاینت PostHog و Sentry در build-args workflow قرار دارند؛ این
+  کلیدها در هر صورت داخل bundle مرورگر قابل مشاهده‌اند و مجوز مدیریتی ندارند.
+- `SENTRY_AUTH_TOKEN` اختیاری است و فقط برای آپلود source map استفاده می‌شود؛
+  در BuildKit به‌صورت secret mount می‌شود و داخل image باقی نمی‌ماند.
+- لاگ هر کانتینر با driver محلی Docker چرخش دارد؛ اپ حداکثر ۵ فایل ۱۰MB و
+  PostgreSQL/Redis هرکدام حداکثر ۳ فایل ۱۰MB نگه می‌دارند.
 
 ---
 

@@ -16,6 +16,11 @@ services:
         condition: service_healthy
     networks:
       - league-net
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "5"
 
   postgres:
     image: postgres:17-alpine
@@ -33,6 +38,11 @@ services:
       retries: 10
     networks:
       - league-net
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
@@ -47,6 +57,11 @@ services:
       retries: 10
     networks:
       - league-net
+    logging:
+      driver: local
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 volumes:
   postgres_data:

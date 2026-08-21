@@ -98,10 +98,14 @@ export default function LevelInfoButton({ levels, currentLevel, currentStars, ne
       <button
         type="button"
         onClick={openDialog}
-        aria-label="شرایط ارتقای سطح"
-        className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-outline/30 bg-surface-container-high/70 text-on-surface-variant transition-all hover:border-primary hover:bg-primary hover:text-on-primary active:scale-95"
+        aria-label={`معرفی سطح ${currentLevel}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-primary-fixed px-3 py-1.5 text-primary transition-all hover:brightness-95 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       >
-        <span className="material-symbols-outlined text-[20px]" aria-hidden="true">info</span>
+        <span className="text-[13px] font-bold">{currentLevel}</span>
+        <StarBadge stars={currentStars} total={3} size={16} framed={false} />
+        <span className="material-symbols-outlined text-[18px]" aria-hidden="true">error</span>
       </button>
 
       {open && (

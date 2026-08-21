@@ -1,18 +1,17 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import StatsGrid from "@/components/profile/StatsGrid";
 import MedalsSection from "@/components/profile/MedalsSection";
 import ProfileActions from "@/components/profile/ProfileActions";
 import { getNextLevelRequirement, effectiveStreak, formatStudyMinutes, xpToStudyMinutes, LEVEL_TABLE } from "@/lib/gamification";
 import { getUserMedalCounts } from "@/lib/mission";
 import NotificationToggle from "@/components/push/NotificationToggle";
-import StarBadge from "@/components/ui/StarBadge";
 import AvatarPicker from "@/components/profile/AvatarPicker";
 import LevelInfoButton from "@/components/profile/LevelInfoButton";
 import MessengerConnections from "@/components/profile/MessengerConnections";
 import StudyReportCard from "@/components/dashboard/StudyReportCard";
+import LogoutButton from "@/components/profile/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
@@ -67,15 +66,14 @@ export default async function ProfilePage() {
         <div className="absolute top-0 right-0 w-full h-24 bg-gradient-to-b from-tertiary-fixed to-transparent opacity-50 z-0" />
         <div className="relative z-10 flex flex-col items-center w-full">
           <AvatarPicker currentUrl={user.avatarUrl} name={user.name} />
-          <h1 className="text-[20px] font-bold text-on-surface mb-1">{user.name ?? "نام وارد نشده"}</h1>
+          <div className="mb-1 flex items-center gap-1">
+            <h1 className="text-[20px] font-bold text-on-surface">{user.name ?? "نام وارد نشده"}</h1>
+            <ProfileActions user={{ name: user.name, grade: user.grade, field: user.field }} />
+          </div>
           <p className="text-[14px] text-on-surface-variant mb-1">
             {[user.grade, user.field].filter(Boolean).join(" • ") || user.phone}
           </p>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="bg-primary-fixed text-primary px-3 py-1 rounded-full text-[13px] font-bold">
-              {user.level} ـ {user.stars.toLocaleString("fa-IR")} ستاره
-            </span>
-            <StarBadge stars={user.stars} total={3} size={16} />
+          <div className="mb-1 flex items-center">
             <LevelInfoButton
               levels={levelRows}
               currentLevel={user.level}
@@ -125,36 +123,8 @@ export default async function ProfilePage() {
       {/* روند مطالعه، مهم‌ترین داده‌ی عملکردی پروفایل */}
       <StudyReportCard userId={session.userId} />
 
-      {/* دستاوردها پیش از میانبرها و تنظیمات */}
+      {/* دستاوردها پیش از تنظیمات */}
       <MedalsSection medals={userMedals.map((um) => ({ id: um.id, name: um.medal.name, targetHours: um.medal.targetHours, earnedAt: um.earnedAt }))} />
-
-      {/* میانبرهای مرتبط با مسیر مطالعه */}
-      <section className="glass-card rounded-xl p-3.5" aria-labelledby="profile-shortcuts-title">
-        <div className="mb-3 flex items-center gap-2 px-1">
-          <span className="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">apps</span>
-          <h2 id="profile-shortcuts-title" className="text-[14px] font-bold text-on-surface">میانبرها</h2>
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Link href="/mission-rooms" className="flex min-w-0 items-center gap-2 rounded-xl bg-tertiary-fixed/35 p-3 transition-colors hover:bg-tertiary-fixed/55">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container-lowest text-tertiary">
-              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">meeting_room</span>
-            </span>
-            <div className="min-w-0 text-right">
-              <p className="truncate text-[13px] font-bold text-on-surface">اتاق مأموریت</p>
-              <p className="truncate text-[10px] text-on-surface-variant">هم‌هدف‌ها و پیشرفت</p>
-            </div>
-          </Link>
-          <Link href="/videos" className="flex min-w-0 items-center gap-2 rounded-xl bg-primary-fixed/45 p-3 transition-colors hover:bg-primary-fixed/70">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-container-lowest text-primary">
-              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }} aria-hidden="true">school</span>
-            </span>
-            <div className="min-w-0 text-right">
-              <p className="truncate text-[13px] font-bold text-on-surface">آموزش‌ها</p>
-              <p className="truncate text-[10px] text-on-surface-variant">ویدیو و تکنیک</p>
-            </div>
-          </Link>
-        </div>
-      </section>
 
       {/* تنظیمات و اتصال‌های حساب در انتهای صفحه */}
       <section className="flex flex-col gap-3" aria-labelledby="account-settings-title">
@@ -182,7 +152,7 @@ export default async function ProfilePage() {
           </a>
         )}
 
-        <ProfileActions user={{ name: user.name, grade: user.grade, field: user.field }} />
+        <LogoutButton />
       </section>
     </div>
   );

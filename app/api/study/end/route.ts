@@ -9,6 +9,8 @@ import { getWeeklyMissionState } from "@/lib/weekly-mission";
 import { applyStreak } from "@/lib/streak";
 import { fireEvent } from "@/lib/notification-engine";
 import { tehranDayDiff } from "@/lib/date";
+import { after } from "next/server";
+import { captureServerEvent } from "@/lib/analytics-server";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -178,6 +180,19 @@ export async function POST(req: NextRequest) {
   // تکمیل پروفایل (Lead capture): در روز دوم به بعد، اگر سشن مطالعه حداقل ۳۰ دقیقه ثبت شد و پروفایل ناقص بود
   const isAfterDay1 = userBefore.onboardingDay >= 1 || (inOnboarding && dayCompleted);
   const needsLeadCapture = isAfterDay1 && !userBefore.isLeadComplete && durationMin >= 30;
+
+  after(() => captureServerEvent({
+    distinctId: session.userId,
+    event: "study_completed",
+    properties: {
+      planned_minutes: studySession.plannedMin,
+      verified_minutes: durationMin,
+      xp_earned: totalXp,
+      coins_earned: totalCoins,
+      onboarding_day_completed: dayCompleted,
+    },
+    insertId: `study-completed:${studySession.id}`,
+  }));
 
   return NextResponse.json({
     // نتیجه‌ی جلسه باید کل پاداش همان جلسه را نشان دهد؛ بخشی از آن ممکن است

@@ -27,6 +27,7 @@
 | کارهای زمان‌بندی‌شده | `lib/jobs.ts`, `app/api/cron/run` |
 | پنل ادمین | `app/(admin)/*`, `app/api/admin/*`, `components/admin/*` |
 | زیرساخت/استقرار | `Dockerfile`, `docker-compose.yml`, `.github/workflows/deploy.yml`, `liara.json`, `scripts/vps-setup.sh` |
+| تحلیل رفتار و پایش خطا | `instrumentation*.ts`, `sentry.*.config.ts`, `lib/analytics-*`, `components/analytics/*`, `app/{error,global-error}.tsx` |
 
 ---
 
@@ -53,6 +54,7 @@
 | `PROJECT.md` | سند جامع فنی/محصولی (استک، دیتابیس، یوزرفلو، فیچرها). |
 | `FILES.md` | همین فایل — نقشهٔ کدبیس. |
 | `DEPLOYMENT.md` | راهنمای استقرار production (CDN/HTTPS، بله، کاوه‌نگار، redeploy). |
+| `OBSERVABILITY.md` | راهنمای PostHog، Sentry، Docker logs، حریم خصوصی و چک‌لیست انتشار. |
 | `ROADMAP.md` | فازها و کارهای آینده. |
 | `AGENTS.md` / `CLAUDE.md` | راهنمای ایجنت‌ها (`CLAUDE.md` فقط به `AGENTS.md` اشاره می‌کند). |
 | `README.md` | معرفی واقعی محصول، اجرای محلی، فرمان‌ها و لینک مستندات. |

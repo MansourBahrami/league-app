@@ -8,6 +8,7 @@ import { isMessengerPromptSnoozed } from "@/lib/messenger-prompt";
 import { isSetupPromptSnoozed } from "@/lib/setup-prompt";
 import { wasMissionPromptHandledToday } from "@/lib/mission-prompt";
 import AppShell from "@/components/layout/AppShell";
+import AnalyticsIdentity from "@/components/analytics/AnalyticsIdentity";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -60,19 +61,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
 
   return (
-    <AppShell
-      user={user}
-      onboardingHints={user.onboardingHints}
-      hasCompletedSession={completedSessions > 0}
-      setupPromptSnoozed={isSetupPromptSnoozed(user.setupPromptSnoozedAt)}
-      needsLead={needsLead}
-      hasPhone={!!user.phone}
-      unreadCount={unreadCount}
-      showBotConnect={showBotConnect}
-      showMissionPrompt={showMissionPrompt}
-      botAvailability={botAvailability}
-    >
-      {children}
-    </AppShell>
+    <>
+      <AnalyticsIdentity userId={user.id} />
+      <AppShell
+        user={user}
+        onboardingHints={user.onboardingHints}
+        hasCompletedSession={completedSessions > 0}
+        setupPromptSnoozed={isSetupPromptSnoozed(user.setupPromptSnoozedAt)}
+        needsLead={needsLead}
+        hasPhone={!!user.phone}
+        unreadCount={unreadCount}
+        showBotConnect={showBotConnect}
+        showMissionPrompt={showMissionPrompt}
+        botAvailability={botAvailability}
+      >
+        {children}
+      </AppShell>
+    </>
   );
 }

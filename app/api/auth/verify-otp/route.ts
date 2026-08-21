@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { signToken, setSessionCookie } from "@/lib/auth";
 import { normalizePhone, normalizeDigits } from "@/lib/phone";
 import { consumeOtp } from "@/lib/otp";
+import { after } from "next/server";
+import { captureServerEvent } from "@/lib/analytics-server";
 
 export async function POST(req: NextRequest) {
   try {
@@ -39,6 +41,11 @@ export async function POST(req: NextRequest) {
       user: { id: user.id, phone: user.phone, name: user.name, isLeadComplete: user.isLeadComplete, onboardingDay: user.onboardingDay },
     });
     response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2]);
+    after(() => captureServerEvent({
+      distinctId: user.id,
+      event: "signed_in",
+      insertId: `signed-in:${user.id}:${user.sessionVersion}`,
+    }));
     return response;
   } catch (err) {
     console.error("verify-otp error:", err);

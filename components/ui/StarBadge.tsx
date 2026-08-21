@@ -5,14 +5,18 @@ export default function StarBadge({
   stars,
   total = 3,
   size = 14,
+  framed = true,
 }: {
   stars: number;
   total?: number;
   size?: number;
+  framed?: boolean;
 }) {
   return (
     <span
-      className="inline-flex items-center gap-0.5 rounded-full bg-tertiary-fixed/55 px-1.5 py-0.5 leading-none ring-1 ring-tertiary/15"
+      className={`inline-flex items-center gap-0.5 leading-none ${
+        framed ? "rounded-full bg-tertiary-fixed/55 px-1.5 py-0.5 ring-1 ring-tertiary/15" : ""
+      }`}
       dir="ltr"
       role="img"
       aria-label={`${stars.toLocaleString("fa-IR")} از ${total.toLocaleString("fa-IR")} ستاره`}

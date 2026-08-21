@@ -76,13 +76,7 @@ export default function AppShell({ user, children, onboardingHints = [], hasComp
           />
         )}
         {/* Cyber grid background */}
-        <div
-          className="fixed inset-0 pointer-events-none opacity-[0.03] z-0"
-          style={{
-            backgroundImage: "linear-gradient(to right, var(--color-primary) 1px, transparent 1px), linear-gradient(to bottom, var(--color-primary) 1px, transparent 1px)",
-            backgroundSize: "24px 24px",
-          }}
-        />
+        <div className="app-grid-background pointer-events-none fixed inset-0 z-0 opacity-[0.03]" />
 
         <Header user={user} xp={user.xp} coins={user.coins} unreadCount={unreadCount} />
 

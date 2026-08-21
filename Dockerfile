@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # Build روی GitHub Actions (نت باز، نیتیو amd64) انجام می‌شود؛ از رجیستری/مخزن‌های استاندارد استفاده می‌کنیم.
 # base = Debian slim (glibc نیتیو، سازگار با Prisma schema-engine)
 
@@ -15,9 +16,22 @@ RUN npx prisma generate
 # متغیرهای NEXT_PUBLIC_ موقع build داخل باندل کلاینت پخته می‌شوند
 ARG NEXT_PUBLIC_APP_URL
 ARG NEXT_PUBLIC_VAPID_PUBLIC_KEY
+ARG NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+ARG NEXT_PUBLIC_POSTHOG_HOST
+ARG NEXT_PUBLIC_SENTRY_DSN
+ARG NEXT_PUBLIC_APP_ENV
+ARG SENTRY_ORG
+ARG SENTRY_PROJECT
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
-RUN npm run build
+ENV NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=$NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
+ENV NEXT_PUBLIC_POSTHOG_HOST=$NEXT_PUBLIC_POSTHOG_HOST
+ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
+ENV NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
+ENV SENTRY_ORG=$SENTRY_ORG
+ENV SENTRY_PROJECT=$SENTRY_PROJECT
+# توکن آپلود source map فقط هنگام build mount می‌شود و در لایه‌های image باقی نمی‌ماند.
+RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN,env=SENTRY_AUTH_TOKEN,required=false npm run build
 
 # Stage 2: Runner
 FROM node:22-slim AS runner

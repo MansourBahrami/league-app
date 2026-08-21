@@ -61,3 +61,64 @@ The combined 1170 × 115 evidence places the provided source card, the entering 
 No P3 item is required for handoff.
 
 final result: passed
+
+---
+
+# Design QA — کارت ورود با الگوی کارت پروفایل
+
+## Evidence
+
+- Source visual truth: user-provided profile-card screenshot in the current conversation (no filesystem path exposed by the client), 1100 × 528 px.
+- Browser-rendered phone state: `/Users/mansourbahrami/league_proj_new/.audit/login-profile-card.png`, 481 × 1041 px.
+- Browser-rendered OTP state: `/Users/mansourbahrami/league_proj_new/.audit/login-profile-card-otp.png`, 481 × 1041 px.
+- Viewport: 390 × 844 CSS px, effective capture density ≈ 1.233, mobile RTL.
+- State: unauthenticated login, first phone-entry state and the resulting OTP-entry state.
+
+## Findings
+
+No actionable P0/P1/P2 differences remain for the requested card-style transfer.
+
+- Fonts and typography: the approved Pinar ExtraBold headline remains intact; Vazirmatn continues to handle supporting copy, fields, and controls. The mobile headline stays on one line without clipping.
+- Spacing and layout rhythm: the logo now participates in the card's vertical stack. The card uses the profile header's `glass-card`, `rounded-xl`, `p-5`, centered column, and overflow treatment. Both phone and OTP states fit without overflow.
+- Colors and visual tokens: the card uses the profile header's translucent white glass surface, semantic border/shadow, and the same `from-tertiary-fixed` top glow at 50% opacity. The grid remains visible around and subtly through the card.
+- Image quality and asset fidelity: the supplied SVG G-camp logo is rendered directly and remains sharp. The parent institute SVG remains outside the product card as a separate endorsement mark.
+- Copy and content: the requested slogan, supporting sentence, registration prompt, field placeholder, and CTA remain unchanged and readable.
+- Accessibility and behavior: the card remains a semantic login form; labels and alert regions are preserved. The phone state successfully transitions to OTP.
+
+## Full-view comparison evidence
+
+The source is a cropped desktop profile-card region while the implementation is a full mobile login screen, so a literal full-frame overlay would be misleading. The full mobile captures were used to verify hierarchy, containment, vertical balance, grid visibility, and footer separation.
+
+## Focused region comparison evidence
+
+The source and implementation were compared at the component level in the same visual review. The shared surfaces match directly through the repository's exact profile-card primitives: `glass-card`, `rounded-xl`, centered content, overflow clipping, and the tertiary-to-transparent header glow. No separate focused crop was needed because the card fills most of the implementation viewport and all important details are legible in the full capture.
+
+## Comparison history
+
+### Pass 1
+
+- The prior login treatment placed the G-camp logo outside a solid white rounded card.
+- [P2] This broke the visual grouping and did not match the translucent, softly highlighted profile-card language in the source.
+
+### Fix
+
+- Moved the G-camp logo inside the login card.
+- Replaced the solid card treatment with the exact profile header primitives and semantic top glow.
+- Kept the institute logo outside as the separate parent-brand endorsement.
+
+### Pass 2
+
+- Phone and OTP browser captures show a unified glass card with no clipping, crowding, or control overflow.
+- No actionable P0/P1/P2 findings remain.
+
+## Primary interactions tested
+
+- Entered the documented local development phone number and triggered the OTP step.
+- Confirmed the OTP field receives focus and the edit/resend controls remain visible.
+- Confirmed browser console warnings/errors: none.
+
+## Follow-up polish
+
+No P3 item is required for this handoff.
+
+final result: passed

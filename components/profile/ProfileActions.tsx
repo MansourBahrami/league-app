@@ -19,7 +19,6 @@ export default function ProfileActions({ user }: Props) {
   const [grade, setGrade] = useState(user.grade ?? "");
   const [field, setField] = useState(user.field ?? "");
   const [saving, setSaving] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
   const [error, setError] = useState("");
   const dialogRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -100,33 +99,17 @@ export default function ProfileActions({ user }: Props) {
     router.refresh();
   }
 
-  async function handleLogout() {
-    setLoggingOut(true);
-    await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
-  }
-
   return (
     <>
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={openEditor}
-          className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-primary/30 text-primary text-[14px] font-semibold hover:bg-primary-fixed transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">edit</span>
-          ویرایش پروفایل
-        </button>
-        <button
-          type="button"
-          onClick={handleLogout}
-          disabled={loggingOut}
-          className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-error/20 text-error text-[14px] font-semibold hover:bg-error/10 transition-colors"
-        >
-          <span className="material-symbols-outlined text-[18px]">logout</span>
-          خروج
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={openEditor}
+        aria-label="ویرایش پروفایل"
+        title="ویرایش پروفایل"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-primary transition-colors hover:bg-primary-fixed focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      >
+        <span className="material-symbols-outlined text-[19px]" aria-hidden="true">edit</span>
+      </button>
 
       {showEdit && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-on-surface/55 px-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] pt-4 backdrop-blur-sm">

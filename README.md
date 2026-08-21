@@ -70,5 +70,6 @@ npm run test:auth
 - [FILES.md](FILES.md): نقشهٔ فایل‌ها و ارتباط قابلیت‌ها با کد
 - [ROADMAP.md](ROADMAP.md): فازهای انجام‌شده و کارهای باقی‌مانده
 - [DEPLOYMENT.md](DEPLOYMENT.md): وضعیت و فرایند استقرار production
+- [OBSERVABILITY.md](OBSERVABILITY.md): تحلیل رفتار کاربران، دریافت خطا، لاگ‌ها و چک‌لیست پایش
 
 دستورالعمل مهم توسعهٔ Next.js در [AGENTS.md](AGENTS.md) قرار دارد.

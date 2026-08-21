@@ -77,6 +77,7 @@
 
   /* === Font Family === */
   --font-sans: "Vazirmatn", sans-serif;
+  --font-display: var(--font-pinar), "Vazirmatn", sans-serif;
 
   /* === Font Sizes === */
   --text-headline-md: 20px;
@@ -173,6 +174,13 @@ body {
   color: var(--color-on-surface);
   min-height: 100dvh;
   direction: rtl;
+}
+
+.app-grid-background {
+  background-image:
+    linear-gradient(to right, var(--color-primary) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--color-primary) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
 /* === Glassmorphism === */
