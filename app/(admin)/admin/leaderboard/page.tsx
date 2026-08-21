@@ -26,7 +26,8 @@ async function getLevelBoard(level: string, since: Date) {
 }
 
 export default async function AdminLeaderboardPage() {
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const boards = await Promise.all(LEVELS.map(async (lvl) => ({ level: lvl, ...(await getLevelBoard(lvl, since)) })));
 
   return (

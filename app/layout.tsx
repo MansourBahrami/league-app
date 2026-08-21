@@ -17,6 +17,16 @@ const pinar = localFont({
   variable: "--font-pinar",
 });
 
+const materialSymbols = localFont({
+  src: "./fonts/MaterialSymbolsOutlined-Gcamp.woff2",
+  display: "block",
+  preload: true,
+  adjustFontFallback: false,
+  style: "normal",
+  weight: "100 700",
+  variable: "--font-material-symbols",
+});
+
 export const metadata: Metadata = {
   title: "اپ G-camp",
   description: "درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن",
@@ -41,14 +51,8 @@ export default function RootLayout({
       // تمِ فعال: «brand» (پیش‌فرض). برای بازگشت به تمِ قبلی مقدار را "legacy" کنید
       // یا متغیرِ محیطی NEXT_PUBLIC_THEME=legacy را تنظیم کنید (بدون تغییر کد).
       data-theme={process.env.NEXT_PUBLIC_THEME ?? "brand"}
-      className={`${vazirmatn.variable} ${pinar.variable}`}
+      className={`${vazirmatn.variable} ${pinar.variable} ${materialSymbols.variable}`}
     >
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-          rel="stylesheet"
-        />
-      </head>
       <body className="min-h-screen bg-background text-on-surface font-sans antialiased">
         {children}
       </body>

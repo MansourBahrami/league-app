@@ -26,7 +26,7 @@
 | نوتیفیکیشن (Push + ربات) | `lib/push.ts`, `lib/notifications.ts`, `public/sw.js`, `components/push/*` |
 | کارهای زمان‌بندی‌شده | `lib/jobs.ts`, `app/api/cron/run` |
 | پنل ادمین | `app/(admin)/*`, `app/api/admin/*`, `components/admin/*` |
-| زیرساخت/استقرار | `Dockerfile`, `docker-compose.yml`, `.github/workflows/deploy.yml`, `liara.json`, `scripts/vps-setup.sh` |
+| زیرساخت/استقرار | `Dockerfile`, `docker-compose.yml`, `.github/workflows/deploy.yml`, `scripts/vps-setup.sh` |
 | تحلیل رفتار و پایش خطا | `instrumentation*.ts`, `sentry.*.config.ts`, `lib/analytics-*`, `components/analytics/*`, `app/{error,global-error}.tsx` |
 
 ---
@@ -44,7 +44,6 @@
 | `prisma.config.ts` | پیکربندی Prisma 7 (مسیر schema و seed). |
 | `Dockerfile` 🟢 | بیلد دو مرحله‌ای ایمیج production (Node 22-slim، خروجی `.next`). |
 | `docker-compose.yml` 🟢 | استک داخل repo: `app` + `postgres` + `redis`. Caddy در پیکربندی production سرور نگهداری می‌شود. |
-| `liara.json` | پیکربندی استقرار روی پلتفرم لیارا (PaaS). |
 | `.dockerignore`, `.gitignore` | استثناهای build/git (شامل `.next`, `node_modules`, `.env*`). |
 | `.env.example`, `.env.local`, `.env.production.example` | الگو و مقادیر متغیرهای محیطی (local و production). |
 
@@ -103,7 +102,6 @@
 | `lib/notification-admin.ts` 🟢 | پارس/اعتبارسنجی فرم قانون نوتیفیکیشن (مشترک بین POST/PATCH ادمین). |
 | `lib/notification-seed.ts` 🟢 | قانون‌های پیش‌فرض یادآور، بازگشت، استریک، رتبه، سطح و مدال؛ idempotent بر اساس `name`. |
 | `lib/jobs.ts` 🟢 | اجرای کارهای زمان‌بندی‌شده (`runScheduledJobs`): ماموریت‌ها، تسویهٔ تورنومنت، `notifRules` (موتور قانون)، `ranks` (افت رتبه). با پارامتر `tasks` فرکانس‌پذیر. |
-| `lib/socket.ts` ⚪️ | سرور Socket.io — **میراث**؛ فید زنده با SSE کار می‌کند (استفاده نمی‌شود). |
 
 ---
 
@@ -112,7 +110,7 @@
 ### ریشه و عمومی
 | فایل | توضیح |
 |------|-------|
-| `app/layout.tsx` 🟢 | layout ریشه: فونت Vazirmatn، `dir="rtl"`، Material Symbols، ثبت PWA. |
+| `app/layout.tsx` 🟢 | layout ریشه: فونت‌های محلی Vazirmatn، Pinar و Material Symbols، `dir="rtl"` و ثبت PWA. |
 | `app/page.tsx` 🟢 | صفحهٔ ریشه — ریدایرکت به `/dashboard` یا `/login`. |
 | `app/globals.css` 🟢 | توکن‌های طراحی Tailwind v4 در `@theme inline` (رنگ، شیشه، دکمه). |
 | `app/login/page.tsx` 🟢 | تنها مسیر ثبت‌نام/ورود: شماره موبایل → OTP با fetch نسبی. |
@@ -120,7 +118,7 @@
 ### گروه کاربر `(app)/` — همه پشت احراز هویت + `AppShell`
 | فایل | فیچر |
 |------|------|
-| `app/(app)/layout.tsx` 🟢 | واکشی user، تخصیص A/B، AppShell، GuidedTour، قفل lead و PushRegister. |
+| `app/(app)/layout.tsx` 🟢 | واکشی user، تخصیص A/B، AppShell، ProgressiveOnboarding، قفل lead و PushRegister. |
 | `app/(app)/dashboard/page.tsx` 🟢 | داشبورد: تایمر، ماموریت روزانه/هفتگی، استریک، رقبای نزدیک و گزارش مطالعه. |
 | `app/(app)/missions/page.tsx` 🟢 | redirect مسیر قدیمی به `/mission-rooms`. |
 | `app/(app)/mission-rooms/page.tsx` 🟢 | ورود مستقیم به کمپ جاری؛ در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی. |
@@ -205,11 +203,11 @@
 | گروه | فایل‌ها | فیچر |
 |------|---------|------|
 | `layout/` 🟢 | `AppShell`, `Header`, `BottomNav` | پوستهٔ اپ، نوار بالا و ناوبری پایین ۵ تب؛ مطالعه در مرکز و بورد زنده خارج از ناوبری. |
-| `dashboard/` 🟢 | `StudyTimer`, `DailyMissionCard`, `WeeklyMissionCard`, `StreakBar`, `StudyReport*`, `CloseCompetitors` | تایمر، ماموریت، استریک، نمودار و رقبا. |
-| `onboarding/` 🟢 | `GuidedTour`, `LeadCaptureModal`, `GoalSettingModal` | تور درون‌اپ، فرم اطلاعات/موبایل و هدف فردا. |
+| `dashboard/` 🟢 | `StudyTimer`, `DailyMissionCard`, `FocusPulse`, `StudyReport*` | تایمر، ماموریت، وضعیت تمرکز زنده و گزارش مطالعه. |
+| `onboarding/` 🟢 | `ProgressiveOnboarding`, `ContextualSpotlight`, `LeadCaptureModal`, `GoalSettingModal`, `BotConnectModal`, `Day2MissionModal` | راهنمای مرحله‌ای، فرم اطلاعات/موبایل، هدف فردا و اتصال پیام‌رسان. |
 | `mission-rooms/` 🟢 | `MissionRoomChooser`, `MissionRoomRoster`, `RoomCheerButton` | انتخاب کمپ، رتبه/پیشرفت زنده و تعامل امن. |
 | `leaderboard/` 🟢 | `Podium`, `LeaderboardList` | سکوی تاپ ۳ + فهرست با focus روی کاربر. |
-| `feed/` | `LiveFeed` 🟢, `FeedItem` ⚪️ | فید زنده SSE (`FeedItem` میراث/بلااستفاده). |
+| `feed/` 🟢 | `LiveFeed` | فید زنده SSE و واکنش‌های کاربران. |
 | `profile/` 🟢 | `StatsGrid`, `MedalsSection`, `ProfileActions`, `MessengerConnections`, `AvatarPicker`, `LockedStudySection`, `LevelInfoButton` | آمار، مدال، اتصال پیام‌رسان، آواتار، ویرایش/خروج و قفل گزارش. |
 | `videos/` 🟢 | `VideoPlayerClient`, `VideoCard` | پخش HLS با anti-seek + کارت ویدیو. |
 | `social/` 🟢 | `InviteFriends` | اشتراک کد دعوت. |
@@ -238,7 +236,8 @@
 | `public/manifest.json` 🟢 | مانیفست PWA (نام، آیکون، تم). |
 | `public/sw.js` 🟡 | Service Worker: نمایش نوتیف Web Push و کلیک. |
 | `public/icon-192.png`, `icon-512.png` 🟢 | آیکون‌های PWA. |
-| `public/*.svg` ⚪️ | آیکون‌های پیش‌فرض create-next-app (بلااستفاده). |
+| `public/brand/*` 🟢 | لوگوها و نشان‌های برند G-camp. |
+| `public/posters/*` 🟢 | پوسترهای واقعی قابلیت‌های اپ در صفحه ورود. |
 
 ---
 
@@ -274,6 +273,5 @@
 | `.github/workflows/deploy.yml` 🟢 | GitHub Actions: build ایمیج `linux/amd64` و push به Docker Hub روی هر push به `main`. (build-arg: `NEXT_PUBLIC_APP_URL`). |
 | `Dockerfile` 🟢 | بیلد production. |
 | `docker-compose.yml` 🟢 | استک repo (app + postgres + redis)؛ reverse proxy production جداگانه مدیریت می‌شود. |
-| `liara.json` | پیکربندی PaaS لیارا. |
 
 > جزئیات کامل معماری production، HTTPS از طریق CDN، اتصال بله و کاوه‌نگار، و فرایند redeploy در [DEPLOYMENT.md](DEPLOYMENT.md).

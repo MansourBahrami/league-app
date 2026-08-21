@@ -291,7 +291,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 | ۱۱ | صفحه پروفایل | ✅ | `ProfileActions.tsx`, `StatsGrid.tsx`, `MedalsSection.tsx` |
 | ۱۲ | PWA (manifest + icons) | ✅ | `public/manifest.json`, `public/icon-*.png` |
 | **۱۳** | **حلقه کامل گیمیفیکیشن** | ✅ | `lib/mission.ts` (تکمیل ماموریت، مدال، level_up) |
-| **۱۴** | **آنبوردینگ کامل + تور راهنما** | ✅ | `GuidedTour.tsx`؛ تایید روز با تکمیل هدف مطالعه |
+| **۱۴** | **آنبوردینگ کامل + راهنمای مرحله‌ای** | ✅ | `ProgressiveOnboarding` و `ContextualSpotlight`؛ تایید روز با تکمیل هدف مطالعه |
 | **۱۵** | **لیدربورد هم‌سطح + فید ۲۰۰** | ✅ | `leaderboard/page.tsx` (فیلتر `level`) |
 | **۱۶** | **پروفایل عمومی + قفل گزارش** | ✅ | `profile/[id]/page.tsx`, `LockedStudySection.tsx` |
 | **۱۷** | **ویدیوی چندپایه + پنل ادمین** | ✅ | `app/(admin)/*`, `VideoForm.tsx` (`grades[]`) |
@@ -320,7 +320,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 league_proj_new/
 ├── app/
 │   ├── (app)/                  # گروه احرازشده کاربر (با AppShell)
-│   │   ├── layout.tsx          # واکشی user + AppShell + GuidedTour + PushRegister
+│   │   ├── layout.tsx          # واکشی user + AppShell + ProgressiveOnboarding + PushRegister
 │   │   ├── dashboard/page.tsx
 │   │   ├── missions/page.tsx
 │   │   ├── feed/page.tsx
@@ -347,11 +347,11 @@ league_proj_new/
 │   └── globals.css             # توکن‌های Tailwind v4
 ├── components/
 │   ├── layout/{AppShell, Header, BottomNav}.tsx
-│   ├── dashboard/{StudyTimer, DailyMissionCard, WeeklyMissionCard, StreakBar, StudyReport*, CloseCompetitors}.tsx
-│   ├── onboarding/{GuidedTour, LeadCaptureModal, GoalSettingModal}.tsx
+│   ├── dashboard/{StudyTimer, DailyMissionCard, FocusPulse, StudyReport*}.tsx
+│   ├── onboarding/{ProgressiveOnboarding, ContextualSpotlight, LeadCaptureModal, GoalSettingModal, BotConnectModal, Day2MissionModal}.tsx
 │   ├── missions/MissionCard.tsx
 │   ├── leaderboard/{Podium, LeaderboardList}.tsx
-│   ├── feed/{LiveFeed, FeedItem}.tsx
+│   ├── feed/LiveFeed.tsx
 │   ├── profile/{StatsGrid, MedalsSection, ProfileActions, AvatarPicker, LockedStudySection, LevelInfoButton}.tsx
 │   ├── videos/{VideoPlayerClient, VideoCard}.tsx
 │   └── admin/{VideoForm, AdminVideoRow, TournamentForm, NotificationForm, NotificationList}.tsx
@@ -363,7 +363,7 @@ league_proj_new/
 └── .env / .env.local
 ```
 
-> `lib/socket.ts` و `components/feed/FeedItem.tsx` بلااستفاده‌اند (بورد زنده با SSE/LiveFeed کار می‌کند).
+> بورد زنده با SSE و `LiveFeed` کار می‌کند؛ پیاده‌سازی قدیمی Socket.io از کدبیس حذف شده است.
 
 ---
 
@@ -442,7 +442,6 @@ league_proj_new/
 
 ## ۱۱. بدهی فنی و نکات نگهداری
 
-- **`lib/socket.ts`** باقیمانده از تصمیم اولیه Socket.io است و استفاده نمی‌شود (فید با SSE کار می‌کند).
 - **تست سطح‌ها**: در وضعیت فعلی انتظار تست برای بازهٔ ۸ تا ۲۹ XP با `LEVEL_TABLE` یکسان نیست و باید تصمیم محصولی نهایی شود.
 - **ویدیوی anti-seek**: کنترل جلو زدن در کلاینت است؛ endpoint پیشرفت باید در آینده اعتبارسنجی سخت‌گیرانه‌تر سمت سرور داشته باشد.
 - **SSE درون‌حافظه‌ای**: برای یک process مناسب است؛ در چند replica به Redis Pub/Sub یا زیرساخت مشترک نیاز دارد.

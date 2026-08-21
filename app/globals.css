@@ -176,6 +176,37 @@ body {
   direction: rtl;
 }
 
+/*
+ * Material Symbols is a local, app-specific subset loaded through next/font.
+ * The fixed one-em box contains the ligature text even if the font ever fails,
+ * so icon names cannot expand buttons or break the mobile layout.
+ */
+.material-symbols-outlined {
+  display: inline-block;
+  width: 1em;
+  max-width: 1em;
+  height: 1em;
+  overflow: hidden;
+  flex-shrink: 0;
+  font-family: var(--font-material-symbols);
+  font-size: 24px;
+  font-style: normal;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: normal;
+  text-align: center;
+  text-transform: none;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  direction: ltr;
+  font-feature-settings: "liga";
+  font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  vertical-align: middle;
+}
+
 .app-grid-background {
   background-image:
     linear-gradient(to right, var(--color-primary) 1px, transparent 1px),
@@ -267,10 +298,6 @@ body {
   animation: liveActivityCardRise 860ms cubic-bezier(0.22, 0.72, 0.24, 1) both;
   will-change: transform, opacity;
 }
-
-/* === Streak flame pulse === */
-@keyframes flamePulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-.streak-flame { animation: flamePulse 1.6s ease-in-out infinite; }
 
 /* === Floating reward (+1 XP) === */
 @keyframes rewardFloat {
@@ -394,8 +421,7 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .focus-timer-halo-active,
-  .live-activity-card-enter,
-  .streak-flame {
+  .live-activity-card-enter {
     animation: none;
   }
 

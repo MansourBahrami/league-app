@@ -9,9 +9,15 @@ export default function NotificationToggle() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
+    if (!("Notification" in window)) return;
+
+    // خواندن وضعیت مرورگر را یک تیک عقب می‌اندازیم تا رندر اولیه‌ی سرور و کلاینت
+    // یکسان بماند و state نیز به‌صورت هم‌زمان داخل effect تغییر نکند.
+    const timer = window.setTimeout(() => {
       setState(Notification.permission as "granted" | "denied" | "default");
-    }
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   async function handle() {

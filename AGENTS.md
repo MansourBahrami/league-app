@@ -137,8 +137,8 @@ tokens instead of scattering new literals.
   the required student details and verified phone are complete.
 - Admin routes require both a valid session and the database-backed `admin`
   role. Public bot, cron, and webhook routes retain their own secret checks.
-- The live feed currently uses in-memory SSE. Do not build new work on
-  `lib/socket.ts` or `components/feed/FeedItem.tsx`; both are legacy.
+- The live feed uses in-memory SSE through `LiveFeed`; do not reintroduce
+  Socket.io without a concrete multi-replica requirement.
 
 ## Framework and implementation conventions
 
@@ -170,7 +170,7 @@ remaining goals in `PROJECT.md` and `ROADMAP.md` are:
 - add external CRM handoff only when the destination and operator workflow are
   defined.
 
-Do not silently implement deferred Socket.io, direct messages, Framer Motion, a
+Do not silently implement direct messages, Framer Motion, a
 CRM integration, or media upload infrastructure as part of an unrelated task.
 
 ## Validation

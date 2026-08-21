@@ -34,7 +34,8 @@ function avg(n: number, d: number, digits = 1): string {
 }
 
 export default async function AnalyticsPage() {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   const [users, sessionsByUser, sessions7dByUser, completedByUser, buysByUser] = await Promise.all([
     prisma.user.findMany({ select: { id: true, videoAccess: true, onboardingDay: true } }),
