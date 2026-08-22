@@ -368,6 +368,9 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   async function handleToggle() {
     setError("");
     if (timerState === "idle") {
+      // درخواست اجازه نوتیفیکیشن بلافاصله در لحظهٔ تعامل کاربر (قبل از fetch)
+      const permPromise = requestStudyNotificationPermission();
+
       const response = await fetch("/api/study/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -398,7 +401,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       void markHints(ONBOARDING_HINTS.TIMER_STARTED);
       window.dispatchEvent(new Event("focus-session-changed"));
 
-      void requestStudyNotificationPermission().then((granted) => {
+      void permPromise.then((granted) => {
         if (granted) {
           void showOrUpdateStudyNotification({
             secondsLeft: totalSeconds,

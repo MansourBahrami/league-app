@@ -50,6 +50,9 @@ export async function requestStudyNotificationPermission(): Promise<boolean> {
     return false;
   }
   try {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+    }
     const result = await Notification.requestPermission();
     return result === "granted";
   } catch {
@@ -91,8 +94,8 @@ export async function showOrUpdateStudyNotification({
     requireInteraction?: boolean;
   } = {
     body,
-    icon: "/icon.png",
-    badge: "/icon.png",
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
     tag: TIMER_NOTIFICATION_TAG,
     dir: "rtl",
     lang: "fa",
@@ -104,16 +107,23 @@ export async function showOrUpdateStudyNotification({
 
   try {
     if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready;
+      let reg = await navigator.serviceWorker.getRegistration();
+      if (!reg) {
+        reg = await navigator.serviceWorker.register("/sw.js");
+      }
       if (reg && reg.showNotification) {
         await reg.showNotification(title, options);
         return;
       }
     }
-    // Fallback standard notification if service worker is not active
+  } catch (swErr) {
+    console.warn("ServiceWorker showNotification failed, trying standard Notification:", swErr);
+  }
+
+  try {
     new Notification(title, options);
   } catch (err) {
-    console.error("Failed to show study timer notification:", err);
+    console.error("Failed to show standard notification:", err);
   }
 }
 
@@ -122,7 +132,7 @@ export async function closeStudyNotification(): Promise<void> {
 
   try {
     if ("serviceWorker" in navigator) {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await navigator.serviceWorker.getRegistration();
       if (reg && reg.getNotifications) {
         const notifications = await reg.getNotifications({ tag: TIMER_NOTIFICATION_TAG });
         for (const n of notifications) {
