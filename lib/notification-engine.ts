@@ -178,6 +178,13 @@ async function sendToUser(
     if (res?.ok) sent.push("bale");
   }
 
+  // تلگرام
+  if (rule.channels.includes("telegram") && u.telegramId) {
+    const text = `${title}\n\n${body}${absoluteLink ? `\n\n👉 ${absoluteLink}` : ""}`;
+    const res = (await sendMessage("telegram", u.telegramId, text).catch(() => null)) as { ok?: boolean } | null;
+    if (res?.ok) sent.push("telegram");
+  }
+
   // Web Push
   if (rule.channels.includes("push") && u.hasPush) {
     const count = await sendPushToUser(u.id, { title, body, url: rule.linkUrl ?? undefined, tag: `rule-${rule.id}` })
@@ -199,13 +206,13 @@ async function runRuleOnUsers(
   rule: RuleRow,
   users: EnrichedUser[],
   ctxFor: (u: EnrichedUser) => Record<string, string | number> = () => ({}),
-  opts: { skipSafety?: boolean } = {}
+  opts: { skipSafety?: boolean; skipConditions?: boolean } = {}
 ): Promise<{ matched: number; sent: number }> {
   const conditions = (Array.isArray(rule.conditions) ? rule.conditions : []) as Condition[];
   let matched = 0;
   let sent = 0;
   for (const u of users) {
-    if (!userMatches(u, rule.segment, conditions)) continue;
+    if (!opts.skipConditions && !userMatches(u, rule.segment, conditions)) continue;
     matched++;
     const channels = await sendToUser(rule, u, ctxFor(u), opts);
     if (channels.length) sent++;
@@ -341,5 +348,8 @@ export async function runRuleManually(
   const pushSet = await getPushUserSet(raw.map((u) => u.id));
   const users = raw.map((u) => toEnriched(u, pushSet));
 
-  return runRuleOnUsers(rule, users, () => ({}), { skipSafety: Boolean(testUserId) });
+  return runRuleOnUsers(rule, users, () => ({}), {
+    skipSafety: Boolean(testUserId),
+    skipConditions: Boolean(testUserId),
+  });
 }

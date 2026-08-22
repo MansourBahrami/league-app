@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getAdminSession } from "@/lib/auth";
+import PushRegister from "@/components/push/PushRegister";
 
 export const dynamic = "force-dynamic";
 
@@ -10,6 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-surface flex flex-col" dir="rtl">
+      <PushRegister />
       {/* Admin header */}
       <header className="bg-on-surface text-white px-5 py-3 flex items-center justify-between sticky top-0 z-40 shadow-lg">
         <div className="flex items-center gap-2">

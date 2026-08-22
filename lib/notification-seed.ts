@@ -27,7 +27,7 @@ interface SeedRule {
 export const DEFAULT_RULES: SeedRule[] = [
   {
     name: "یادآور هدف مطالعه",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "relative",
     triggerConfig: { beforeTargetMin: 15 },
     segment: "all",
@@ -42,7 +42,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   },
   {
     name: "خطر سوختن زنجیره",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "scheduled",
     // ساعت‌ها به وقت محلی سرور ارزیابی می‌شوند؛ سرور روی Asia/Tehran است → 21:00 ایران
     triggerConfig: { hour: 21, minute: 0, weekdays: [0, 1, 2, 3, 4, 5, 6] },
@@ -56,7 +56,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   },
   {
     name: "افت رتبه هفتگی",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "event",
     triggerConfig: { event: "rank_drop" },
     segment: "all",
@@ -73,7 +73,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   // --- نوتیف‌های بازگشت به اپ (re-engagement / win-back) ---
   {
     name: "دلتنگی سه‌روزه",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "scheduled",
     // وقت محلی سرور (Asia/Tehran) → 18:00 ایران
     triggerConfig: { hour: 18, minute: 0, weekdays: [0, 1, 2, 3, 4, 5, 6] },
@@ -89,7 +89,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   },
   {
     name: "بازگشت بعد از یک هفته",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "scheduled",
     // وقت محلی سرور (Asia/Tehran) → 18:00 ایران
     triggerConfig: { hour: 18, minute: 0, weekdays: [0, 1, 2, 3, 4, 5, 6] },
@@ -105,7 +105,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   },
   {
     name: "هدف فردا یادت نره",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "event",
     triggerConfig: { event: "session_complete" },
     segment: "all",
@@ -118,7 +118,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   },
   {
     name: "تبریک ارتقای سطح",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "event",
     triggerConfig: { event: "level_up" },
     segment: "all",
@@ -131,7 +131,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   },
   {
     name: "نقطه‌عطف زنجیره",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "event",
     triggerConfig: { event: "streak_milestone" },
     segment: "all",
@@ -144,7 +144,7 @@ export const DEFAULT_RULES: SeedRule[] = [
   },
   {
     name: "مدال جدید",
-    channels: ["bale", "push"],
+    channels: ["bale", "telegram", "push"],
     triggerType: "event",
     triggerConfig: { event: "medal_earn" },
     segment: "all",

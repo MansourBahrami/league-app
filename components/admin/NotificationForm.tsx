@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { enablePush } from "@/components/push/PushRegister";
 import {
   NOTIF_CHANNELS,
   FIELDS,
@@ -37,7 +38,11 @@ interface RuleFormData {
   maxPerDay: number | null;
 }
 
-const CHANNEL_LABELS: Record<string, string> = { bale: "ربات بله", push: "اعلان مرورگر" };
+const CHANNEL_LABELS: Record<string, string> = {
+  bale: "ربات بله",
+  telegram: "ربات تلگرام",
+  push: "اعلان مرورگر",
+};
 
 const WEEKDAYS = [
   { v: 6, l: "شنبه" },
@@ -96,6 +101,25 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [testMsg, setTestMsg] = useState("");
+  const [pushStatus, setPushStatus] = useState<"unknown" | "granted" | "denied" | "default">(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      return Notification.permission as "granted" | "denied" | "default";
+    }
+    return "unknown";
+  });
+  const [enablingPush, setEnablingPush] = useState(false);
+
+  async function handleEnablePush() {
+    setEnablingPush(true);
+    const res = await enablePush();
+    setEnablingPush(false);
+    if (res.ok) {
+      setPushStatus("granted");
+      setTestMsg("✅ اعلان مرورگر روی این دستگاه با موفقیت فعال شد.");
+    } else {
+      setTestMsg(res.reason ?? "فعال‌سازی ناموفق بود.");
+    }
+  }
 
   function set<K extends keyof RuleFormData>(key: K, value: RuleFormData[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -188,7 +212,11 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
     });
     const d = await res.json().catch(() => ({}));
     if (res.ok) {
-      setTestMsg(d.sent > 0 ? "✅ پیام تست برایت ارسال شد (بله/مرورگر)." : "ارسال نشد — احتمالاً بله را استارت نکرده‌ای یا اعلان مرورگر فعال نیست.");
+      setTestMsg(
+        d.sent > 0
+          ? `✅ پیام تست با موفقیت ارسال شد (${d.sent} کانال فعال).`
+          : "ارسال نشد — احتمالاً ربات بله/تلگرام را با حسابت استارت نکرده‌ای یا اعلان مرورگر روی این دستگاه فعال نیست."
+      );
     } else {
       setTestMsg(d.error ?? "خطا در ارسال تست");
     }
@@ -222,6 +250,22 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
             </button>
           ))}
         </div>
+        {form.channels.includes("push") && pushStatus !== "granted" && (
+          <div className="mt-1 flex items-center justify-between gap-3 p-3 rounded-xl bg-primary-fixed/40 border border-primary/20 text-[13px]">
+            <div className="flex items-center gap-2 text-on-surface">
+              <span className="material-symbols-outlined text-primary text-[20px]">notifications_active</span>
+              <span>جهت دریافت و تست اعلان مرورگر روی این دستگاه:</span>
+            </div>
+            <button
+              type="button"
+              onClick={handleEnablePush}
+              disabled={enablingPush}
+              className="px-3 py-1.5 rounded-lg bg-primary text-white text-[12px] font-bold shadow-sm disabled:opacity-60"
+            >
+              {enablingPush ? "در حال فعال‌سازی…" : "فعال‌سازی در این مرورگر"}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* نوع تریگر */}

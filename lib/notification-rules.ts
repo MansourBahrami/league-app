@@ -9,7 +9,7 @@
 
 export const LEVELS = ["تازه‌نفس", "ثابت‌قدم", "پیشرو", "سرآمد", "الگو"] as const;
 
-export const NOTIF_CHANNELS = ["bale", "push"] as const;
+export const NOTIF_CHANNELS = ["bale", "telegram", "push"] as const;
 export type NotifChannel = (typeof NOTIF_CHANNELS)[number];
 
 export const GRADES = ["دهم", "یازدهم", "دوازدهم", "فارغ‌التحصیل"] as const;
@@ -109,6 +109,7 @@ export const FIELDS: FieldDef[] = [
   },
   { key: "isLeadComplete", label: "پروفایل کامل", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.isLeadComplete },
   { key: "hasBale", label: "ربات بله را استارت کرده", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.baleId != null },
+  { key: "hasTelegram", label: "ربات تلگرام را استارت کرده", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.telegramId != null },
   { key: "hasPush", label: "اعلان مرورگر فعال دارد", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.hasPush },
 ];
 
@@ -132,6 +133,7 @@ export const SEGMENTS: SegmentDef[] = [
   { key: "notStudiedToday", label: "امروز نخوانده‌اند", conditions: [{ field: "studiedToday", op: "eq", value: false }] },
   { key: "incompleteProfile", label: "پروفایل ناقص", conditions: [{ field: "isLeadComplete", op: "eq", value: false }] },
   { key: "noBale", label: "ربات بله را استارت نکرده‌اند", conditions: [{ field: "hasBale", op: "eq", value: false }] },
+  { key: "noTelegram", label: "ربات تلگرام را استارت نکرده‌اند", conditions: [{ field: "hasTelegram", op: "eq", value: false }] },
 ];
 
 export const SEGMENT_MAP: Record<string, SegmentDef> = Object.fromEntries(SEGMENTS.map((s) => [s.key, s]));
