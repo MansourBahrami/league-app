@@ -189,6 +189,36 @@ export async function getMissionRoomSnapshot(
   };
 }
 
+export async function getQuickActiveMissionRoomId(userId: string, now = new Date()): Promise<string | null> {
+  await ensureUserMissionRooms(userId, now);
+  const memberships = await prisma.missionRoomMember.findMany({
+    where: {
+      userId,
+      room: { endsAt: { gt: now } },
+      userMission: { status: { in: ["pending", "active", "completed"] } },
+    },
+    select: {
+      roomId: true,
+      room: { select: { id: true, kind: true, startsAt: true, endsAt: true } },
+      userMission: { select: { status: true } },
+    },
+  });
+  if (memberships.length === 0) return null;
+
+  const sorted = memberships.sort((a, b) => {
+    const aStatus = now < a.room.startsAt ? "pending" : now >= a.room.endsAt ? "ended" : "active";
+    const bStatus = now < b.room.startsAt ? "pending" : now >= b.room.endsAt ? "ended" : "active";
+    const statusPriority = { active: 0, pending: 1, ended: 2 } as const;
+    const statusDiff = statusPriority[aStatus] - statusPriority[bStatus];
+    if (statusDiff !== 0) return statusDiff;
+    const kindDiff = (a.room.kind === "daily" ? 0 : 1) - (b.room.kind === "daily" ? 0 : 1);
+    if (kindDiff !== 0) return kindDiff;
+    return a.room.endsAt.getTime() - b.room.endsAt.getTime();
+  });
+
+  return sorted[0]?.roomId ?? null;
+}
+
 export async function getCurrentMissionRoomSnapshots(userId: string): Promise<MissionRoomSnapshot[]> {
   const now = new Date();
   await ensureUserMissionRooms(userId, now);

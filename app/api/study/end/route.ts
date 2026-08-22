@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const userBefore = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { isLeadComplete: true, lastStudyDate: true, onboardingDay: true },
+    select: { isLeadComplete: true, lastStudyDate: true, onboardingDay: true, name: true, avatarUrl: true },
   });
   if (!userBefore) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -89,17 +89,10 @@ export async function POST(req: NextRequest) {
   // استریک (زنجیره روزهای متوالی) — ممکن است رویداد فید streak ثبت کند
   const streakResult = await applyStreak(session.userId);
 
-  const activityUser = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { name: true, avatarUrl: true },
-  });
   const log = await prisma.activityLog.create({
     data: { userId: session.userId, type: "session_complete", metadata: { durationMin, xp: totalXp, coins: totalCoins } },
   });
-  broadcastActivity({ ...log, user: activityUser });
-
-  // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به پایان جلسه مطالعه
-  await fireEvent("session_complete", session.userId, { durationMin, xp: totalXp, coins: totalCoins, streak: streakResult.streak });
+  broadcastActivity({ ...log, user: { name: userBefore.name, avatarUrl: userBefore.avatarUrl } });
 
   // تلاش برای تکمیل روز آنبوردینگ (دقیقه‌ها + ویدیو). ویدیوی روز را در صورت پر شدن دقیقه‌ها باز می‌کند.
   let dayCompleted = false;
@@ -181,18 +174,28 @@ export async function POST(req: NextRequest) {
   const isAfterDay1 = userBefore.onboardingDay >= 1 || (inOnboarding && dayCompleted);
   const needsLeadCapture = isAfterDay1 && !userBefore.isLeadComplete && durationMin >= 30;
 
-  after(() => captureServerEvent({
-    distinctId: session.userId,
-    event: "study_completed",
-    properties: {
-      planned_minutes: studySession.plannedMin,
-      verified_minutes: durationMin,
-      xp_earned: totalXp,
-      coins_earned: totalCoins,
-      onboarding_day_completed: dayCompleted,
-    },
-    insertId: `study-completed:${studySession.id}`,
-  }));
+  after(async () => {
+    // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به پایان جلسه مطالعه (در پس‌زمینه بدون مسدودسازی پاسخ کاربر)
+    await fireEvent("session_complete", session.userId, {
+      durationMin,
+      xp: totalXp,
+      coins: totalCoins,
+      streak: streakResult.streak,
+    });
+
+    await captureServerEvent({
+      distinctId: session.userId,
+      event: "study_completed",
+      properties: {
+        planned_minutes: studySession.plannedMin,
+        verified_minutes: durationMin,
+        xp_earned: totalXp,
+        coins_earned: totalCoins,
+        onboarding_day_completed: dayCompleted,
+      },
+      insertId: `study-completed:${studySession.id}`,
+    });
+  });
 
   return NextResponse.json({
     // نتیجه‌ی جلسه باید کل پاداش همان جلسه را نشان دهد؛ بخشی از آن ممکن است

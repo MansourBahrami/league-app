@@ -94,7 +94,7 @@ export default function LeaderboardList({ entries }: Props) {
       box.removeEventListener("scroll", onScroll);
       window.removeEventListener("resize", onScroll);
     };
-  }, [entries, rolling]);
+  }, [entries]);
 
   if (entries.length === 0) return null;
 

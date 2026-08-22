@@ -14,6 +14,7 @@ import { prisma } from "@/lib/db";
 import { sendMessage } from "@/lib/bot";
 import { sendPushToUser } from "@/lib/push";
 import { getOnboardingDailyGoalMinutes } from "@/lib/gamification";
+import { TEHRAN_OFFSET_MIN, tehranDayStart } from "@/lib/date";
 import {
   type EnrichedUser,
   type Condition,
@@ -106,9 +107,15 @@ async function getPushUserSet(userIds?: string[]): Promise<Set<string>> {
 // ---------------------------------------------------------------------------
 // بررسی‌های ایمنی
 // ---------------------------------------------------------------------------
+function getTehranTime(instant = new Date()): { hour: number; minute: number; weekday: number } {
+  const tehranMs = instant.getTime() + TEHRAN_OFFSET_MIN * 60000;
+  const d = new Date(tehranMs);
+  return { hour: d.getUTCHours(), minute: d.getUTCMinutes(), weekday: d.getUTCDay() };
+}
+
 function inQuietHours(rule: RuleRow, now = new Date()): boolean {
   if (rule.quietStart == null || rule.quietEnd == null) return false;
-  const h = now.getHours();
+  const { hour: h } = getTehranTime(now);
   const { quietStart: s, quietEnd: e } = rule;
   // بازه‌ی شبانه ممکن است از نیمه‌شب عبور کند (مثلا 22 تا 8)
   return s <= e ? h >= s && h < e : h >= s || h < e;
@@ -125,10 +132,9 @@ async function canSend(rule: RuleRow, userId: string, now = new Date()): Promise
     });
     if (recent) return false;
   }
-  // سقف روزانه
+  // سقف روزانه بر مبنای روز تقویمی تهران
   if (rule.maxPerDay != null && rule.maxPerDay > 0) {
-    const dayStart = new Date(now);
-    dayStart.setHours(0, 0, 0, 0);
+    const dayStart = tehranDayStart(now);
     const count = await prisma.notificationLog.count({
       where: { ruleId: rule.id, userId, sentAt: { gte: dayStart } },
     });
@@ -212,16 +218,16 @@ async function runRuleOnUsers(
 interface ScheduledConfig { hour?: number; minute?: number; weekdays?: number[] }
 interface RelativeConfig { beforeTargetMin?: number }
 
-/** آیا یک قانون زمان‌بندی‌شده در پنجره‌ی فعلی باید اجرا شود؟ (cron هر چند دقیقه یک‌بار) */
+/** آیا یک قانون زمان‌بندی‌شده در پنجره‌ی فعلی باید اجرا شود؟ (cron هر چند دقیقه یک‌بار با مبنای ساعت تهران) */
 function scheduledDue(cfg: ScheduledConfig, now: Date, windowMin: number): boolean {
-  const weekday = now.getDay(); // 0=یکشنبه (مطابق JS)
+  const { hour: currentHour, minute: currentMinute, weekday } = getTehranTime(now);
   if (cfg.weekdays && cfg.weekdays.length && !cfg.weekdays.includes(weekday)) return false;
   if (cfg.hour == null) return false;
-  const target = new Date(now);
-  target.setHours(cfg.hour, cfg.minute ?? 0, 0, 0);
-  const diff = now.getTime() - target.getTime();
+  const targetMinOfDay = cfg.hour * 60 + (cfg.minute ?? 0);
+  const currentMinOfDay = currentHour * 60 + currentMinute;
+  const diffMin = currentMinOfDay - targetMinOfDay;
   // اگر زمان هدف در پنجره‌ی [now - windowMin, now] افتاده باشد
-  return diff >= 0 && diff < windowMin * 60_000;
+  return diffMin >= 0 && diffMin < windowMin;
 }
 
 /**

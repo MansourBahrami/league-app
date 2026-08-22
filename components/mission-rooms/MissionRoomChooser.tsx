@@ -101,6 +101,11 @@ export default function MissionRoomChooser({
           <p className="mt-1 text-[13px] font-bold text-primary">کمپ مأموریت بعد از روز اول باز می‌شود</p>
           <p className="mt-1 text-[11.5px] text-on-surface-variant">فعلاً هدف ۱ ساعته امروزت را در صفحه مطالعه کامل کن.</p>
         </div>
+      ) : choices.length === 0 ? (
+        <div className="rounded-2xl bg-surface-container/60 p-6 text-center">
+          <span className="material-symbols-outlined text-[32px] text-on-surface-variant">inbox</span>
+          <p className="mt-2 text-[13px] font-bold text-on-surface">مأموریتی در این بخش یافت نشد</p>
+        </div>
       ) : (
         <div className="space-y-2.5">
           {choices.map((mission) => {

@@ -114,6 +114,9 @@ model StudySession {
 
   @@index([userId])
   @@index([startTime])
+  @@index([userId, startTime])
+  @@index([userId, endTime])
+  @@index([endTime, pausedAt, startTime])
 }
 
 model Mission {
@@ -256,6 +259,8 @@ model ActivityLog {
 
   @@index([createdAt(sort: Desc)])
   @@index([userId])
+  @@index([type, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
 }
 
 // واکنش یک کاربر به یک آیتم فید (هر کاربر روی هر آیتم فقط یک واکنش؛ قابل تغییر/برداشتن)

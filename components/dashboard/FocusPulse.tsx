@@ -90,6 +90,7 @@ export default function FocusPulse({
 
   useEffect(() => {
     let cancelled = false;
+    let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
     async function refreshActiveCount() {
       const response = await fetch("/api/focus/active", { cache: "no-store" }).catch(() => null);
@@ -98,11 +99,16 @@ export default function FocusPulse({
       if (!cancelled && typeof data?.count === "number") setActiveCount(data.count);
     }
 
+    function debouncedRefresh() {
+      if (refreshTimeout) clearTimeout(refreshTimeout);
+      refreshTimeout = setTimeout(() => void refreshActiveCount(), 800);
+    }
+
     const interval = window.setInterval(refreshActiveCount, 60_000);
     const onVisibility = () => {
-      if (document.visibilityState === "visible") void refreshActiveCount();
+      if (document.visibilityState === "visible") debouncedRefresh();
     };
-    const onSessionChange = () => window.setTimeout(refreshActiveCount, 500);
+    const onSessionChange = () => debouncedRefresh();
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("focus-session-changed", onSessionChange);
 
@@ -111,7 +117,7 @@ export default function FocusPulse({
       try {
         const activity = JSON.parse(event.data) as FocusPulseActivity;
         if (activity.type === "timer_start" || activity.type === "session_complete") {
-          window.setTimeout(refreshActiveCount, 500);
+          debouncedRefresh();
         }
         if (
           !ALLOWED_TYPES.has(activity.type) ||
@@ -125,6 +131,7 @@ export default function FocusPulse({
 
     return () => {
       cancelled = true;
+      if (refreshTimeout) clearTimeout(refreshTimeout);
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus-session-changed", onSessionChange);

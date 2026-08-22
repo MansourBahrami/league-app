@@ -1,9 +1,10 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getCurrentMissionRoomSnapshots, pickMissionRoomToOpen } from "@/lib/mission-room";
+import { getQuickActiveMissionRoomId } from "@/lib/mission-room";
 import { formatJalaliLong, getNextTehranMissionWeek } from "@/lib/date";
 import { suggestMissions } from "@/lib/gamification";
+import { ensureDefaultMissions } from "@/lib/mission";
 import MissionRoomChooser, { type MissionChoice } from "@/components/mission-rooms/MissionRoomChooser";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
@@ -21,9 +22,10 @@ export default async function MissionRoomsPage() {
   if (!session) redirect("/login");
 
   const now = new Date();
-  const rooms = await getCurrentMissionRoomSnapshots(session.userId);
-  const roomToOpen = pickMissionRoomToOpen(rooms);
-  if (roomToOpen) redirect(`/mission-rooms/${roomToOpen.id}`);
+  const activeRoomId = await getQuickActiveMissionRoomId(session.userId, now);
+  if (activeRoomId) redirect(`/mission-rooms/${activeRoomId}`);
+
+  await ensureDefaultMissions();
 
   const [user, allDaily, sessions] = await Promise.all([
     prisma.user.findUnique({

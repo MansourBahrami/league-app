@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
@@ -58,7 +59,7 @@ export function shouldRefreshToken(payload: JwtPayload): boolean {
   return remaining < REFRESH_THRESHOLD_SECONDS;
 }
 
-export async function getSession(): Promise<JwtPayload | null> {
+export const getSession = cache(async function getSession(): Promise<JwtPayload | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
   if (!token) return null;
@@ -72,7 +73,7 @@ export async function getSession(): Promise<JwtPayload | null> {
     select: { sessionVersion: true },
   });
   return user?.sessionVersion === payload.sessionVersion ? payload : null;
-}
+});
 
 /** سشن را برمی‌گرداند فقط اگر کاربر ادمین باشد، در غیر این صورت null. */
 export async function getAdminSession(): Promise<JwtPayload | null> {

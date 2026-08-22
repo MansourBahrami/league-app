@@ -25,17 +25,38 @@ export default function MissionRoomRoster({ initialRoom }: { initialRoom: Missio
   }, [initialRoom.id]);
 
   useEffect(() => {
-    const poll = window.setInterval(() => void refresh(), 20_000);
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const debouncedRefresh = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => void refresh(), 1000);
+    };
+
+    const poll = window.setInterval(() => void refresh(), 45_000);
     const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
     document.addEventListener("visibilitychange", onVisible);
+
     const events = new EventSource("/api/feed/stream");
-    events.onmessage = () => window.setTimeout(() => void refresh(), 400);
+    events.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data) as { type?: string; metadata?: { roomId?: string } };
+        // فقط در صورت رویدادهای تشویق همین اتاق یا تکمیل/شروع مطالعه رفرش کن
+        if (
+          (data.type === "room_cheer" && data.metadata?.roomId === initialRoom.id) ||
+          data.type === "session_complete" ||
+          data.type === "timer_start"
+        ) {
+          debouncedRefresh();
+        }
+      } catch {}
+    };
+
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       window.clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisible);
       events.close();
     };
-  }, [refresh]);
+  }, [refresh, initialRoom.id]);
 
   return (
     <section className="space-y-2.5" aria-labelledby="room-members-title" aria-live="polite">

@@ -26,10 +26,11 @@ async function main() {
   const medalMap = new Map(medals.map((m) => [m.targetHours, m.id]));
 
   for (const m of MISSION_TABLE) {
-    const existing = await prisma.mission.findFirst({ where: { targetHours: m.targetHours } });
+    const existing = await prisma.mission.findFirst({ where: { kind: "weekly", targetHours: m.targetHours } });
     if (!existing) {
       await prisma.mission.create({
         data: {
+          kind: "weekly",
           targetHours: m.targetHours,
           minAvgHours: m.minAvgHours,
           entryCost: m.entryCost,

@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { faIR } from "date-fns/locale";
 
@@ -66,16 +65,20 @@ function renderContent(it: InboxItem): { text: string; icon: string; bg: string;
 }
 
 export default function InboxClient({ initialItems }: Props) {
-  const router = useRouter();
+  const [items, setItems] = useState(initialItems);
 
   useEffect(() => {
     const hasUnread = initialItems.some((it) => !it.read);
     if (!hasUnread) return;
-    // علامت‌گذاری خوانده‌شده + تازه‌سازی برای پاک شدن نشان زنگوله در هدر
-    fetch("/api/inbox/read", { method: "POST" }).then(() => router.refresh()).catch(() => {});
-  }, [initialItems, router]);
+    // علامت‌گذاری خوانده‌شده در پس‌زمینه بدون ایجاد بار اضافه و رندر مجدد سرور
+    fetch("/api/inbox/read", { method: "POST" })
+      .then(() => {
+        setItems((prev) => prev.map((item) => ({ ...item, read: true })));
+      })
+      .catch(() => {});
+  }, [initialItems]);
 
-  if (initialItems.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="text-center py-12 text-on-surface-variant">
         <span className="material-symbols-outlined text-[48px] text-outline-variant mb-2 block">mark_email_read</span>
@@ -86,7 +89,7 @@ export default function InboxClient({ initialItems }: Props) {
 
   return (
     <div className="w-full space-y-2.5">
-      {initialItems.map((it) => {
+      {items.map((it) => {
         const c = renderContent(it);
         return (
           <Link

@@ -41,12 +41,18 @@ export default function ActiveStudents({ initialSnapshot, currentUserId }: Props
   }, []);
 
   useEffect(() => {
-    const clock = window.setInterval(() => setNowMs(Date.now()), 1000);
-    const poll = window.setInterval(() => void refresh(), 15_000);
-    const onVisibility = () => {
-      if (document.visibilityState === "visible") void refresh();
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const debouncedRefresh = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => void refresh(), 800);
     };
-    const onSessionChange = () => window.setTimeout(() => void refresh(), 500);
+
+    const clock = window.setInterval(() => setNowMs(Date.now()), 1000);
+    const poll = window.setInterval(() => void refresh(), 45_000);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") debouncedRefresh();
+    };
+    const onSessionChange = () => debouncedRefresh();
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("focus-session-changed", onSessionChange);
@@ -56,12 +62,13 @@ export default function ActiveStudents({ initialSnapshot, currentUserId }: Props
       try {
         const activity = JSON.parse(event.data) as { type?: string };
         if (activity.type === "timer_start" || activity.type === "session_complete") {
-          window.setTimeout(() => void refresh(), 500);
+          debouncedRefresh();
         }
       } catch {}
     };
 
     return () => {
+      if (timeoutId) clearTimeout(timeoutId);
       window.clearInterval(clock);
       window.clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisibility);

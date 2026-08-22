@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { calcLevel, type MedalCount } from "@/lib/gamification";
+import { calcLevel, type MedalCount, DAILY_MISSION_TABLE, MISSION_TABLE } from "@/lib/gamification";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
 import { fireEvent } from "@/lib/notification-engine";
 
@@ -147,3 +147,70 @@ export async function processUserMissions(userId: string): Promise<void> {
     }
   }
 }
+
+const MEDAL_HOURS = [20, 25, 30, 35, 40, 45, 50, 53, 56, 60, 63, 66, 70];
+
+/**
+ * اطمینان از وجود ماموریت‌ها و مدال‌های پیش‌فرض در دیتابیس (idempotent).
+ * در صورتی که دیتابیس تازه ساخته شده باشد یا seed نشده باشد، داده‌های پیش‌فرض را ایجاد می‌کند.
+ */
+export async function ensureDefaultMissions(): Promise<void> {
+  const [dailyCount, weeklyCount] = await Promise.all([
+    prisma.mission.count({ where: { kind: "daily", isActive: true } }),
+    prisma.mission.count({ where: { kind: "weekly", isActive: true } }),
+  ]);
+
+  if (dailyCount >= DAILY_MISSION_TABLE.length && weeklyCount >= MISSION_TABLE.length) {
+    return;
+  }
+
+  for (const hours of MEDAL_HOURS) {
+    await prisma.medal.upsert({
+      where: { targetHours: hours },
+      update: {},
+      create: { name: `مدال ${hours} ساعته`, targetHours: hours },
+    });
+  }
+
+  const medals = await prisma.medal.findMany();
+  const medalMap = new Map(medals.map((m) => [m.targetHours, m.id]));
+
+  for (const m of MISSION_TABLE) {
+    const existing = await prisma.mission.findFirst({
+      where: { kind: "weekly", targetHours: m.targetHours },
+    });
+    if (!existing) {
+      await prisma.mission.create({
+        data: {
+          kind: "weekly",
+          targetHours: m.targetHours,
+          minAvgHours: m.minAvgHours,
+          entryCost: m.entryCost,
+          xpReward: m.xpReward,
+          medalId: medalMap.get(m.targetHours) ?? null,
+          description: `${m.targetHours} ساعت مطالعه در ۷ روز`,
+        },
+      });
+    }
+  }
+
+  for (const m of DAILY_MISSION_TABLE) {
+    const existing = await prisma.mission.findFirst({
+      where: { kind: "daily", targetHours: m.targetHours },
+    });
+    if (!existing) {
+      await prisma.mission.create({
+        data: {
+          kind: "daily",
+          targetHours: m.targetHours,
+          minAvgHours: 0,
+          entryCost: m.entryCost,
+          xpReward: 0,
+          coinReward: m.coinReward,
+          description: `${m.targetHours} ساعت مطالعه در یک روز`,
+        },
+      });
+    }
+  }
+}
+

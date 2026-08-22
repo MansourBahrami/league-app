@@ -78,13 +78,11 @@ const NUM_OPS: Op[] = ["eq", "ne", "gt", "lt", "gte", "lte", "between"];
 const BOOL_OPS: Op[] = ["eq"];
 const ENUM_OPS: Op[] = ["eq", "ne", "in"];
 
+import { tehranDayDiff } from "@/lib/date";
+
 function daysSince(d: Date | null): number {
   if (!d) return 9999; // هرگز مطالعه نکرده = خیلی زیاد (ریزشی)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const day = new Date(d);
-  day.setHours(0, 0, 0, 0);
-  return Math.round((today.getTime() - day.getTime()) / 86400000);
+  return Math.max(0, tehranDayDiff(new Date(), d));
 }
 
 function isToday(d: Date | null): boolean {

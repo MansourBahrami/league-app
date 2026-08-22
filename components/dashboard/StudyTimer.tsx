@@ -214,6 +214,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   const [sessionResult, setSessionResult] = useState<SessionResult | null>(null);
   const [floats, setFloats] = useState<FloatReward[]>([]);
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [restored, setRestored] = useState(false);
   const [notifStatus, setNotifStatus] = useState<NotificationStatus>("default");
   const [notifFeedback, setNotifFeedback] = useState<string>("");
@@ -392,51 +393,55 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   async function handleToggle() {
     setError("");
     if (timerState === "idle") {
-      // درخواست اجازه نوتیفیکیشن بلافاصله در لحظهٔ تعامل کاربر (قبل از fetch)
+      setIsSubmitting(true);
+      // درخواست اجازه نوتیفیکیشن بلافاصله در لحظهٔ تعامل کاربر (غیرمسدودکننده)
       const permPromise = requestStudyNotificationPermission();
 
-      const response = await fetch("/api/study/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ durationMin: selectedMinutes }),
-      }).catch(() => null);
-      if (!response?.ok) {
+      try {
+        const response = await fetch("/api/study/start", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ durationMin: selectedMinutes }),
+        });
+        if (!response.ok) throw new Error();
+        const data = await response.json();
+        const id = data.sessionId as string;
+        const now = Date.now();
+        const newQuote = getRandomMotivationalQuote();
+        quoteRef.current = newQuote;
+
+        setSessionId(id);
+        startTimeRef.current = now;
+        lastTickRef.current = now;
+        const storedSession: StoredStudyTimerSession = {
+          version: 1,
+          sid: id,
+          startTime: now,
+          totalSecs: totalSeconds,
+          state: "running",
+        };
+        localStorage.setItem(storageKey, JSON.stringify(storedSession));
+        setTimerState("running");
+        void markHints(ONBOARDING_HINTS.TIMER_STARTED);
+        window.dispatchEvent(new Event("focus-session-changed"));
+
+        void permPromise.then((granted) => {
+          setNotifStatus(getTimerNotificationStatus());
+          if (granted) {
+            void showOrUpdateStudyNotification({
+              secondsLeft: totalSeconds,
+              totalSeconds,
+              state: "running",
+              quote: newQuote,
+              isInitial: true,
+            });
+          }
+        });
+      } catch {
         setError("شروع تایمر انجام نشد؛ دوباره تلاش کن.");
-        return;
+      } finally {
+        setIsSubmitting(false);
       }
-      const data = await response.json();
-      const id = data.sessionId as string;
-      const now = Date.now();
-      const newQuote = getRandomMotivationalQuote();
-      quoteRef.current = newQuote;
-
-      setSessionId(id);
-      startTimeRef.current = now;
-      lastTickRef.current = now;
-      const storedSession: StoredStudyTimerSession = {
-        version: 1,
-        sid: id,
-        startTime: now,
-        totalSecs: totalSeconds,
-        state: "running",
-      };
-      localStorage.setItem(storageKey, JSON.stringify(storedSession));
-      setTimerState("running");
-      void markHints(ONBOARDING_HINTS.TIMER_STARTED);
-      window.dispatchEvent(new Event("focus-session-changed"));
-
-      void permPromise.then((granted) => {
-        setNotifStatus(getTimerNotificationStatus());
-        if (granted) {
-          void showOrUpdateStudyNotification({
-            secondsLeft: totalSeconds,
-            totalSeconds,
-            state: "running",
-            quote: newQuote,
-            isInitial: true,
-          });
-        }
-      });
       return;
     }
 
@@ -445,15 +450,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         setError("اطلاعات جلسه کامل نیست؛ صفحه را تازه‌سازی کن.");
         return;
       }
-      const response = await fetch("/api/study/pause", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      }).catch(() => null);
-      if (!response?.ok) {
-        setError("مکث تایمر ثبت نشد؛ دوباره تلاش کن.");
-        return;
-      }
+      // مکث آنی در رابط کاربری (Optimistic Pause)
       const pausedAt = Date.now();
       const pausedSecondsLeft = Math.max(
         0,
@@ -480,6 +477,16 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         quote: quoteRef.current,
         isInitial: false,
       });
+
+      fetch("/api/study/pause", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).then((res) => {
+        if (!res.ok) setError("مکث تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
+      }).catch(() => {
+        setError("مکث تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
+      });
       return;
     }
 
@@ -488,15 +495,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         setError("اطلاعات جلسه کامل نیست؛ صفحه را تازه‌سازی کن.");
         return;
       }
-      const response = await fetch("/api/study/resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      }).catch(() => null);
-      if (!response?.ok) {
-        setError("ادامه تایمر ثبت نشد؛ دوباره تلاش کن.");
-        return;
-      }
+      // ادامه آنی در رابط کاربری (Optimistic Resume)
       const resumedAt = Date.now();
       const effectiveStartTime = resumedAt - (totalSeconds - secondsLeft) * 1000;
       startTimeRef.current = effectiveStartTime;
@@ -519,6 +518,16 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         quote: quoteRef.current,
         isInitial: false,
       });
+
+      fetch("/api/study/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).then((res) => {
+        if (!res.ok) setError("ادامه تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
+      }).catch(() => {
+        setError("ادامه تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
+      });
       return;
     }
 
@@ -532,10 +541,15 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   async function handleStop() {
     if (intervalRef.current) clearInterval(intervalRef.current);
     void closeStudyNotification();
-    if (sessionId) await endSession(sessionId);
-    setTimerState("idle");
-    setSecondsLeft(selectedMinutes * 60);
-    setSessionId(null);
+    setIsSubmitting(true);
+    try {
+      if (sessionId) await endSession(sessionId);
+    } finally {
+      setIsSubmitting(false);
+      setTimerState("idle");
+      setSecondsLeft(selectedMinutes * 60);
+      setSessionId(null);
+    }
   }
 
   const button = {
@@ -678,15 +692,20 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             ref={startButtonRef}
             type="button"
             onClick={handleToggle}
+            disabled={isSubmitting}
             data-onboarding="timer-start"
             data-start-hint-focus={showsStartHint ? "true" : undefined}
             aria-describedby={showsStartHint ? "timer-start-hint-description" : undefined}
             className={`gamified-btn mt-3 w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${button.cls} ${
               showsStartHint ? "ring-2 ring-white/80 animate-pulse" : ""
-            }`}
+            } ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""}`}
           >
-            <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>{button.icon}</span>
-            {button.label}
+            {isSubmitting && timerState === "idle" ? (
+              <span className="material-symbols-outlined text-[21px] animate-spin">progress_activity</span>
+            ) : (
+              <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>{button.icon}</span>
+            )}
+            {isSubmitting && timerState === "idle" ? "در حال شروع…" : button.label}
           </button>
 
           {error && <p role="alert" className="text-[12px] text-error text-center mt-2">{error}</p>}
@@ -695,10 +714,17 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             <button
               type="button"
               onClick={handleStop}
-              className="mt-2 w-full border border-outline-variant text-on-surface-variant py-2.5 rounded-xl text-[13px] font-bold hover:bg-surface-container transition-colors flex items-center justify-center gap-2"
+              disabled={isSubmitting}
+              className={`mt-2 w-full border border-outline-variant text-on-surface-variant py-2.5 rounded-xl text-[13px] font-bold hover:bg-surface-container transition-colors flex items-center justify-center gap-2 ${
+                isSubmitting ? "opacity-75 cursor-not-allowed" : ""
+              }`}
             >
-              <span className="material-symbols-outlined text-[17px]">stop</span>
-              توقف و ثبت
+              {isSubmitting ? (
+                <span className="material-symbols-outlined text-[17px] animate-spin">progress_activity</span>
+              ) : (
+                <span className="material-symbols-outlined text-[17px]">stop</span>
+              )}
+              {isSubmitting ? "در حال ثبت و ذخیره…" : "توقف و ثبت"}
             </button>
           )}
 

@@ -160,11 +160,19 @@ async function main() {
   // ===================================================================
   // کاربران پیشرفته‌تر: مدال‌های متنوع + سطح بالا + جلسه‌های زیاد (لیدربورد)
   // ===================================================================
-  const medals = await prisma.medal.findMany({ select: { id: true, targetHours: true } });
-  const medalIdByHours = new Map(medals.map((m) => [m.targetHours, m.id]));
+  let medals = await prisma.medal.findMany({ select: { id: true, targetHours: true } });
   if (medals.length === 0) {
-    console.warn("⚠️ هیچ مدالی در DB نیست — اول `npm run db:seed` را اجرا کن. مدال‌ها رد شدند.");
+    const medalHours = [20, 25, 30, 35, 40, 45, 50, 53, 56, 60, 63, 66, 70];
+    for (const hours of medalHours) {
+      await prisma.medal.upsert({
+        where: { targetHours: hours },
+        update: {},
+        create: { name: `مدال ${hours} ساعته`, targetHours: hours },
+      });
+    }
+    medals = await prisma.medal.findMany({ select: { id: true, targetHours: true } });
   }
+  const medalIdByHours = new Map(medals.map((m) => [m.targetHours, m.id]));
 
   // ساخت کاربر + اعطای مدال‌ها + محاسبه‌ی خودکار سطح/ستاره از روی XP و مدال‌ها
   async function richUser(opts: {
