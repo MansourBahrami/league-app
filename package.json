@@ -12,6 +12,7 @@
     "test:gamification": "npx tsx scripts/test-gamification.ts",
     "test:onboarding": "npx tsx scripts/test-onboarding.ts",
     "test:levels": "npx tsx scripts/test-levels.ts",
+    "test:timer": "npx tsx scripts/test-study-timer.ts",
     "test:mission-rooms": "npx tsx scripts/test-mission-rooms.ts",
     "test:auth": "npx tsx scripts/test-auth.ts",
     "bot:bale": "npx tsx scripts/poll-bale.ts"

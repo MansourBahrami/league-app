@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnboarding";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import { restoreStudyTimerSession, type StoredStudyTimerSession } from "@/lib/study-timer-storage";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
@@ -288,25 +289,19 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         setRestored(true);
         return;
       }
-      try {
-        const { sid, startTime, totalSecs } = JSON.parse(saved);
-        const elapsedSecs = Math.floor((Date.now() - startTime) / 1000);
-        const remaining = totalSecs - elapsedSecs;
-        if (remaining <= 0) {
-          localStorage.removeItem(storageKey);
-          return;
-        }
-        setSessionId(sid);
-        setSecondsLeft(remaining);
-        setSelectedMinutes(Math.round(totalSecs / 60));
-        setTimerState("running");
-        startTimeRef.current = startTime;
-        lastTickRef.current = startTime;
-      } catch {
+      const restoredSession = restoreStudyTimerSession(saved);
+      if (!restoredSession) {
         localStorage.removeItem(storageKey);
-      } finally {
         setRestored(true);
+        return;
       }
+      setSessionId(restoredSession.sid);
+      setSecondsLeft(restoredSession.secondsLeft);
+      setSelectedMinutes(Math.round(restoredSession.totalSecs / 60));
+      setTimerState(restoredSession.state);
+      startTimeRef.current = restoredSession.startTime;
+      lastTickRef.current = restoredSession.startTime;
+      setRestored(true);
     }, 0);
 
     return () => window.clearTimeout(restore);
@@ -335,7 +330,14 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       setSessionId(id);
       startTimeRef.current = now;
       lastTickRef.current = now;
-      localStorage.setItem(storageKey, JSON.stringify({ sid: id, startTime: now, totalSecs: totalSeconds }));
+      const storedSession: StoredStudyTimerSession = {
+        version: 1,
+        sid: id,
+        startTime: now,
+        totalSecs: totalSeconds,
+        state: "running",
+      };
+      localStorage.setItem(storageKey, JSON.stringify(storedSession));
       setTimerState("running");
       void markHints(ONBOARDING_HINTS.TIMER_STARTED);
       window.dispatchEvent(new Event("focus-session-changed"));
@@ -343,28 +345,68 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     }
 
     if (timerState === "running") {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      setTimerState("paused");
-      if (sessionId) void fetch("/api/study/pause", {
+      if (!sessionId || startTimeRef.current === null) {
+        setError("اطلاعات جلسه کامل نیست؛ صفحه را تازه‌سازی کن.");
+        return;
+      }
+      const response = await fetch("/api/study/pause", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sessionId }),
-      }).catch(() => {}).finally(() => window.dispatchEvent(new Event("focus-session-changed")));
+      }).catch(() => null);
+      if (!response?.ok) {
+        setError("مکث تایمر ثبت نشد؛ دوباره تلاش کن.");
+        return;
+      }
+      const pausedAt = Date.now();
+      const pausedSecondsLeft = Math.max(
+        0,
+        totalSeconds - Math.floor((pausedAt - startTimeRef.current) / 1000),
+      );
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      setSecondsLeft(pausedSecondsLeft);
+      setTimerState("paused");
+      const storedSession: StoredStudyTimerSession = {
+        version: 1,
+        sid: sessionId,
+        startTime: startTimeRef.current,
+        totalSecs: totalSeconds,
+        state: "paused",
+        secondsLeft: pausedSecondsLeft,
+      };
+      localStorage.setItem(storageKey, JSON.stringify(storedSession));
+      window.dispatchEvent(new Event("focus-session-changed"));
       return;
     }
 
     if (timerState === "paused") {
-      startTimeRef.current = Date.now() - (totalSeconds - secondsLeft) * 1000;
-      lastTickRef.current = Date.now() - ((totalSeconds - secondsLeft) % TICK_INTERVAL) * 1000;
-      setTimerState("running");
-      if (sessionId) {
-        void fetch("/api/study/resume", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId }),
-        }).catch(() => {}).finally(() => window.dispatchEvent(new Event("focus-session-changed")));
-        localStorage.setItem(storageKey, JSON.stringify({ sid: sessionId, startTime: startTimeRef.current, totalSecs: totalSeconds }));
+      if (!sessionId) {
+        setError("اطلاعات جلسه کامل نیست؛ صفحه را تازه‌سازی کن.");
+        return;
       }
+      const response = await fetch("/api/study/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      }).catch(() => null);
+      if (!response?.ok) {
+        setError("ادامه تایمر ثبت نشد؛ دوباره تلاش کن.");
+        return;
+      }
+      const resumedAt = Date.now();
+      const effectiveStartTime = resumedAt - (totalSeconds - secondsLeft) * 1000;
+      startTimeRef.current = effectiveStartTime;
+      lastTickRef.current = resumedAt - ((totalSeconds - secondsLeft) % TICK_INTERVAL) * 1000;
+      const storedSession: StoredStudyTimerSession = {
+        version: 1,
+        sid: sessionId,
+        startTime: effectiveStartTime,
+        totalSecs: totalSeconds,
+        state: "running",
+      };
+      localStorage.setItem(storageKey, JSON.stringify(storedSession));
+      setTimerState("running");
+      window.dispatchEvent(new Event("focus-session-changed"));
       return;
     }
 

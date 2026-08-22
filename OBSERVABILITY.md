@@ -21,7 +21,7 @@
 ## PostHog: رفتار کاربران
 
 محیط PostHog با نام `G-camp` و منطقهٔ زمانی `Asia/Tehran` تنظیم شده است. دامنهٔ
-مجاز production برابر `https://app.ayandetalayee.ir` است و داشبورد
+مجاز production برابر `https://app.gcamp.ir` است و داشبورد
 `G-camp — رفتار کاربران` برای آمار اولیه در دسترس است.
 
 ### رویدادهای ثبت‌شده

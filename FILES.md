@@ -258,7 +258,7 @@
 |------|-------|
 | `scripts/make-admin.ts` 🟢 | ادمین‌کردن یک کاربر با شماره موبایل. |
 | `scripts/setup-webhooks.ts` 🟢 | ثبت webhook تلگرام و بله از روی env (`APP_PUBLIC_URL`, `BOT_WEBHOOK_SECRET`). |
-| `scripts/test-gamification.ts`, `test-levels.ts`, `test-onboarding.ts` 🟢 | تست‌های منطق گیمیفیکیشن (بدون فریم‌ورک تست، اجرای مستقیم با tsx). |
+| `scripts/test-gamification.ts`, `test-levels.ts`, `test-onboarding.ts`, `test-study-timer.ts` 🟢 | تست‌های منطق گیمیفیکیشن و ماندگاری تایمر (بدون فریم‌ورک تست، اجرای مستقیم با tsx). |
 | `scripts/vps-setup.sh` 🟢 | اسکریپت آماده‌سازی سرور VPS (نصب Docker و وابستگی‌ها). |
 | `scripts/seed-notifications.ts` 🟢 | درج idempotent قانون‌های پیش‌فرض اعلان. |
 | `scripts/prod-db-studio.sh` 🟢 | تونل SSH و Prisma Studio روی دیتابیس production. |

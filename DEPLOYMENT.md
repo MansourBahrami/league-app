@@ -1,7 +1,7 @@
 # راهنمای استقرار (Production Deployment)
 
-> وضعیت زنده، معماری، و کارهای انجام‌شده برای استقرار اپ روی سرور.
-> **آخرین به‌روزرسانی:** مرداد ۱۴۰۵ — ورود فقط با OTP موبایل، اتصال ربات بله برای اعلان، محافظت Origin شبکهٔ محلی، HTTPS واقعی، پیامک کاوه‌نگار و cron موتور قانون اعلان.
+> وضعیت زنده، معماری، نحوه اتصال و کارهای انجام‌شده برای استقرار اپ روی سرور آروان‌کلاد.
+> **آخرین به‌روزرسانی:** شهریور ۱۴۰۵ — انتقال به سرور آروان‌کلاد، فعال‌سازی ورود با پیامک کاوه‌نگار، اتصال ربات بله، گواهی SSL فوری، زمان‌بند کران و Caddy Reverse Proxy.
 
 ---
 
@@ -9,250 +9,166 @@
 
 | سرویس | وضعیت | جزئیات |
 |-------|-------|--------|
-| آدرس عمومی | ✅ | `https://app.ayandetalayee.ir` (گواهی معتبر Let's Encrypt) |
-| HTTPS | ✅ | TLS در لبهٔ CDN پارس‌پک (داخل ایران) ترمینیت می‌شود |
-| ورود با پیامک (OTP) | ✅ | کاوه‌نگار، خط فرستنده `9982005239` |
-| اتصال ربات بله | ✅ | `@gcamp_bot` — webhook روی آدرس HTTPS برای اعلان‌های حساب موبایلی |
-| اتصال ربات تلگرام | 🟡 | کد آماده؛ ارسال از سرور ایران به api.telegram.org بلاک است |
+| دامنه نهایی پروداکشن | 🟡 | `https://app.gcamp.ir` (در انتظار تکمیل چرخه NS در ایرنیک و اتصال CDN آروان) |
+| نشانی زنده و تست با SSL رسمی | ✅ | `https://194.5.206.14.sslip.io` (دارای گواهی رسمی معتبر Let's Encrypt با قفل سبز) |
+| ورود با پیامک (OTP) | ✅ | کاوه‌نگار، خط فرستنده `9982005239` (تست‌شده با وضعیت تایید شد) |
+| اتصال ربات بله | ✅ | `@gcamp_bot` — webhook فعال روی نشانی HTTPS برای اعلان‌های حساب کاربری |
 | دیتابیس + کش | ✅ | PostgreSQL 17 + Redis 7 در Docker |
-
-> دامنهٔ نهایی بعداً به `Gcamp.ir` تغییر می‌کند؛ `app.ayandetalayee.ir` فعلاً برای تست/تولید فعال است.
+| زمان‌بند دوره‌ای (Cron) | ✅ | کران ۵ دقیقه‌ای برای پردازش ماموریت‌ها، تورنومنت‌ها و موتور قوانین نوتیفیکیشن |
 
 ---
 
-## ۲. زیرساخت
+## ۲. مشخصات زیرساخت سرور و نحوه اتصال
 
-- **سرور:** VPS لیارا، Ubuntu 24.04، IP `62.60.198.110` (hostname `ubuntu-league-vps`).
+- **ارائه‌دهنده:** ابر آروان (ArvanCloud) — سرور ابری (IaaS)
+- **آی‌پی سرور:** `194.5.206.14`
+- **نام کاربری SSH:** `ubuntu`
+- **کلید SSH خصوصی:** `ar-gcamp-agent-privatekey.pem` (ذخیره در ریشه پروژه با دسترسی `chmod 600`)
 - **مسیر پروژه روی سرور:** `/app/league/`
-- **اجرا:** فایل `docker-compose.yml` داخل repo سه سرویس اصلی را تعریف می‌کند:
-  - `app` — ایمیج `mansourbahrami/league-app:latest` (Next.js، expose پورت 3000)
-  - `postgres` — `postgres:17-alpine` (دیتابیس `league_db`)
-  - `redis` — `redis:7-alpine` (OTP هش‌شده + توکن اتصال ربات، با پسورد)
-- **Reverse proxy production:** Caddy کنار این سه سرویس روی سرور پیکربندی شده است، اما تعریف آن در compose فعلی repo وجود ندارد. بنابراین compose سرور/پیکربندی Caddy یک لایهٔ استقرار جدا از فایل tracked پروژه است.
-- **رجیستری:** Docker Hub (با mirror آروان روی سرور به‌خاطر تحریم).
+- **حافظه مجازی:** ۲ گیگابایت Swap فعال روی `/swapfile`
+- **سرویس‌های در حال اجرا (Docker Compose):**
+  - `app`: کانتینر Next.js 16 (پورت 3000)
+  - `postgres`: کانتینر `postgres:17-alpine` (دیتابیس `league_db`)
+  - `redis`: کانتینر `redis:7-alpine` (کش و سشن با پسورد)
+- **وب‌سرور و Reverse Proxy:** Caddy 2 (پورت‌های 80 و 443 با پشتیبانی HTTP/2 و HTTP/3)
+
+### دستور اتصال به سرور از سیستم محلی:
+```bash
+ssh -i ar-gcamp-agent-privatekey.pem ubuntu@194.5.206.14
+```
+
+### همگام‌سازی فایل‌های پروژه با سرور (rsync):
+```bash
+rsync -avz --delete \
+  -e "ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=no" \
+  --exclude 'node_modules' \
+  --exclude '.next' \
+  --exclude '.git' \
+  --exclude '*.pem' \
+  --exclude '*.key' \
+  --exclude '.env*' \
+  ./ ubuntu@194.5.206.14:/app/league/
+```
 
 ---
 
-## ۳. معماری شبکه (چرا این‌طوری؟)
+## ۳. معماری شبکه و لایه امنیتی
 
 ```
 کاربر (اینترنت ایران)
-   │  https://app.ayandetalayee.ir
+   │  https://app.gcamp.ir (یا https://194.5.206.14.sslip.io)
    ▼
-CDN پارس‌پک  (لبهٔ داخل ایران، IP 185.208.173.17)
-   │  ← گواهی معتبر Let's Encrypt اینجا ارائه می‌شود (قفل سبز مرورگر)
-   │  پروکسی DNS-based (مثل ابر نارنجی کلودفلر)
+CDN ابر آروان  (لبهٔ داخل ایران)
+   │  ← گواهی معتبر Let's Encrypt در لبه ارائه می‌شود
+   │  پروکسی ابری (ابر روشن / نارنجی)
    ▼
-سرور مبدأ 62.60.198.110
+سرور مبدأ (ابرک آروان 194.5.206.14)
    │
    ▼
-Caddy  (پورت 80 و 443)
-   │  443: tls internal (گواهی self-signed)  |  80: HTTP ساده
+Caddy Reverse Proxy  (پورت 80 و 443)
+   │
    ▼
-app:3000  (Next.js)
+کانتینر app:3000  (Next.js)
 ```
 
-### چرا CDN لازم بود؟
-1. **پایداری:** دسترسی مستقیم به IP خارجی روی برخی ISPهای ایران ناپایدار است. CDN داخل ایران این را حل می‌کند.
-2. **HTTPS:** سرور مبدأ به **هیچ‌کدام** از CAهای ACME (Let's Encrypt, ZeroSSL, Google, Buypass) دسترسی ندارد (همه از ایران بلاک‌اند)، پس **نمی‌تواند خودش گواهی معتبر بگیرد**. CDN پارس‌پک در لبهٔ داخل ایران گواهی معتبر Let's Encrypt را ارائه می‌کند.
-
-### چرا Caddy روی مبدأ `tls internal` است؟
-چون مبدأ نمی‌تواند گواهی معتبر بگیرد، Caddy یک گواهی self-signed (آفلاین) روی 443 می‌سازد و یک بلوک `:80` ساده هم دارد. پارس‌پک (حالت Full) با مبدأ ارتباط برقرار می‌کند و خودش گواهی معتبر را به کاربر می‌دهد. پیکربندی:
-
+### پیکربندی Caddy روی سرور (`/etc/caddy/Caddyfile`):
 ```caddyfile
 {
-	auto_https disable_redirects
+    auto_https disable_redirects
 }
-app.ayandetalayee.ir {
-	tls internal
-	reverse_proxy app:3000
+
+app.gcamp.ir {
+    tls internal
+    reverse_proxy 127.0.0.1:3000
 }
+
+194.5.206.14.sslip.io {
+    reverse_proxy 127.0.0.1:3000
+}
+
+:443 {
+    tls internal
+    reverse_proxy 127.0.0.1:3000
+}
+
 :80 {
-	reverse_proxy app:3000
+    reverse_proxy 127.0.0.1:3000
 }
 ```
 
 ---
 
-## ۴. اتصال ربات بله
+## ۴. پیامک OTP (کاوه‌نگار)
 
-بله از Bot API سازگار با تلگرام استفاده می‌کند (`https://tapi.bale.ai/bot<TOKEN>/`). برخلاف سرویس مجزای `bot/` (که long-polling تلگرام است)، **بله از طریق webhook مستقیم در خود اپ** وصل شده:
-
-- **Endpoint:** `POST /api/bot/bale` → `handleBotUpdate("bale", …)`
-- **امنیت:** مقدار `secret_token` ثبت‌شده از header استاندارد Bot API بررسی می‌شود و وارد URL/log نمی‌شود.
-- **جریان اتصال:** کاربر ابتدا با موبایل و OTP وارد اپ می‌شود؛ بعد از اولین جلسه، deep link یکبارمصرف ربات را باز می‌کند و `/start <token>` شناسه بله را به همان User متصل می‌کند. ربات هیچ حساب یا سشن ورود نمی‌سازد.
-
-### ثبت webhook (یک‌بار، از روی سرور که به بله دسترسی دارد)
+- پیاده‌سازی در `lib/sms.ts` (فراخوانی متد `sms/send.json`).
+- متغیرها در `.env.production`:
+  - `KAVENEGAR_API_KEY`: کلید API اختصاصی
+  - `KAVENEGAR_SENDER`: شماره فرستنده `9982005239`
+- تست وضعیت اتصال به کاوه‌نگار از روی سرور:
 ```bash
-TOKEN='<BALE_BOT_TOKEN>'
-URL='https://app.ayandetalayee.ir/api/bot/bale'
-SECRET='<BOT_WEBHOOK_SECRET>'
+curl -s https://api.kavenegar.com/v1/$KAVENEGAR_API_KEY/account/info.json
+```
+
+---
+
+## ۵. اتصال ربات بله
+
+- **Endpoint:** `POST /api/bot/bale`
+- **جریان اتصال:** کاربر بعد از ورود، لینک اتصال ربات را باز می‌کند و شناسه بله به حساب کاربر متصل می‌شود.
+- **ثبت مجدد وب‌هوک روی سرور:**
+```bash
+cd /app/league
+TOKEN=$(grep BALE_BOT_TOKEN .env.production | cut -d '=' -f2 | tr -d '"')
+SECRET=$(grep BOT_WEBHOOK_SECRET .env.production | cut -d '=' -f2 | tr -d '"')
+URL="https://app.gcamp.ir/api/bot/bale" # یا https://194.5.206.14.sslip.io/api/bot/bale
+
 curl -s -X POST -H 'Content-Type: application/json' \
   -d "{\"url\":\"$URL\",\"secret_token\":\"$SECRET\"}" \
   "https://tapi.bale.ai/bot$TOKEN/setWebhook"
-# بررسی:
+
+# بررسی وضعیت وب‌هوک:
 curl -s "https://tapi.bale.ai/bot$TOKEN/getWebhookInfo"
 ```
 
-توکن اتصال ۱۵ دقیقه اعتبار دارد، برای تلگرام و بله جدا صادر می‌شود و با اولین مصرف از Redis حذف می‌شود.
-
-> پس از انتشار این نسخه webhook قبلی باید یک‌بار دوباره ثبت شود، چون secret از query string به header منتقل شده است.
-
 ---
 
-## ۵. پیامک OTP (کاوه‌نگار)
+## ۶. زمان‌بند دوره‌ای (Cron)
 
-- پیاده‌سازی در `lib/sms.ts` (endpoint `sms/send.json`). کاوه‌نگار از سرور ایران کاملاً در دسترس است.
-- `app/api/auth/send-otp` در حالت production کد را با کاوه‌نگار پیامک می‌کند؛ در dev کد را در پاسخ JSON برمی‌گرداند (`_dev_otp`).
-- متغیرها: `KAVENEGAR_API_KEY` و `KAVENEGAR_SENDER` (خط `9982005239`).
-
----
-
-## ۶. متغیرهای محیطی production (`/app/league/.env.production`)
-
-اپ از `env_file: .env.production` می‌خواند (نه `.env`؛ `.env` فقط برای interpolation پسوردهای compose است).
-
-```env
-DATABASE_URL=postgresql://league_user:<PW>@postgres:5432/league_db
-REDIS_URL=redis://:<PW>@redis:6379
-JWT_SECRET=<...>
-NEXT_PUBLIC_APP_URL=https://app.ayandetalayee.ir
-APP_PUBLIC_URL=https://app.ayandetalayee.ir
-KAVENEGAR_API_KEY=<...>
-KAVENEGAR_SENDER=9982005239
-BALE_BOT_TOKEN=<...>
-BALE_BOT_USERNAME=gcamp_bot
-BOT_WEBHOOK_SECRET=<...>
-TELEGRAM_BOT_TOKEN=<...>
-TELEGRAM_BOT_USERNAME=<bot_username>
-OTP_HASH_SECRET=<حداقل ۳۲ بایت تصادفی؛ در نبود آن JWT_SECRET استفاده می‌شود>
-# اختیاری/وابسته به قابلیت: VAPID_* و BOT_API_SECRET
-
-# تحلیل محصول و پایش خطا (SDK keyهای public کلاینت در build-args workflow هم قرار دارند)
-POSTHOG_PROJECT_TOKEN=<PostHog project token>
-POSTHOG_HOST=https://us.i.posthog.com
-SENTRY_DSN=<Sentry DSN>
-APP_ENV=production
-```
-
-> رازهای واقعی فقط روی سرور و در GitHub Secrets نگهداری می‌شوند. PostHog project
-> token و Sentry DSN راز مدیریتی نیستند و طبق طراحی داخل bundle مرورگر دیده می‌شوند.
-
-### پایش رفتار و خطا
-
-- PostHog فقط page view و رویدادهای صریح `signed_in`، `signed_out`،
-  `study_started` و `study_completed` را نگه می‌دارد. Autocapture، heatmap و
-  session recording برای کاهش هزینه و محافظت از حریم خصوصی خاموش‌اند.
-- Sentry خطاهای مرورگر، route handler و render را ثبت می‌کند. شماره موبایل،
-  cookie، header و query string پیش از ارسال حذف می‌شوند و Replay فعال نیست.
-- کلیدهای public کلاینت PostHog و Sentry در build-args workflow قرار دارند؛ این
-  کلیدها در هر صورت داخل bundle مرورگر قابل مشاهده‌اند و مجوز مدیریتی ندارند.
-- `SENTRY_AUTH_TOKEN` اختیاری است و فقط برای آپلود source map استفاده می‌شود؛
-  در BuildKit به‌صورت secret mount می‌شود و داخل image باقی نمی‌ماند.
-- لاگ هر کانتینر با driver محلی Docker چرخش دارد؛ اپ حداکثر ۵ فایل ۱۰MB و
-  PostgreSQL/Redis هرکدام حداکثر ۳ فایل ۱۰MB نگه می‌دارند.
-
----
-
-## ۷. فرایند انتشار (CI/CD)
-
-```
-git push origin main
-   ▼
-GitHub Actions (.github/workflows/deploy.yml)
-   build ایمیج linux/amd64 → push به Docker Hub :latest
-   ▼
-روی سرور: pull ایمیج جدید + بازسازی کانتینر app
-```
-
-### دستورهای redeploy روی سرور
-```bash
-cd /app/league
-docker compose pull app
-docker compose up -d --force-recreate app
-docker compose ps
-```
-
-### ⚠️ تله: کش mirror رجیستری آروان
-mirror آروان تگ `:latest` را **کش می‌کند** و گاهی نسخهٔ کهنه می‌دهد؛ `docker compose pull` می‌گوید "Pulled" ولی کد قدیمی اجرا می‌شود. برای اطمینان، دیجست را مقایسه و در صورت اختلاف **با دیجست دقیق** pull کنید:
+اسکریپت `/app/league/run-cron.sh` به صورت دوره‌ای توسط crontab سرور صدا زده می‌شود و بدون وابستگی به شبکه بیرونی، با `http://localhost:3000` ارتباط برقرار می‌کند:
 
 ```bash
-# دیجست روی سرور:
-docker image inspect mansourbahrami/league-app:latest --format '{{.RepoDigests}}'
-# دیجست واقعی Docker Hub را بگیرید (header docker-content-digest از manifests/latest)
-# اگر فرق داشت:
-docker pull mansourbahrami/league-app@sha256:<DIGEST>
-docker tag  mansourbahrami/league-app@sha256:<DIGEST> mansourbahrami/league-app:latest
-docker compose up -d --force-recreate app
+# محتوای /app/league/run-cron.sh
+#!/bin/bash
+TASKS=${1:-"missions,tournaments,notifRules"}
+docker compose -f /app/league/docker-compose.yml exec -T app node -e "fetch('http://localhost:3000/api/cron/run?tasks=${TASKS}',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log)"
 ```
 
----
-
-## ۸. عیب‌یابی سریع
-
-| نشانه | علت محتمل | راه‌حل |
-|-------|-----------|--------|
-| لینک اتصال ربات ساخته نمی‌شود | `BALE_BOT_USERNAME` یا `TELEGRAM_BOT_USERNAME` خالی است | نام کاربری ربات را بدون `@` در env تنظیم کنید |
-| کد بعد از push دیده نمی‌شود | کش کهنهٔ mirror آروان | pull با دیجست دقیق (بخش ۷) |
-| خطای ۵۰۲ از CDN | مبدأ روی پورت/پروتکل موردانتظار پاسخ نمی‌دهد | اطمینان از بالا بودن Caddy روی 80 و 443 |
-| پیامک نمی‌رسد | `KAVENEGAR_*` ست نشده یا اعتبار تمام | بررسی env داخل کانتینر + پنل کاوه‌نگار |
-| OTP «اشتباه یا منقضی» | کد در Redis منقضی شده (۵ دقیقه) | دوباره درخواست کد |
-| `Cross-site request blocked` روی موبایل شبکهٔ محلی | صفحه و API با host متفاوت باز شده‌اند یا نسخهٔ قدیمی Proxy در حال اجراست | اپ را کامل با `http://<LAN-IP>:3000` باز کنید و dev server را پس از تغییرات restart کنید؛ wildcard/CORS لازم نیست |
-
-### تست روی موبایل در شبکهٔ محلی
-
-سرور dev روی همهٔ interfaceها گوش می‌دهد. IP شبکهٔ سیستم را پیدا کنید و همان نشانی را در مرورگر موبایل باز کنید؛ برای نمونه `http://192.168.1.20:3000`. fetchهای اپ نسبی‌اند و باید روی همین host باقی بمانند. Proxy برای درخواست‌های تغییردهنده، Origin را با Host واقعی ورودی (شامل protocol و port) تطبیق می‌دهد و Originهای متفاوت را همچنان با 403 رد می‌کند.
-
-### دستورهای پرکاربرد
-```bash
-# لاگ اپ
-docker compose logs -f app
-# env داخل کانتینر در حال اجرا
-docker compose exec app printenv | grep -E 'KAVENEGAR|APP_URL|BALE'
-# تست HTTPS و گواهی
-curl -sI https://app.ayandetalayee.ir | head -1
-```
-
----
-
-## ۹. زمان‌بند (cron) و موتور نوتیفیکیشن
-
-کارهای دوره‌ای (پردازش ماموریت، تسویه تورنومنت، قانون‌های نوتیفیکیشن) از طریق
-`POST /api/cron/run` اجرا می‌شوند که با `Authorization: Bearer $CRON_SECRET`
-محافظت شده است. روی سرور یک **crontab** این endpoint را صدا می‌زند.
-
-در پیکربندی production، cron اسکریپتِ `/app/league/run-cron.sh` را اجرا می‌کند که از داخل کانتینرِ اپ با
-`node fetch` به `localhost:3000` می‌زند (بدون مشکل گواهی/شبکه). `CRON_SECRET`
-از env خود کانتینر (`env_file: .env.production`) خوانده می‌شود.
-
-```bash
-# /app/league/run-cron.sh <tasks>
-docker compose exec -T app node -e "fetch('http://localhost:3000/api/cron/run?tasks=${TASKS}',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log)"
-```
-
-crontab نصب‌شده (`crontab -l`):
-
+زمان‌بندی crontab سرور (`crontab -l`):
 ```
 */5 * * * * /app/league/run-cron.sh missions,tournaments,notifRules >> /var/log/league-cron.log 2>&1
 0   * * * * /app/league/run-cron.sh ranks                            >> /var/log/league-cron.log 2>&1
 ```
 
-- `missions,tournaments,notifRules` (هر ۵ دقیقه): پردازش ماموریت‌ها + تسویه تورنومنت +
-  موتور قانون نوتیفیکیشن (تریگرهای `scheduled` و `relative`؛ پنجرهٔ ۱۵ دقیقه).
-- `ranks` (ساعتی): تشخیص افت رتبهٔ هفتگی و شلیک رویداد `rank_drop`.
-
-**نوتیفیکیشن‌های رویدادی** (پایان جلسه، نقطه‌عطف استریک، ارتقای سطح، کسب مدال) به cron
-نیاز ندارند؛ مستقیماً از کد اپ (`fireEvent` در `lib/streak.ts`، `lib/mission.ts`،
-`app/api/study/end`) شلیک می‌شوند. جزئیات معماری موتور قانون در `FILES.md`.
-
-> برای دیباگ: `tail -f /var/log/league-cron.log` روی سرور.
-
 ---
 
-## ۱۰. کارهای باقی‌مانده در استقرار
+## ۷. دستورهای کاربردی مدیریت سرور
 
-- [ ] تست واقعی ورود با پیامک OTP (مصرف اعتبار کاوه‌نگار).
-- [ ] تنظیم/تأیید کلیدهای VAPID (`npx web-push generate-vapid-keys`) برای فعال‌سازی Web Push در همهٔ محیط‌ها.
-- [x] اتصال cron واقعی به `POST /api/cron/run` با `CRON_SECRET` (بخش ۹).
-- [ ] (در صورت نیاز تلگرام) استقرار سرویس `bot/` روی یک سرور خارج از ایران به‌عنوان relay.
-- [ ] جابه‌جایی دامنهٔ نهایی به `Gcamp.ir` و به‌روزرسانی `NEXT_PUBLIC_APP_URL`/`APP_PUBLIC_URL` + build-arg + webhook بله.
+```bash
+# اتصال به سرور
+ssh -i ar-gcamp-agent-privatekey.pem ubuntu@194.5.206.14
+
+# مشاهده وضعیت کانتینرها
+cd /app/league && sudo docker compose ps
+
+# مشاهده لاگ زنده برنامه
+sudo docker compose logs -f app
+
+# اجرای مجدد و ساخت مجدد کانتینر
+sudo docker compose up -d --force-recreate app
+
+# بررسی لاگ‌های کران
+tail -f /var/log/league-cron.log
+
+# وضعیت سرویس Caddy
+sudo systemctl status caddy --no-pager
+```

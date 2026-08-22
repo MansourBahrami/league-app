@@ -59,6 +59,7 @@ npm run db:seed
 npm run db:studio
 npm run test:levels
 npm run test:onboarding
+npm run test:timer
 npm run test:auth
 ```
 

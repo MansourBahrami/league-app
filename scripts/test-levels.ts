@@ -14,8 +14,8 @@ const m = (hours: number, count = 1): MedalCount => ({ targetHours: hours, count
 const cases: Case[] = [
   // --- تازه‌نفس: فقط XP، بدون مدال ---
   { desc: "زیر ۸ XP → تازه‌نفس ۱ (حداقل)", xp: 0, medals: [], expectLevel: "تازه‌نفس", expectStars: 1 },
-  { desc: "۸ XP → تازه‌نفس ۱", xp: 8, medals: [], expectLevel: "تازه‌نفس", expectStars: 1 },
-  { desc: "۲۹ XP → هنوز تازه‌نفس ۱", xp: 29, medals: [], expectLevel: "تازه‌نفس", expectStars: 1 },
+  { desc: "۸ XP → تازه‌نفس ۲", xp: 8, medals: [], expectLevel: "تازه‌نفس", expectStars: 2 },
+  { desc: "۲۹ XP → تازه‌نفس ۲", xp: 29, medals: [], expectLevel: "تازه‌نفس", expectStars: 2 },
   { desc: "۳۰ XP → تازه‌نفس ۲", xp: 30, medals: [], expectLevel: "تازه‌نفس", expectStars: 2 },
   { desc: "۶۰ XP → تازه‌نفس ۳", xp: 60, medals: [], expectLevel: "تازه‌نفس", expectStars: 3 },
   { desc: "۲۵۰ XP بدون مدال → همچنان تازه‌نفس ۳ (مدال لازم است)", xp: 250, medals: [], expectLevel: "تازه‌نفس", expectStars: 3 },

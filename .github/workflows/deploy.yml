@@ -32,7 +32,7 @@ jobs:
           cache-to: type=gha,mode=max
           # این دو SDK key عمداً public هستند و داخل bundle مرورگر قرار می‌گیرند.
           build-args: |
-            NEXT_PUBLIC_APP_URL=https://app.ayandetalayee.ir
+            NEXT_PUBLIC_APP_URL=https://app.gcamp.ir
             NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ secrets.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
             NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=phc_kSBj6z7S22kVUket4UcxLHsLSXapcp3sEj8jJFNkVQ23
             NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
