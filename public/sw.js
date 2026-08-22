@@ -45,3 +45,18 @@ self.addEventListener("notificationclick", (event) => {
     })
   );
 });
+
+self.addEventListener("message", (event) => {
+  if (!event.data) return;
+  if (event.data.type === "SHOW_TIMER_NOTIFICATION") {
+    const { title, options } = event.data;
+    event.waitUntil(self.registration.showNotification(title, options));
+  } else if (event.data.type === "CLOSE_TIMER_NOTIFICATION") {
+    const tag = event.data.tag || "study-timer-active";
+    event.waitUntil(
+      self.registration.getNotifications({ tag }).then((notifications) => {
+        notifications.forEach((n) => n.close());
+      })
+    );
+  }
+});

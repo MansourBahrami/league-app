@@ -13,6 +13,9 @@ import {
   requestStudyNotificationPermission,
   showOrUpdateStudyNotification,
   closeStudyNotification,
+  getTimerNotificationStatus,
+  sendTestNotification,
+  type NotificationStatus,
 } from "@/lib/timer-notification";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
@@ -212,6 +215,8 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   const [floats, setFloats] = useState<FloatReward[]>([]);
   const [error, setError] = useState("");
   const [restored, setRestored] = useState(false);
+  const [notifStatus, setNotifStatus] = useState<NotificationStatus>("default");
+  const [notifFeedback, setNotifFeedback] = useState<string>("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
@@ -365,6 +370,25 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     reportStudyState(timerState === "running" || timerState === "paused" || showGoalSetting);
   }, [reportStudyState, restored, showGoalSetting, timerState]);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setNotifStatus(getTimerNotificationStatus());
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  async function handleTestNotification() {
+    setNotifFeedback("در حال ارسال اعلان...");
+    const res = await sendTestNotification();
+    setNotifStatus(getTimerNotificationStatus());
+    if (res.ok) {
+      setNotifFeedback("اعلان تستی با موفقیت ارسال شد! بالای صفحه گوشی را ببینید.");
+    } else {
+      setNotifFeedback(res.reason || "ارسال ناموفق بود");
+    }
+    window.setTimeout(() => setNotifFeedback(""), 6000);
+  }
+
   async function handleToggle() {
     setError("");
     if (timerState === "idle") {
@@ -402,6 +426,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       window.dispatchEvent(new Event("focus-session-changed"));
 
       void permPromise.then((granted) => {
+        setNotifStatus(getTimerNotificationStatus());
         if (granted) {
           void showOrUpdateStudyNotification({
             secondsLeft: totalSeconds,
@@ -676,6 +701,59 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
               توقف و ثبت
             </button>
           )}
+
+          {/* نوار وضعیت نوتیفیکیشن زنده */}
+          <div className="mt-3 pt-2 border-t border-outline-variant/30">
+            {notifStatus === "default" && (
+              <button
+                type="button"
+                onClick={handleTestNotification}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-tertiary-fixed/30 border border-tertiary/30 text-[11.5px] text-on-surface hover:bg-tertiary-fixed/50 transition-colors"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-tertiary text-[17px]">notifications_active</span>
+                  <span>نمایش زنده تایمر در بالای گوشی</span>
+                </div>
+                <span className="font-bold text-tertiary underline">فعال‌سازی و تست</span>
+              </button>
+            )}
+
+            {notifStatus === "granted" && (
+              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface-container-low border border-outline-variant/40 text-[11px] text-on-surface-variant">
+                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
+                  <span className="material-symbols-outlined text-[15px]">check_circle</span>
+                  <span>اعلان زنده در بالای صفحه فعال است</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTestNotification}
+                  className="text-primary font-bold hover:underline pr-2"
+                >
+                  تست
+                </button>
+              </div>
+            )}
+
+            {notifStatus === "denied" && (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-error-container/30 border border-error/25 text-[11px] text-on-error-container">
+                <span className="material-symbols-outlined text-error text-[16px]">notifications_off</span>
+                <span>اعلان در مرورگر مسدود است؛ از آیکون قفل کنار آدرس‌بار فعالش کنید.</span>
+              </div>
+            )}
+
+            {notifStatus === "ios_browser" && (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/50 text-[11px] text-on-surface-variant">
+                <span className="material-symbols-outlined text-primary text-[16px]">ios_share</span>
+                <span>در آیفون برای نوتیفیکیشن، از منوی اشتراک‌گذاری گزینه «Add to Home Screen» را بزنید.</span>
+              </div>
+            )}
+
+            {notifFeedback && (
+              <p className="text-[11.5px] text-center font-bold text-primary mt-1.5 animate-pulse">
+                {notifFeedback}
+              </p>
+            )}
+          </div>
         </div>
       </section>
 
