@@ -111,23 +111,30 @@ curl -s https://api.kavenegar.com/v1/$KAVENEGAR_API_KEY/account/info.json
 
 ---
 
-## ۵. اتصال ربات بله
+## ۵. اتصال ربات‌های بله و تلگرام
 
-- **Endpoint:** `POST /api/bot/bale`
-- **جریان اتصال:** کاربر بعد از ورود، لینک اتصال ربات را باز می‌کند و شناسه بله به حساب کاربر متصل می‌شود.
-- **ثبت مجدد وب‌هوک روی سرور:**
+- **Endpoints:** `POST /api/bot/bale` و `POST /api/bot/telegram`
+- **جریان اتصال:** کاربر بعد از ورود، لینک اتصال ربات را باز می‌کند و شناسه بله/تلگرام به حساب کاربر متصل می‌شود.
+- **ثبت مجدد وب‌هوک روی سرور (از طریق CDN ابر آروان):**
 ```bash
 cd /app/league
-TOKEN=$(grep BALE_BOT_TOKEN .env.production | cut -d '=' -f2 | tr -d '"')
-SECRET=$(grep BOT_WEBHOOK_SECRET .env.production | cut -d '=' -f2 | tr -d '"')
-URL="https://app.gcamp.ir/api/bot/bale" # یا https://194.5.206.14.sslip.io/api/bot/bale
+BALE_TOKEN=$(sudo docker compose exec -T app node -e 'process.stdout.write(process.env.BALE_BOT_TOKEN || "")')
+TG_TOKEN=$(sudo docker compose exec -T app node -e 'process.stdout.write(process.env.TELEGRAM_BOT_TOKEN || "")')
+SECRET=$(sudo docker compose exec -T app node -e 'process.stdout.write(process.env.BOT_WEBHOOK_SECRET || "")')
 
+# ثبت وب‌هوک بله:
 curl -s -X POST -H 'Content-Type: application/json' \
-  -d "{\"url\":\"$URL\",\"secret_token\":\"$SECRET\"}" \
-  "https://tapi.bale.ai/bot$TOKEN/setWebhook"
+  -d "{\"url\":\"https://app.gcamp.ir/api/bot/bale?secret=$SECRET\",\"secret_token\":\"$SECRET\"}" \
+  "https://tapi.bale.ai/bot$BALE_TOKEN/setWebhook"
 
-# بررسی وضعیت وب‌هوک:
-curl -s "https://tapi.bale.ai/bot$TOKEN/getWebhookInfo"
+# ثبت وب‌هوک تلگرام:
+curl -s -X POST -H 'Content-Type: application/json' \
+  -d "{\"url\":\"https://app.gcamp.ir/api/bot/telegram?secret=$SECRET\"}" \
+  "https://api.telegram.org/bot$TG_TOKEN/setWebhook"
+
+# بررسی وضعیت وب‌هوک‌ها:
+curl -s "https://tapi.bale.ai/bot$BALE_TOKEN/getWebhookInfo"
+curl -s "https://api.telegram.org/bot$TG_TOKEN/getWebhookInfo"
 ```
 
 ---
