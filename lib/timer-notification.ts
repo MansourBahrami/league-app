@@ -85,7 +85,11 @@ export async function showOrUpdateStudyNotification({
 
   const body = state === "done" ? "پاداش و امتیاز مطالعه شما آماده است. برای مشاهده کلیک کنید." : quote;
 
-  const options: NotificationOptions = {
+  const options: NotificationOptions & {
+    renotify?: boolean;
+    silent?: boolean;
+    requireInteraction?: boolean;
+  } = {
     body,
     icon: "/icon.png",
     badge: "/icon.png",
