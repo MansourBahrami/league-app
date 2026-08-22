@@ -26,6 +26,7 @@ export default function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             data-tour={item.tour}
             aria-current={isActive ? "page" : undefined}
             className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-2 transition-all duration-200 ${

@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getOnboardingState } from "@/lib/onboarding";
-import { processUserMissions } from "@/lib/mission";
 import { getWeeklyMissionState } from "@/lib/weekly-mission";
 import { getActiveFocusCount } from "@/lib/focus";
 import StudyTimer, { type FocusMission } from "@/components/dashboard/StudyTimer";
@@ -28,7 +27,7 @@ async function getPulseActivities(userIds?: string[]): Promise<FocusPulseActivit
       ...(userIds && userIds.length > 0 ? { userId: { in: userIds } } : {}),
     },
     orderBy: { createdAt: "desc" },
-    take: 40,
+    take: 20,
     include: { user: { select: { name: true, avatarUrl: true } } },
   });
 
@@ -42,7 +41,7 @@ async function getPulseActivities(userIds?: string[]): Promise<FocusPulseActivit
       user: activity.user,
     }))
     .filter(hasUsefulPulseMetadata)
-    .slice(0, 20);
+    .slice(0, 15);
 }
 
 async function getActiveDailyMission(userId: string) {
@@ -69,18 +68,16 @@ export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const onboarding = await getOnboardingState(session.userId);
-  const inOnboarding = onboarding?.inOnboarding ?? false;
-
-  if (!inOnboarding) await processUserMissions(session.userId);
-
-  const [user, activeDaily, weekly, activities, activeFocusCount] = await Promise.all([
+  const [onboarding, user, activeDaily, weekly, activities, activeFocusCount] = await Promise.all([
+    getOnboardingState(session.userId),
     prisma.user.findUnique({ where: { id: session.userId }, select: { phone: true } }),
-    inOnboarding ? Promise.resolve(null) : getActiveDailyMission(session.userId),
-    inOnboarding ? Promise.resolve(null) : getWeeklyMissionState(session.userId),
+    getActiveDailyMission(session.userId),
+    getWeeklyMissionState(session.userId),
     getPulseActivities(),
     getActiveFocusCount(),
   ]);
+
+  const inOnboarding = onboarding?.inOnboarding ?? false;
 
   let mission: FocusMission = null;
   if (inOnboarding && onboarding) {

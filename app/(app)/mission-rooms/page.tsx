@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { processUserMissions } from "@/lib/mission";
 import { getCurrentMissionRoomSnapshots, pickMissionRoomToOpen } from "@/lib/mission-room";
 import { formatJalaliLong, getNextTehranMissionWeek } from "@/lib/date";
 import { suggestMissions } from "@/lib/gamification";
@@ -21,7 +20,6 @@ export default async function MissionRoomsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  await processUserMissions(session.userId);
   const now = new Date();
   const rooms = await getCurrentMissionRoomSnapshots(session.userId);
   const roomToOpen = pickMissionRoomToOpen(rooms);

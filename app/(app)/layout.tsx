@@ -27,9 +27,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   }
 
   const hasMessenger = !!(user.telegramId || user.baleId);
-  const completedSessions = await prisma.studySession.count({
-    where: { userId: user.id, endTime: { not: null }, durationMin: { gte: 15 } },
-  });
   const botAvailability = {
     telegram: !!process.env.TELEGRAM_BOT_USERNAME,
     bale: !!process.env.BALE_BOT_USERNAME,
@@ -37,27 +34,34 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const hasAvailableBot = botAvailability.telegram || botAvailability.bale;
   const setupHandled = hasOnboardingHint(user.onboardingHints, ONBOARDING_HINTS.PUSH_PROMPTED)
     && hasOnboardingHint(user.onboardingHints, ONBOARDING_HINTS.INSTALL_PROMPTED);
+
+  // بعد از روز اول: تا وقتی مأموریتی ندارد، هر روز یک‌بار دعوتش کن.
+  const shouldCheckMission = user.onboardingDay >= 1 && user.isLeadComplete && !wasMissionPromptHandledToday(user.missionPromptHandledAt);
+
+  const [completedSessions, currentMission, unreadCount] = await Promise.all([
+    prisma.studySession.count({
+      where: { userId: user.id, endTime: { not: null }, durationMin: { gte: 15 } },
+    }),
+    shouldCheckMission
+      ? prisma.userMission.findFirst({
+          where: {
+            userId: user.id,
+            status: { in: ["active", "pending"] },
+            expiresAt: { gt: new Date() },
+          },
+          select: { id: true },
+        })
+      : Promise.resolve(null),
+    getUnreadCount(user.id),
+  ]);
+
   const showBotConnect = setupHandled
     && hasAvailableBot
     && completedSessions > 0
     && !hasMessenger
     && !isMessengerPromptSnoozed(user.messengerPromptDismissedAt);
 
-  // بعد از روز اول: تا وقتی مأموریتی ندارد، هر روز یک‌بار دعوتش کن.
-  let showMissionPrompt = false;
-  if (user.onboardingDay >= 1 && user.isLeadComplete && !wasMissionPromptHandledToday(user.missionPromptHandledAt)) {
-    const currentMission = await prisma.userMission.findFirst({
-      where: {
-        userId: user.id,
-        status: { in: ["active", "pending"] },
-        expiresAt: { gt: new Date() },
-      },
-      select: { id: true },
-    });
-    showMissionPrompt = !currentMission;
-  }
-
-  const unreadCount = await getUnreadCount(user.id);
+  const showMissionPrompt = shouldCheckMission ? !currentMission : false;
   const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
 
   return (
