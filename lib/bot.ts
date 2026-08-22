@@ -13,25 +13,42 @@ const BASE: Record<Messenger, string> = {
   bale: "https://tapi.bale.ai",
 };
 
-function apiUrl(messenger: Messenger, method: string): string {
+function apiUrl(messenger: Messenger, method: string): string | null {
   const token =
     messenger === "telegram"
-      ? process.env.TELEGRAM_BOT_TOKEN!
-      : process.env.BALE_BOT_TOKEN!;
+      ? process.env.TELEGRAM_BOT_TOKEN
+      : process.env.BALE_BOT_TOKEN;
+  if (!token) return null;
   return `${BASE[messenger]}/bot${token}/${method}`;
 }
 
-async function callBot(messenger: Messenger, method: string, body: object): Promise<unknown> {
-  const res = await fetch(apiUrl(messenger, method), {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json() as { ok: boolean; description?: string };
-  if (!data.ok) {
-    console.error(`[bot/${messenger}] ${method} failed:`, data.description);
+export interface BotResponse {
+  ok: boolean;
+  description?: string;
+  result?: unknown;
+}
+
+async function callBot(messenger: Messenger, method: string, body: object): Promise<BotResponse> {
+  const url = apiUrl(messenger, method);
+  if (!url) {
+    return { ok: false, description: `توکن ربات ${messenger} تنظیم نشده است` };
   }
-  return data;
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json()) as BotResponse;
+    if (!data.ok) {
+      console.error(`[bot/${messenger}] ${method} failed:`, data.description);
+    }
+    return data;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[bot/${messenger}] ${method} network error:`, msg);
+    return { ok: false, description: msg };
+  }
 }
 
 /** ارسال متن ساده به یک چَت */
@@ -68,7 +85,9 @@ export async function deleteWebhook(messenger: Messenger): Promise<unknown> {
 
 /** اطلاعات ربات */
 export async function getMe(messenger: Messenger): Promise<unknown> {
-  const res = await fetch(apiUrl(messenger, "getMe"));
+  const url = apiUrl(messenger, "getMe");
+  if (!url) return { ok: false, description: `توکن ربات ${messenger} تنظیم نشده است` };
+  const res = await fetch(url);
   return res.json();
 }
 

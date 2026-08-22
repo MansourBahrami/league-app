@@ -80,12 +80,14 @@ const ENUM_OPS: Op[] = ["eq", "ne", "in"];
 
 import { tehranDayDiff } from "@/lib/date";
 
-function daysSince(d: Date | null): number {
+function daysSince(d: Date | string | null | undefined): number {
   if (!d) return 9999; // هرگز مطالعه نکرده = خیلی زیاد (ریزشی)
-  return Math.max(0, tehranDayDiff(new Date(), d));
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return 9999;
+  return Math.max(0, tehranDayDiff(new Date(), date));
 }
 
-function isToday(d: Date | null): boolean {
+function isToday(d: Date | string | null | undefined): boolean {
   return daysSince(d) === 0;
 }
 
@@ -98,7 +100,13 @@ export const FIELDS: FieldDef[] = [
   { key: "daysInactive", label: "روزهای بی‌فعالیتی", type: "number", ops: NUM_OPS, resolve: (u) => daysSince(u.lastStudyDate) },
   { key: "onboardingDay", label: "روز آنبوردینگ", type: "number", ops: NUM_OPS, resolve: (u) => u.onboardingDay },
   { key: "studiedToday", label: "امروز مطالعه کرده", type: "boolean", ops: BOOL_OPS, resolve: (u) => isToday(u.lastStudyDate) },
-  { key: "hasTarget", label: "هدف فردا تنظیم شده", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.nextStudyTarget != null },
+  {
+    key: "hasTarget",
+    label: "هدف فردا تنظیم شده",
+    type: "boolean",
+    ops: BOOL_OPS,
+    resolve: (u) => Boolean(u.nextStudyTarget && new Date(u.nextStudyTarget).getTime() > Date.now()),
+  },
   { key: "isLeadComplete", label: "پروفایل کامل", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.isLeadComplete },
   { key: "hasBale", label: "ربات بله را استارت کرده", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.baleId != null },
   { key: "hasPush", label: "اعلان مرورگر فعال دارد", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.hasPush },

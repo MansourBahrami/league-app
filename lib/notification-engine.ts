@@ -41,6 +41,7 @@ interface RuleRow {
   quietStart: number | null;
   quietEnd: number | null;
   maxPerDay: number | null;
+  lastRunAt?: Date | null;
 }
 
 // ستون‌هایی که برای enrich لازم است
@@ -162,11 +163,19 @@ async function sendToUser(
   const body = renderTemplate(rule.body, u, ctx);
   const sent: NotifChannel[] = [];
 
+  // تبدیل linkUrl نسبتی به نشانی کامل برای پیام‌رسان بله
+  const appUrl = (process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.gcamp.ir").replace(/\/$/, "");
+  const absoluteLink = rule.linkUrl
+    ? (rule.linkUrl.startsWith("http://") || rule.linkUrl.startsWith("https://")
+        ? rule.linkUrl
+        : `${appUrl}${rule.linkUrl.startsWith("/") ? "" : "/"}${rule.linkUrl}`)
+    : null;
+
   // بله
   if (rule.channels.includes("bale") && u.baleId) {
-    const text = `${title}\n\n${body}${rule.linkUrl ? `\n\n👉 ${rule.linkUrl}` : ""}`;
-    const ok = await sendMessage("bale", u.baleId, text).then(() => true).catch(() => false);
-    if (ok) sent.push("bale");
+    const text = `${title}\n\n${body}${absoluteLink ? `\n\n👉 ${absoluteLink}` : ""}`;
+    const res = (await sendMessage("bale", u.baleId, text).catch(() => null)) as { ok?: boolean } | null;
+    if (res?.ok) sent.push("bale");
   }
 
   // Web Push
@@ -225,7 +234,7 @@ function scheduledDue(cfg: ScheduledConfig, now: Date, windowMin: number): boole
   if (cfg.hour == null) return false;
   const targetMinOfDay = cfg.hour * 60 + (cfg.minute ?? 0);
   const currentMinOfDay = currentHour * 60 + currentMinute;
-  const diffMin = currentMinOfDay - targetMinOfDay;
+  const diffMin = (currentMinOfDay - targetMinOfDay + 1440) % 1440;
   // اگر زمان هدف در پنجره‌ی [now - windowMin, now] افتاده باشد
   return diffMin >= 0 && diffMin < windowMin;
 }
@@ -246,6 +255,10 @@ export async function runScheduledRules(windowMin = 15): Promise<{ rules: number
   for (const rule of rules) {
     if (rule.triggerType === "scheduled") {
       if (!scheduledDue((rule.triggerConfig ?? {}) as ScheduledConfig, now, windowMin)) continue;
+      // اگر این قانون اخیراً در همین پنجره اجرا شده باشد، از اجرای مجدد صرف‌نظر کن
+      if (rule.lastRunAt && now.getTime() - new Date(rule.lastRunAt).getTime() < windowMin * 60_000) {
+        continue;
+      }
       const raw = (await prisma.user.findMany({ select: USER_SELECT })) as RawUser[];
       const pushSet = await getPushUserSet(raw.map((u) => u.id));
       const users = raw.map((u) => toEnriched(u, pushSet));

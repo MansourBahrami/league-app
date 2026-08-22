@@ -16,9 +16,20 @@ function ensureConfigured(): boolean {
   const pub = process.env.VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
   if (!pub || !priv) return false;
-  webpush.setVapidDetails(process.env.VAPID_SUBJECT ?? "mailto:admin@example.com", pub, priv);
-  configured = true;
-  return true;
+
+  let subject = (process.env.VAPID_SUBJECT || "mailto:info@gcamp.ir").trim();
+  if (!subject.startsWith("mailto:") && !subject.startsWith("http://") && !subject.startsWith("https://")) {
+    subject = subject.includes("@") ? `mailto:${subject}` : `https://${subject}`;
+  }
+
+  try {
+    webpush.setVapidDetails(subject, pub, priv);
+    configured = true;
+    return true;
+  } catch (err) {
+    console.error("[push] Failed to configure VAPID details:", err);
+    return false;
+  }
 }
 
 export interface PushPayload {
