@@ -30,7 +30,7 @@ ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
-ENV NODE_OPTIONS="--max-old-space-size=1024"
+ENV NODE_OPTIONS="--max-old-space-size=768"
 # Source Map فعلاً اختیاری و غیرفعال است؛ build نباید به توکن Sentry وابسته باشد.
 RUN npm run build
 
