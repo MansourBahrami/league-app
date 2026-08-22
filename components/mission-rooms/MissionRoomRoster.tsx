@@ -16,12 +16,20 @@ function formatMinutes(minutes: number): string {
 
 export default function MissionRoomRoster({ initialRoom }: { initialRoom: MissionRoomSnapshot }) {
   const [room, setRoom] = useState(initialRoom);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
-    const response = await fetch(`/api/mission-rooms/${initialRoom.id}`, { cache: "no-store" }).catch(() => null);
-    if (!response?.ok) return;
-    const next = await response.json().catch(() => null) as MissionRoomSnapshot | null;
-    if (next?.id) setRoom(next);
+    setIsRefreshing(true);
+    try {
+      const response = await fetch(`/api/mission-rooms/${initialRoom.id}`, { cache: "no-store" });
+      if (!response.ok) return;
+      const next = (await response.json()) as MissionRoomSnapshot;
+      if (next?.id) setRoom(next);
+    } catch {
+      // Background refresh errors are non-fatal
+    } finally {
+      setIsRefreshing(false);
+    }
   }, [initialRoom.id]);
 
   useEffect(() => {
@@ -32,19 +40,26 @@ export default function MissionRoomRoster({ initialRoom }: { initialRoom: Missio
     };
 
     const poll = window.setInterval(() => void refresh(), 45_000);
-    const onVisible = () => { if (document.visibilityState === "visible") void refresh(); };
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
     document.addEventListener("visibilitychange", onVisible);
 
+    const memberIds = new Set(room.members.map((member) => member.userId));
     const events = new EventSource("/api/feed/stream");
     events.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as { type?: string; metadata?: { roomId?: string } };
-        // فقط در صورت رویدادهای تشویق همین اتاق یا تکمیل/شروع مطالعه رفرش کن
-        if (
-          (data.type === "room_cheer" && data.metadata?.roomId === initialRoom.id) ||
-          data.type === "session_complete" ||
-          data.type === "timer_start"
-        ) {
+        const data = JSON.parse(event.data) as {
+          type?: string;
+          userId?: string;
+          metadata?: { roomId?: string };
+        };
+        const isCheerForThisRoom = data.type === "room_cheer" && data.metadata?.roomId === initialRoom.id;
+        const isMemberStudyEvent =
+          (data.type === "session_complete" || data.type === "timer_start") &&
+          (data.userId ? memberIds.has(data.userId) : false);
+
+        if (isCheerForThisRoom || isMemberStudyEvent) {
           debouncedRefresh();
         }
       } catch {}
@@ -56,7 +71,7 @@ export default function MissionRoomRoster({ initialRoom }: { initialRoom: Missio
       document.removeEventListener("visibilitychange", onVisible);
       events.close();
     };
-  }, [refresh, initialRoom.id]);
+  }, [refresh, initialRoom.id, room.members]);
 
   return (
     <section className="space-y-2.5" aria-labelledby="room-members-title" aria-live="polite">
@@ -65,7 +80,10 @@ export default function MissionRoomRoster({ initialRoom }: { initialRoom: Missio
           <span className="material-symbols-outlined text-[19px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>groups</span>
           اعضای کمپ
         </h2>
-        <span className="text-[11px] text-on-surface-variant">به‌روزرسانی زنده</span>
+        <div className="flex items-center gap-1.5">
+          {isRefreshing && <span className="h-2 w-2 animate-ping rounded-full bg-secondary" />}
+          <span className="text-[11px] text-on-surface-variant">به‌روزرسانی زنده</span>
+        </div>
       </div>
 
       {room.members.map((member) => (

@@ -13,8 +13,15 @@ import { runScheduledRules } from "@/lib/notification-engine";
  * این تابع جایگزین چک lazy صفحه /missions است و باید توسط cron فراخوانی شود.
  */
 export async function expireAndProcessMissions(): Promise<{ usersProcessed: number }> {
+  const now = new Date();
+  // ۱) فعال‌سازی دسته‌ای تمام ماموریت‌های pending که زمانشان رسیده در یک کوئری
+  await prisma.userMission.updateMany({
+    where: { status: "pending", activatesAt: { lte: now } },
+    data: { status: "active" },
+  });
+
   const rows = await prisma.userMission.findMany({
-    where: { status: { in: ["pending", "active"] } },
+    where: { status: "active" },
     select: { userId: true },
     distinct: ["userId"],
   });

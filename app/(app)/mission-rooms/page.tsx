@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db";
 import { getQuickActiveMissionRoomId } from "@/lib/mission-room";
 import { formatJalaliLong, getNextTehranMissionWeek } from "@/lib/date";
 import { suggestMissions } from "@/lib/gamification";
-import { ensureDefaultMissions } from "@/lib/mission";
 import MissionRoomChooser, { type MissionChoice } from "@/components/mission-rooms/MissionRoomChooser";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 
@@ -25,14 +24,13 @@ export default async function MissionRoomsPage() {
   const activeRoomId = await getQuickActiveMissionRoomId(session.userId, now);
   if (activeRoomId) redirect(`/mission-rooms/${activeRoomId}`);
 
-  await ensureDefaultMissions();
-
-  const [user, allDaily, sessions] = await Promise.all([
+  const [user, allDaily, allWeekly, sessions] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       select: { coins: true, onboardingDay: true },
     }),
     prisma.mission.findMany({ where: { kind: "daily", isActive: true }, orderBy: { targetHours: "asc" } }),
+    prisma.mission.findMany({ where: { kind: "weekly", isActive: true }, orderBy: { targetHours: "asc" } }),
     prisma.studySession.aggregate({
       where: { userId: session.userId, startTime: { gte: new Date(now.getTime() - 7 * 86400000) } },
       _sum: { durationMin: true },
@@ -43,13 +41,8 @@ export default async function MissionRoomsPage() {
   const avgHours = ((sessions._sum.durationMin ?? 0) / 60) / 7;
   const dailyRecommended = selectClosest(allDaily, Math.max(3, avgHours), 3);
   const suggestedTargets = suggestMissions(avgHours).map((mission) => mission.targetHours);
-  const weeklyMissions = await prisma.mission.findMany({
-    where: { kind: "weekly", isActive: true, targetHours: { in: suggestedTargets } },
-    orderBy: { targetHours: "asc" },
-  });
-  const weeklyChoices = weeklyMissions.length > 0
-    ? weeklyMissions
-    : await prisma.mission.findMany({ where: { kind: "weekly", isActive: true }, orderBy: { targetHours: "asc" }, take: 3 });
+  const matchedWeekly = allWeekly.filter((mission) => suggestedTargets.includes(mission.targetHours));
+  const weeklyChoices = matchedWeekly.length > 0 ? matchedWeekly : allWeekly.slice(0, 3);
 
   const toChoice = (mission: typeof allDaily[number], recommendedTarget: number): MissionChoice => ({
     id: mission.id,

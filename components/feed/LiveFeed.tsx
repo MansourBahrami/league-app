@@ -56,6 +56,7 @@ interface Props {
   initialMine: MineMap;
   allowedUserIds?: string[];
   emptyLabel?: string;
+  onActivity?: (activity: Activity) => void;
 }
 
 export default function LiveFeed({
@@ -65,6 +66,7 @@ export default function LiveFeed({
   initialMine,
   allowedUserIds,
   emptyLabel = "هنوز فعالیتی ثبت نشده. اول شروع کن!",
+  onActivity,
 }: Props) {
   const router = useRouter();
   const [activities, setActivities] = useState<Activity[]>(initialActivities);
@@ -82,10 +84,11 @@ export default function LiveFeed({
         const metadata = (activity.metadata ?? {}) as Record<string, unknown>;
         if (activity.type === "session_complete" && Number(metadata.durationMin ?? 0) <= 0) return;
         setActivities((prev) => [activity, ...prev].slice(0, 200));
+        onActivity?.(activity);
       } catch {}
     };
     return () => es.close();
-  }, [allowedUserIds]);
+  }, [allowedUserIds, onActivity]);
 
   useEffect(() => {
     if (!toast) return;

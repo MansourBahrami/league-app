@@ -1,5 +1,4 @@
 import { prisma } from "@/lib/db";
-import { getActiveFocusSnapshot } from "@/lib/focus";
 
 export interface MissionRoomMemberSnapshot {
   userId: string;
@@ -126,7 +125,10 @@ export async function getMissionRoomSnapshot(
   if (!room) return null;
 
   const userIds = room.members.map((member) => member.userId);
-  const [studiedRows, active] = await Promise.all([
+  const nowMs = now.getTime();
+  const minActiveStartTime = new Date(Math.max(room.startsAt.getTime(), nowMs - 24 * 60 * 60 * 1000));
+
+  const [studiedRows, openSessions] = await Promise.all([
     prisma.studySession.groupBy({
       by: ["userId"],
       where: {
@@ -136,20 +138,41 @@ export async function getMissionRoomSnapshot(
       },
       _sum: { durationMin: true },
     }),
-    getActiveFocusSnapshot(now),
+    prisma.studySession.findMany({
+      where: {
+        userId: { in: userIds },
+        endTime: null,
+        pausedAt: null,
+        startTime: { gte: minActiveStartTime },
+      },
+      orderBy: { startTime: "asc" },
+      select: {
+        userId: true,
+        startTime: true,
+        plannedMin: true,
+        pausedSec: true,
+      },
+    }),
   ]);
 
+  const activeUsers = new Map<string, { startedAt: string; plannedMin: number; pausedSec: number }>();
+  for (const session of openSessions) {
+    const plannedMin = session.plannedMin > 0 ? session.plannedMin : 120;
+    const finishesAt = session.startTime.getTime() + plannedMin * 60 * 1000 + session.pausedSec * 1000;
+    if (finishesAt <= nowMs || activeUsers.has(session.userId)) continue;
+    activeUsers.set(session.userId, {
+      startedAt: session.startTime.toISOString(),
+      plannedMin,
+      pausedSec: session.pausedSec,
+    });
+  }
+
   const studiedMap = new Map(studiedRows.map((row) => [row.userId, row._sum.durationMin ?? 0]));
-  const activeMap = new Map(
-    active.users
-      .filter((user) => userIds.includes(user.userId) && Date.parse(user.startedAt) >= room.startsAt.getTime())
-      .map((user) => [user.userId, user])
-  );
   const goalMin = room.targetHours * 60;
 
   const ranked = room.members
     .map((member) => {
-      const activeSession = activeMap.get(member.userId);
+      const activeSession = activeUsers.get(member.userId);
       const studiedMin = (studiedMap.get(member.userId) ?? 0) + (activeSession
         ? activeElapsedMinutes(activeSession.startedAt, activeSession.pausedSec, activeSession.plannedMin, now)
         : 0);
@@ -189,22 +212,14 @@ export async function getMissionRoomSnapshot(
   };
 }
 
-export async function getQuickActiveMissionRoomId(userId: string, now = new Date()): Promise<string | null> {
-  await ensureUserMissionRooms(userId, now);
-  const memberships = await prisma.missionRoomMember.findMany({
-    where: {
-      userId,
-      room: { endsAt: { gt: now } },
-      userMission: { status: { in: ["pending", "active", "completed"] } },
-    },
-    select: {
-      roomId: true,
-      room: { select: { id: true, kind: true, startsAt: true, endsAt: true } },
-      userMission: { select: { status: true } },
-    },
-  });
-  if (memberships.length === 0) return null;
-
+function pickBestRoomId(
+  memberships: Array<{
+    roomId: string;
+    room: { id: string; kind: string; startsAt: Date; endsAt: Date };
+    userMission: { status: string };
+  }>,
+  now: Date
+): string | null {
   const sorted = memberships.sort((a, b) => {
     const aStatus = now < a.room.startsAt ? "pending" : now >= a.room.endsAt ? "ended" : "active";
     const bStatus = now < b.room.startsAt ? "pending" : now >= b.room.endsAt ? "ended" : "active";
@@ -217,6 +232,38 @@ export async function getQuickActiveMissionRoomId(userId: string, now = new Date
   });
 
   return sorted[0]?.roomId ?? null;
+}
+
+export async function getQuickActiveMissionRoomId(userId: string, now = new Date()): Promise<string | null> {
+  const memberships = await prisma.missionRoomMember.findMany({
+    where: {
+      userId,
+      room: { endsAt: { gt: now } },
+      userMission: { status: { in: ["pending", "active", "completed"] } },
+    },
+    select: {
+      roomId: true,
+      room: { select: { id: true, kind: true, startsAt: true, endsAt: true } },
+      userMission: { select: { status: true } },
+    },
+  });
+  if (memberships.length > 0) return pickBestRoomId(memberships, now);
+
+  await ensureUserMissionRooms(userId, now);
+  const fallbackMemberships = await prisma.missionRoomMember.findMany({
+    where: {
+      userId,
+      room: { endsAt: { gt: now } },
+      userMission: { status: { in: ["pending", "active", "completed"] } },
+    },
+    select: {
+      roomId: true,
+      room: { select: { id: true, kind: true, startsAt: true, endsAt: true } },
+      userMission: { select: { status: true } },
+    },
+  });
+  if (fallbackMemberships.length === 0) return null;
+  return pickBestRoomId(fallbackMemberships, now);
 }
 
 export async function getCurrentMissionRoomSnapshots(userId: string): Promise<MissionRoomSnapshot[]> {
