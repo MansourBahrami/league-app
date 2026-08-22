@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Messenger = "telegram" | "bale";
 
@@ -9,9 +10,56 @@ interface Props {
   available: { telegram: boolean; bale: boolean };
 }
 
-export default function MessengerConnections({ connected, available }: Props) {
+export default function MessengerConnections({ connected: initialConnected, available }: Props) {
+  const router = useRouter();
+  const [connected, setConnected] = useState(initialConnected);
   const [loading, setLoading] = useState<Messenger | null>(null);
   const [error, setError] = useState("");
+
+  const checkConnectionStatus = useCallback(async () => {
+    const res = await fetch("/api/profile/bot-link", { cache: "no-store" }).catch(() => null);
+    if (!res?.ok) return;
+    const data = (await res.json()) as { telegram?: boolean; bale?: boolean };
+    setConnected({
+      telegram: Boolean(data.telegram),
+      bale: Boolean(data.bale),
+    });
+    if (data.telegram || data.bale) {
+      setLoading(null);
+      router.refresh();
+    }
+  }, [router]);
+
+  // وقتی کاربر از ربات به مرورگر برمی‌گردد
+  useEffect(() => {
+    const onReturn = () => {
+      void checkConnectionStatus();
+      // بازگرداندن دکمه از حالت درحال اتصال به حالت عادی اگر کاربر برگشته
+      window.setTimeout(() => {
+        setLoading(null);
+      }, 1500);
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") onReturn();
+    };
+
+    window.addEventListener("focus", onReturn);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onReturn);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [checkConnectionStatus]);
+
+  // پولینگ کوتاه‌مدت هنگام انتظار اتصال
+  useEffect(() => {
+    if (!loading) return;
+    const timer = window.setInterval(() => {
+      void checkConnectionStatus();
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [loading, checkConnectionStatus]);
 
   async function connect(messenger: Messenger) {
     setLoading(messenger);
@@ -21,7 +69,7 @@ export default function MessengerConnections({ connected, available }: Props) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messenger }),
     }).catch(() => null);
-    const data = await res?.json().catch(() => ({})) as { url?: string; error?: string } | undefined;
+    const data = (await res?.json().catch(() => ({}))) as { url?: string; error?: string } | undefined;
     if (!res?.ok || !data?.url) {
       setError(data?.error ?? "ساخت لینک اتصال انجام نشد.");
       setLoading(null);

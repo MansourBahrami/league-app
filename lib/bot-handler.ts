@@ -9,7 +9,7 @@
  */
 
 import { linkMessengerIdentity } from "@/lib/bot-link";
-import { sendMessage } from "@/lib/bot";
+import { sendMessage, sendMessageWithButtons } from "@/lib/bot";
 
 export type Messenger = "telegram" | "bale";
 
@@ -44,8 +44,12 @@ export async function handleBotUpdate(messenger: Messenger, update: TgUpdate): P
   }
 
   // سایر پیام‌ها
-  await sendMessage(messenger, chatId,
-    "برای اتصال ربات، داخل اپ G-camp و از بخش اتصال پیام‌رسان اقدام کن."
+  const appUrl = (process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.gcamp.ir").replace(/\/$/, "");
+  await sendMessageWithButtons(
+    messenger,
+    chatId,
+    "برای اتصال ربات و دریافت اعلان‌ها، از داخل اپ G-camp اقدام کن.",
+    [[{ text: "🚀 بازگشت به G-camp", url: `${appUrl}/dashboard` }]]
   );
 }
 
@@ -55,18 +59,41 @@ async function handleStart(
   messengerId: string,
   text: string
 ): Promise<void> {
+  const appUrl = (process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.gcamp.ir").replace(/\/$/, "");
+  const dashboardUrl = `${appUrl}/dashboard`;
+
   const token = text.trim().split(/\s+/)[1];
   if (!token) {
-    await sendMessage(messenger, chatId, "برای اتصال امن، اول وارد اپ G-camp شو و روی «اتصال به ربات» بزن.");
+    await sendMessageWithButtons(
+      messenger,
+      chatId,
+      "برای اتصال امن حساب، لطفاً ابتدا وارد اپلیکیشن G-camp شو و روی «اتصال به ربات» بزن.",
+      [[{ text: "🚀 ورود به G-camp", url: dashboardUrl }]]
+    );
     return;
   }
 
   const result = await linkMessengerIdentity(messenger, messengerId, token);
   if (result === "linked") {
-    await sendMessage(messenger, chatId, "✅ حساب با موفقیت به G-camp متصل شد. از این به بعد یادآوری‌ها و خبرهای مهم را همین‌جا می‌فرستیم.");
+    const successMsg =
+      `✅ <b>حساب با موفقیت به G-camp متصل شد!</b>\n\n` +
+      `از این پس یادآوری‌های زمان مطالعه، وضعیت زنجیره و اخبار رقابت‌ها را همین‌جا برات می‌فرستیم.\n\n` +
+      `👇 برای ادامه، روی دکمه زیر بزن و به اپلیکیشن برگرد:`;
+    await sendMessageWithButtons(messenger, chatId, successMsg, [
+      [{ text: "🚀 بازگشت به اپلیکیشن", url: dashboardUrl }],
+    ]);
   } else if (result === "conflict") {
-    await sendMessage(messenger, chatId, "این حساب پیام‌رسان قبلاً به یک حساب دیگر متصل شده است.");
+    await sendMessage(
+      messenger,
+      chatId,
+      "⚠️ این حساب پیام‌رسان قبلاً به یک حساب کاربری دیگر در G-camp متصل شده است."
+    );
   } else {
-    await sendMessage(messenger, chatId, "این لینک اتصال نامعتبر یا منقضی شده. از داخل اپ یک لینک تازه بگیر.");
+    const expiredMsg =
+      `❌ این لینک اتصال نامعتبر یا منقضی شده است.\n` +
+      `لطفاً از داخل اپلیکیشن G-camp یک لینک تازه دریافت کن:`;
+    await sendMessageWithButtons(messenger, chatId, expiredMsg, [
+      [{ text: "ورود به G-camp", url: dashboardUrl }],
+    ]);
   }
 }

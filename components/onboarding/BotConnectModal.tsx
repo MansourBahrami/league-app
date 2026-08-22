@@ -23,9 +23,13 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
 
   const refreshStatus = useCallback(async () => {
     const res = await fetch("/api/profile/bot-link", { cache: "no-store" }).catch(() => null);
-    if (!res?.ok) return;
-    const data = await res.json() as { telegram?: boolean; bale?: boolean };
-    if (data.telegram || data.bale) onComplete();
+    if (!res?.ok) return false;
+    const data = (await res.json()) as { telegram?: boolean; bale?: boolean };
+    if (data.telegram || data.bale) {
+      onComplete();
+      return true;
+    }
+    return false;
   }, [onComplete]);
 
   useEffect(() => {
@@ -34,12 +38,34 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
     return () => previousFocus?.focus();
   }, []);
 
+  // بررسی وضعیت با تغییر فوکوس یا برگشت کاربر به مرورگر
   useEffect(() => {
-    const onVisible = () => {
-      if (document.visibilityState === "visible") void refreshStatus();
+    const onReturn = () => {
+      void refreshStatus();
+      // در صورت بازگشت کاربر، اگر هنوز متصل نشده بود وضعیت loading را ریست کن تا دکمه قفل نماند
+      window.setTimeout(() => {
+        setLoading((curr) => (curr === "dismiss" ? curr : null));
+      }, 1500);
     };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") onReturn();
+    };
+
+    window.addEventListener("focus", onReturn);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onReturn);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [refreshStatus]);
+
+  // پولینگ دوره‌ای تا زمان اتصال (هر ۲ ثانیه)
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      void refreshStatus();
+    }, 2000);
+    return () => window.clearInterval(interval);
   }, [refreshStatus]);
 
   async function connect(messenger: Messenger) {
@@ -50,7 +76,7 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messenger }),
     }).catch(() => null);
-    const data = await res?.json().catch(() => ({})) as { url?: string; error?: string } | undefined;
+    const data = (await res?.json().catch(() => ({}))) as { url?: string; error?: string } | undefined;
     if (!res?.ok || !data?.url) {
       setError(data?.error ?? "ساخت لینک اتصال انجام نشد؛ دوباره تلاش کن.");
       setLoading(null);
