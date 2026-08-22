@@ -28,9 +28,40 @@ const materialSymbols = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "اپ G-camp",
-  description: "درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن",
+  title: "G-camp | تنهایی درس نخون!",
+  description: "وقتی بقیه هم دارن میخونن، ادامه دادن آسون‌تره.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
+  openGraph: {
+    title: "G-camp | تنهایی درس نخون!",
+    description: "وقتی بقیه هم دارن میخونن، ادامه دادن آسون‌تره.",
+    url: "https://app.gcamp.ir",
+    siteName: "G-camp",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "G-camp",
+      },
+    ],
+    locale: "fa_IR",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "G-camp | تنهایی درس نخون!",
+    description: "وقتی بقیه هم دارن میخونن، ادامه دادن آسون‌تره.",
+    images: ["/og-image.png"],
+  },
 };
 
 export const viewport: Viewport = {

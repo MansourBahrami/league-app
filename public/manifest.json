@@ -1,7 +1,7 @@
 {
-  "name": "اپ G-camp",
+  "name": "G-camp | تنهایی درس نخون!",
   "short_name": "G-camp",
-  "description": "درس بخون، امتیاز بگیر و خودتو با رقبات مقایسه کن",
+  "description": "وقتی بقیه هم دارن میخونن، ادامه دادن آسون‌تره.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#fef9ef",
