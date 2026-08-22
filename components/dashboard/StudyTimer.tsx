@@ -8,6 +8,12 @@ import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnb
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { restoreStudyTimerSession, type StoredStudyTimerSession } from "@/lib/study-timer-storage";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
+import {
+  getRandomMotivationalQuote,
+  requestStudyNotificationPermission,
+  showOrUpdateStudyNotification,
+  closeStudyNotification,
+} from "@/lib/timer-notification";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
@@ -211,6 +217,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   const lastTickRef = useRef<number>(0);
   const timerCardRef = useRef<HTMLElement | null>(null);
   const startButtonRef = useRef<HTMLButtonElement | null>(null);
+  const quoteRef = useRef<string>(getRandomMotivationalQuote());
   const storageKey = `study_session:${userId}`;
 
   const totalSeconds = selectedMinutes * 60;
@@ -258,6 +265,17 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     const newSecondsLeft = Math.max(0, totalSeconds - newElapsed);
     setSecondsLeft(newSecondsLeft);
 
+    // به‌روزرسانی خاموش نوتیفیکیشن هر ۶۰ ثانیه یک‌بار
+    if (newSecondsLeft > 0 && newSecondsLeft % 60 === 0) {
+      void showOrUpdateStudyNotification({
+        secondsLeft: newSecondsLeft,
+        totalSeconds,
+        state: "running",
+        quote: quoteRef.current,
+        isInitial: false,
+      });
+    }
+
     if (sessionId && now - lastTickRef.current >= TICK_INTERVAL * 1000) {
       lastTickRef.current = now;
       const response = await fetch("/api/study/tick", {
@@ -271,6 +289,13 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     if (newSecondsLeft <= 0) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       setTimerState("done");
+      void showOrUpdateStudyNotification({
+        secondsLeft: 0,
+        totalSeconds,
+        state: "done",
+        quote: quoteRef.current,
+        isInitial: true,
+      });
       if (sessionId) await endSession(sessionId);
     }
   }, [endSession, totalSeconds, sessionId]);
@@ -281,6 +306,24 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
   }, [timerState, tick]);
+
+  // هنگام تغییر دید صفحه (مثلاً رفتن به نوتیفیکیشن‌بار یا بستن موقت اپ)، اعلان فوراً همگام شود
+  useEffect(() => {
+    if (timerState !== "running") return;
+    const handleVisibility = () => {
+      if (document.hidden) {
+        void showOrUpdateStudyNotification({
+          secondsLeft,
+          totalSeconds,
+          state: "running",
+          quote: quoteRef.current,
+          isInitial: false,
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, [timerState, secondsLeft, totalSeconds]);
 
   useEffect(() => {
     const restore = window.setTimeout(() => {
@@ -302,6 +345,16 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       startTimeRef.current = restoredSession.startTime;
       lastTickRef.current = restoredSession.startTime;
       setRestored(true);
+
+      if (restoredSession.state === "running" || restoredSession.state === "paused") {
+        void showOrUpdateStudyNotification({
+          secondsLeft: restoredSession.secondsLeft,
+          totalSeconds: restoredSession.totalSecs,
+          state: restoredSession.state,
+          quote: quoteRef.current,
+          isInitial: false,
+        });
+      }
     }, 0);
 
     return () => window.clearTimeout(restore);
@@ -327,6 +380,9 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       const data = await response.json();
       const id = data.sessionId as string;
       const now = Date.now();
+      const newQuote = getRandomMotivationalQuote();
+      quoteRef.current = newQuote;
+
       setSessionId(id);
       startTimeRef.current = now;
       lastTickRef.current = now;
@@ -341,6 +397,18 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       setTimerState("running");
       void markHints(ONBOARDING_HINTS.TIMER_STARTED);
       window.dispatchEvent(new Event("focus-session-changed"));
+
+      void requestStudyNotificationPermission().then((granted) => {
+        if (granted) {
+          void showOrUpdateStudyNotification({
+            secondsLeft: totalSeconds,
+            totalSeconds,
+            state: "running",
+            quote: newQuote,
+            isInitial: true,
+          });
+        }
+      });
       return;
     }
 
@@ -376,6 +444,14 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       };
       localStorage.setItem(storageKey, JSON.stringify(storedSession));
       window.dispatchEvent(new Event("focus-session-changed"));
+
+      void showOrUpdateStudyNotification({
+        secondsLeft: pausedSecondsLeft,
+        totalSeconds,
+        state: "paused",
+        quote: quoteRef.current,
+        isInitial: false,
+      });
       return;
     }
 
@@ -407,17 +483,27 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       localStorage.setItem(storageKey, JSON.stringify(storedSession));
       setTimerState("running");
       window.dispatchEvent(new Event("focus-session-changed"));
+
+      void showOrUpdateStudyNotification({
+        secondsLeft,
+        totalSeconds,
+        state: "running",
+        quote: quoteRef.current,
+        isInitial: false,
+      });
       return;
     }
 
     setTimerState("idle");
     setSecondsLeft(selectedMinutes * 60);
     setSessionId(null);
+    void closeStudyNotification();
     window.dispatchEvent(new Event("focus-session-changed"));
   }
 
   async function handleStop() {
     if (intervalRef.current) clearInterval(intervalRef.current);
+    void closeStudyNotification();
     if (sessionId) await endSession(sessionId);
     setTimerState("idle");
     setSecondsLeft(selectedMinutes * 60);
