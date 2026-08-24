@@ -72,6 +72,38 @@ export const viewport: Viewport = {
   themeColor: "#1f3056",
 };
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebApplication",
+      "@id": "https://gcamp.ir/#webapp",
+      "name": "G-camp | جی‌کمپ",
+      "url": "https://gcamp.ir",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "All",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "IRR",
+      },
+      "description": "کمپ مطالعه برای دانش‌آموزها و کنکوری‌ها؛ تایمر را روشن کن، کنار هم‌هدف‌هایت درس بخوان و تنهایی ادامه نده.",
+      "inLanguage": "fa-IR",
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://gcamp.ir/#organization",
+      "name": "G-camp",
+      "url": "https://gcamp.ir",
+      "logo": "https://gcamp.ir/icon-512.png",
+      "sameAs": [
+        "https://t.me/gcamp_ir",
+        "https://ble.ir/gcamp_bot",
+      ],
+    },
+  ],
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -86,6 +118,12 @@ export default function RootLayout({
       data-theme={process.env.NEXT_PUBLIC_THEME ?? "brand"}
       className={`${vazirmatn.variable} ${pinar.variable} ${materialSymbols.variable}`}
     >
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body className="min-h-screen bg-background text-on-surface font-sans antialiased">
         <PerformanceMetrics />
         {children}

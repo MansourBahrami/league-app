@@ -4,8 +4,14 @@ import { verifyToken, signToken, shouldRefreshToken, setSessionCookie, COOKIE_NA
 import { isCrossSiteMutation } from "@/lib/request-security";
 
 const PUBLIC_PATHS = [
+  "/",
   "/login",
   "/sw.js",
+  "/sitemap.xml",
+  "/robots.txt",
+  "/blog",
+  "/rules",
+  "/about",
   "/api/auth/send-otp",
   "/api/auth/verify-otp",
   "/api/cron/",
@@ -14,7 +20,9 @@ const PUBLIC_PATHS = [
 ];
 
 function isPublicPath(pathname: string): boolean {
+  if (pathname === "/") return true;
   if (pathname === "/login" || pathname.startsWith("/login/")) return true;
+  if (pathname === "/blog" || pathname.startsWith("/blog/")) return true;
   return PUBLIC_PATHS.some((path) =>
     path.endsWith("/") ? pathname.startsWith(path) : pathname === path
   );
