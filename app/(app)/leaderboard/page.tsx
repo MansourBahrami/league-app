@@ -5,7 +5,7 @@ import Link from "next/link";
 import Podium from "@/components/leaderboard/Podium";
 import LeaderboardList from "@/components/leaderboard/LeaderboardList";
 import InviteFriends from "@/components/social/InviteFriends";
-import { ensureReferralCode, getFriendIds } from "@/lib/referral";
+import { getFriendIds } from "@/lib/referral";
 import ContextualSpotlight from "@/components/onboarding/ContextualSpotlight";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { tehranDayStartDaysAgo } from "@/lib/date";
@@ -72,44 +72,43 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
   const myLevel = me.level;
   const sevenDaysAgo = tehranDayStartDaysAgo(7);
-  const referralCode = await ensureReferralCode(session.userId);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
-  // باکس تورنومنت فقط وقتی نمایش داده می‌شود که تورنومنت فعالی (در حال اجرا یا پیشِ‌رو) وجود داشته باشد
-  const hasTournament = (await prisma.tournament.count({
-    where: { isActive: true, endAt: { gte: new Date() } },
-  })) > 0;
+  const [hasTournament, poolIds] = await Promise.all([
+    prisma.tournament.findFirst({
+      where: { isActive: true, endAt: { gte: new Date() } },
+      select: { id: true },
+    }).then(Boolean),
+    (async () => {
+      if (isFriends) {
+        const friendIds = await getFriendIds(session.userId);
+        return [session.userId, ...friendIds];
+      }
 
-  // تعیین مجموعه‌ی رقبا بر اساس تب
-  let poolIds: string[];
+      const sameLevel = await prisma.user.findMany({ where: { level: myLevel }, select: { id: true } });
+      // cold start: اگر هم‌سطح‌ها کم بودند، با همه رقابت کن (لیگ آزاد)
+      if (sameLevel.length < MIN_LEAGUE_SIZE) {
+        const all = await prisma.user.findMany({ select: { id: true } });
+        return all.map((user) => user.id);
+      }
+      return sameLevel.map((user) => user.id);
+    })(),
+  ]);
 
-  if (isFriends) {
-    const friendIds = await getFriendIds(session.userId);
-    poolIds = [session.userId, ...friendIds];
-  } else {
-    const sameLevel = await prisma.user.findMany({ where: { level: myLevel }, select: { id: true } });
-    // cold start: اگر هم‌سطح‌ها کم بودند، با همه رقابت کن (لیگ آزاد)
-    if (sameLevel.length < MIN_LEAGUE_SIZE) {
-      const all = await prisma.user.findMany({ select: { id: true } });
-      poolIds = all.map((u) => u.id);
-    } else {
-      poolIds = sameLevel.map((u) => u.id);
-    }
-  }
-
-  const users = await prisma.user.findMany({
-    where: { id: { in: poolIds } },
-    select: { id: true, name: true, avatarUrl: true, level: true },
-  });
+  const [users, weekly] = await Promise.all([
+    prisma.user.findMany({
+      where: { id: { in: poolIds } },
+      select: { id: true, name: true, avatarUrl: true, level: true },
+    }),
+    prisma.studySession.groupBy({
+      by: ["userId"],
+      where: { userId: { in: poolIds }, startTime: { gte: sevenDaysAgo } },
+      _sum: { xpEarned: true, durationMin: true },
+      orderBy: { _sum: { xpEarned: "desc" } },
+      take: 50,
+    }),
+  ]);
   const userMap = new Map(users.map((u) => [u.id, u]));
-
-  const weekly = await prisma.studySession.groupBy({
-    by: ["userId"],
-    where: { userId: { in: poolIds }, startTime: { gte: sevenDaysAgo } },
-    _sum: { xpEarned: true, durationMin: true },
-    orderBy: { _sum: { xpEarned: "desc" } },
-    take: 50,
-  });
 
   const leaderboard = buildLeaderboard(weekly, userMap, session.userId, myLevel);
   const top3 = leaderboard.slice(0, 3);
@@ -182,13 +181,13 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
               <span className="material-symbols-outlined text-[48px] text-outline-variant mb-2 block">diversity_3</span>
               <p>هنوز دوستی اضافه نکردی. دعوتشون کن تا رقابت شروع شه!</p>
             </div>
-            <InviteFriends referralCode={referralCode} appUrl={appUrl} />
+            <InviteFriends appUrl={appUrl} />
           </>
         ) : (
           <>
             {top3.length > 0 && <Podium top3={top3} />}
             <LeaderboardList entries={rest} />
-            {isFriends && <InviteFriends referralCode={referralCode} appUrl={appUrl} />}
+            {isFriends && <InviteFriends appUrl={appUrl} />}
           </>
         )}
       </div>

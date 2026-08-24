@@ -122,7 +122,13 @@ export async function POST(req: NextRequest) {
   } else {
     // بررسی ماموریت روزانه فعال یا تکمیل‌شده امروز
     const activeDaily = await prisma.userMission.findFirst({
-      where: { userId: session.userId, status: { in: ["active", "completed"] }, mission: { kind: "daily" } },
+      where: {
+        userId: session.userId,
+        status: { in: ["active", "completed"] },
+        mission: { kind: "daily" },
+        activatesAt: { lte: endTime },
+        expiresAt: { gt: endTime },
+      },
       include: { mission: true },
       orderBy: { activatesAt: "desc" },
     });

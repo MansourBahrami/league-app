@@ -27,17 +27,21 @@ export interface WeeklyMissionState {
   expiresAt: Date;
 }
 
-export async function getWeeklyMissionState(userId: string): Promise<WeeklyMissionState | null> {
+export async function getWeeklyMissionState(userId: string, now = new Date()): Promise<WeeklyMissionState | null> {
   // ماموریت فعال یا در انتظارِ فعال‌سازی (تازه‌خریده‌شده، از فردا)
   const um = await prisma.userMission.findFirst({
-    where: { userId, status: { in: ["active", "pending"] }, mission: { kind: "weekly" } },
+    where: {
+      userId,
+      status: { in: ["active", "pending"] },
+      expiresAt: { gt: now },
+      mission: { kind: "weekly" },
+    },
     include: { mission: true },
     orderBy: { activatesAt: "desc" },
   });
   if (!um) return null;
 
   const weeklyGoalMin = um.mission.targetHours * 60;
-  const now = new Date();
 
   // حالت pending: هنوز شروع نشده — پیش‌نمایش هدف روزانه/هفتگی بدون پیشرفت
   if (um.status === "pending") {

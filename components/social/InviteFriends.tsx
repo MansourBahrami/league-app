@@ -1,22 +1,34 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Props {
-  referralCode: string;
   appUrl: string;
 }
 
-export default function InviteFriends({ referralCode, appUrl }: Props) {
+export default function InviteFriends({ appUrl }: Props) {
   const router = useRouter();
+  const [referralCode, setReferralCode] = useState("");
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
 
-  const inviteLink = `${appUrl}/login?ref=${referralCode}`;
+  const inviteLink = referralCode ? `${appUrl}/login?ref=${referralCode}` : "";
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch("/api/friends/referral", { method: "POST", signal: controller.signal })
+      .then(async (response) => response.ok ? response.json() as Promise<{ referralCode: string }> : null)
+      .then((data) => {
+        if (data?.referralCode) setReferralCode(data.referralCode);
+      })
+      .catch(() => null);
+    return () => controller.abort();
+  }, []);
 
   async function copyLink() {
+    if (!inviteLink) return;
     try {
       await navigator.clipboard.writeText(inviteLink);
       setMsg({ text: "لینک دعوت کپی شد!", ok: true });
@@ -26,6 +38,7 @@ export default function InviteFriends({ referralCode, appUrl }: Props) {
   }
 
   async function share() {
+    if (!inviteLink) return;
     const text = `بیا با هم توی اپ مطالعه رقابت کنیم! با این لینک عضو شو تا رتبه همدیگه رو ببینیم:\n${inviteLink}`;
     if (navigator.share) {
       navigator.share({ text }).catch(() => {});
@@ -65,16 +78,18 @@ export default function InviteFriends({ referralCode, appUrl }: Props) {
       </p>
 
       <div className="flex items-center gap-2 bg-surface-container rounded-xl p-3 flex-row-reverse">
-        <span className="text-[18px] font-extrabold text-primary tracking-widest" dir="ltr">{referralCode}</span>
+        <span className="text-[18px] font-extrabold text-primary tracking-widest" dir="ltr">
+          {referralCode || "••••••"}
+        </span>
         <span className="text-[12px] text-on-surface-variant flex-1 text-right">کد دعوت تو</span>
       </div>
 
       <div className="flex gap-2">
-        <button onClick={share} className="gamified-btn flex-1 bg-primary text-on-primary font-bold text-[14px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-primary/20">
+        <button onClick={share} disabled={!referralCode} className="gamified-btn flex-1 bg-primary text-on-primary font-bold text-[14px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-md shadow-primary/20 disabled:opacity-50">
           <span className="material-symbols-outlined text-[18px]">share</span>
           اشتراک‌گذاری
         </button>
-        <button onClick={copyLink} className="flex-1 border border-outline-variant text-on-surface-variant font-semibold text-[14px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 hover:bg-surface-container">
+        <button onClick={copyLink} disabled={!referralCode} className="flex-1 border border-outline-variant text-on-surface-variant font-semibold text-[14px] py-2.5 rounded-xl flex items-center justify-center gap-1.5 hover:bg-surface-container disabled:opacity-50">
           <span className="material-symbols-outlined text-[18px]">content_copy</span>
           کپی لینک
         </button>

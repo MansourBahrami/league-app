@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { ensureVariant } from "@/lib/ab";
 import { getUnreadCount } from "@/lib/inbox";
 import { hasOnboardingHint, ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { isMessengerPromptSnoozed } from "@/lib/messenger-prompt";
@@ -14,17 +13,19 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, videoAccess: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, missionPromptHandledAt: true, messengerPromptDismissedAt: true },
-  });
+  const [user, completedSession, unreadCount] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, missionPromptHandledAt: true, messengerPromptDismissedAt: true },
+    }),
+    prisma.studySession.findFirst({
+      where: { userId: session.userId, endTime: { not: null }, durationMin: { gte: 15 } },
+      select: { id: true },
+    }),
+    getUnreadCount(session.userId),
+  ]);
 
   if (!user) redirect("/login");
-
-  // تخصیص گروه A/B در اولین ورود (idempotent)
-  if (!user.videoAccess) {
-    await ensureVariant(user.id, user.videoAccess);
-  }
 
   const hasMessenger = !!(user.telegramId || user.baleId);
   const botAvailability = {
@@ -38,26 +39,20 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   // بعد از روز اول: تا وقتی مأموریتی ندارد، هر روز یک‌بار دعوتش کن.
   const shouldCheckMission = user.onboardingDay >= 1 && user.isLeadComplete && !wasMissionPromptHandledToday(user.missionPromptHandledAt);
 
-  const [completedSessions, currentMission, unreadCount] = await Promise.all([
-    prisma.studySession.count({
-      where: { userId: user.id, endTime: { not: null }, durationMin: { gte: 15 } },
-    }),
-    shouldCheckMission
-      ? prisma.userMission.findFirst({
-          where: {
-            userId: user.id,
-            status: { in: ["active", "pending"] },
-            expiresAt: { gt: new Date() },
-          },
-          select: { id: true },
-        })
-      : Promise.resolve(null),
-    getUnreadCount(user.id),
-  ]);
+  const currentMission = shouldCheckMission
+    ? await prisma.userMission.findFirst({
+        where: {
+          userId: user.id,
+          status: { in: ["active", "pending"] },
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      })
+    : null;
 
   const showBotConnect = setupHandled
     && hasAvailableBot
-    && completedSessions > 0
+    && completedSession !== null
     && !hasMessenger
     && !isMessengerPromptSnoozed(user.messengerPromptDismissedAt);
 
@@ -70,7 +65,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <AppShell
         user={user}
         onboardingHints={user.onboardingHints}
-        hasCompletedSession={completedSessions > 0}
+        hasCompletedSession={completedSession !== null}
         setupPromptSnoozed={isSetupPromptSnoozed(user.setupPromptSnoozedAt)}
         needsLead={needsLead}
         hasPhone={!!user.phone}

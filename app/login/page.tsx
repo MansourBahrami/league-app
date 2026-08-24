@@ -127,11 +127,10 @@ export default function LoginPage() {
           <div className="relative z-10 flex w-full flex-col items-center">
             <header className="mb-6 mt-1 flex justify-center" aria-label="G-camp">
               <Image
-                src="/brand/gcamp-logo.svg"
+                src="/brand/gcamp-logo.webp"
                 alt="G-camp"
-                width={1774}
-                height={887}
-                unoptimized
+                width={440}
+                height={220}
                 priority
                 className="h-auto w-[220px]"
               />
@@ -260,11 +259,10 @@ export default function LoginPage() {
 
       <footer className="relative z-10 mx-auto flex w-full max-w-[390px] justify-center pb-5">
         <Image
-          src="/brand/institute-logo.svg"
+          src="/brand/institute-logo.webp"
           alt="لوگوی مؤسسه مادر"
-          width={93}
-          height={69}
-          unoptimized
+          width={172}
+          height={128}
           className="h-[64px] w-auto opacity-90"
         />
       </footer>

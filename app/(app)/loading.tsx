@@ -1,6 +1,13 @@
 export default function AppLoading() {
   return (
-    <div className="flex flex-col gap-4 px-4 pb-2 animate-pulse" dir="rtl">
+    <div
+      className="flex flex-col gap-4 px-4 pb-2 animate-pulse motion-reduce:animate-none"
+      dir="rtl"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <span className="sr-only">در حال بارگذاری صفحه…</span>
       {/* Top Card Skeleton */}
       <div className="glass-card rounded-[24px] p-5 flex flex-col items-center justify-center min-h-[220px] bg-surface-container-low/60 border border-outline-variant/30">
         <div className="w-28 h-28 rounded-full bg-surface-container-high/60 mb-4" />

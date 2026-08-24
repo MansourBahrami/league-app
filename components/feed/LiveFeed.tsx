@@ -54,6 +54,8 @@ interface Props {
   meId: string;
   initialCounts: CountsMap;
   initialMine: MineMap;
+  initialHasMore?: boolean;
+  initialCursor?: string | null;
   allowedUserIds?: string[];
   emptyLabel?: string;
   onActivity?: (activity: Activity) => void;
@@ -64,6 +66,8 @@ export default function LiveFeed({
   meId,
   initialCounts,
   initialMine,
+  initialHasMore = false,
+  initialCursor = null,
   allowedUserIds,
   emptyLabel = "هنوز فعالیتی ثبت نشده. اول شروع کن!",
   onActivity,
@@ -74,6 +78,9 @@ export default function LiveFeed({
   const [mine, setMine] = useState<MineMap>(initialMine);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [cursor, setCursor] = useState(initialCursor);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   useEffect(() => {
     const es = new EventSource("/api/feed/stream");
@@ -83,7 +90,7 @@ export default function LiveFeed({
         if (allowedUserIds && !allowedUserIds.includes(activity.userId)) return;
         const metadata = (activity.metadata ?? {}) as Record<string, unknown>;
         if (activity.type === "session_complete" && Number(metadata.durationMin ?? 0) <= 0) return;
-        setActivities((prev) => [activity, ...prev].slice(0, 200));
+        setActivities((prev) => [activity, ...prev].slice(0, 100));
         onActivity?.(activity);
       } catch {}
     };
@@ -95,6 +102,35 @@ export default function LiveFeed({
     const t = setTimeout(() => setToast(null), 3500);
     return () => clearTimeout(t);
   }, [toast]);
+
+  async function loadMore() {
+    if (!cursor || loadingMore || !hasMore) return;
+    setLoadingMore(true);
+    const response = await fetch(`/api/feed/history?cursor=${encodeURIComponent(cursor)}`, {
+      cache: "no-store",
+    }).catch(() => null);
+    const data = response?.ok
+      ? await response.json().catch(() => null) as {
+          activities: Activity[];
+          counts: CountsMap;
+          mine: MineMap;
+          nextCursor: string | null;
+          hasMore: boolean;
+        } | null
+      : null;
+
+    if (data) {
+      setActivities((current) => {
+        const known = new Set(current.map((activity) => activity.id));
+        return [...current, ...data.activities.filter((activity) => !known.has(activity.id))].slice(0, 100);
+      });
+      setCounts((current) => ({ ...current, ...data.counts }));
+      setMine((current) => ({ ...current, ...data.mine }));
+      setCursor(data.nextCursor);
+      setHasMore(data.hasMore);
+    }
+    setLoadingMore(false);
+  }
 
   async function react(activityId: string, emoji: string) {
     setPickerFor(null);
@@ -188,8 +224,8 @@ export default function LiveFeed({
         return (
           <div
             key={a.id}
-            className="glass-card w-full rounded-xl px-3 py-2.5 feed-item-enter border-r-4"
-            style={{ animationDelay: `${i * 0.05}s`, borderRightColor: config.accent }}
+            className="w-full rounded-xl border border-outline-variant/25 bg-surface px-3 py-2.5 shadow-sm feed-item-enter border-r-4 [content-visibility:auto] [contain-intrinsic-size:76px]"
+            style={{ animationDelay: i < 8 ? `${i * 0.04}s` : "0s", borderRightColor: config.accent }}
           >
             <div className="flex items-center gap-2.5">
               {/* آواتار + نشان نوع فعالیت (سمت راست در RTL) */}
@@ -287,6 +323,20 @@ export default function LiveFeed({
           </div>
         );
       })}
+
+      {hasMore && (
+        <button
+          type="button"
+          onClick={loadMore}
+          disabled={loadingMore}
+          className="mx-auto flex min-h-11 items-center justify-center gap-2 rounded-xl border border-outline-variant bg-surface-container-low px-5 py-2.5 text-[13px] font-bold text-primary transition-colors hover:bg-primary-fixed disabled:opacity-60"
+        >
+          <span className={`material-symbols-outlined text-[18px] ${loadingMore ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden="true">
+            {loadingMore ? "progress_activity" : "expand_more"}
+          </span>
+          {loadingMore ? "در حال دریافت…" : "نمایش فعالیت‌های بیشتر"}
+        </button>
+      )}
     </div>
   );
 }

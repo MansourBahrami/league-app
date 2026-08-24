@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
@@ -10,6 +10,43 @@ const NAV_ITEMS = [
   { href: "/leaderboard", icon: "leaderboard", label: "رده‌بندی", tour: "nav-leaderboard" },
   { href: "/profile", icon: "person", label: "پروفایل", tour: "nav-profile" },
 ];
+
+function NavItemContent({
+  icon,
+  label,
+  isActive,
+}: {
+  icon: string;
+  label: string;
+  isActive: boolean;
+}) {
+  const { pending } = useLinkStatus();
+  const highlighted = isActive || pending;
+
+  return (
+    <span
+      aria-busy={pending || undefined}
+      className={`relative flex h-full w-full flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-2 transition-[color,background-color,box-shadow,transform] duration-200 ${
+        highlighted
+          ? "bg-primary text-on-primary shadow-[0_3px_10px_color-mix(in_oklab,var(--color-primary)_40%,transparent)]"
+          : "text-on-surface-variant group-hover:text-primary group-active:scale-95"
+      }`}
+    >
+      <span
+        className={`material-symbols-outlined ${pending ? "animate-pulse motion-reduce:animate-none" : ""}`}
+        style={{
+          fontVariationSettings: highlighted ? "'FILL' 1" : "'FILL' 0",
+          fontSize: "22px",
+        }}
+        aria-hidden="true"
+      >
+        {pending ? "progress_activity" : icon}
+      </span>
+      <span className="text-[11px] font-semibold leading-none whitespace-nowrap">{label}</span>
+      {pending && <span className="sr-only" role="status">در حال باز کردن {label}</span>}
+    </span>
+  );
+}
 
 export default function BottomNav() {
   const pathname = usePathname();
@@ -26,25 +63,11 @@ export default function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
-            prefetch={true}
             data-tour={item.tour}
             aria-current={isActive ? "page" : undefined}
-            className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[20px] px-1 py-2 transition-all duration-200 ${
-              isActive
-                ? "bg-primary text-on-primary shadow-[0_3px_10px_color-mix(in_oklab,var(--color-primary)_40%,transparent)]"
-                : "text-on-surface-variant hover:text-primary active:scale-95"
-            }`}
+            className="group min-w-0 flex-1 rounded-[20px]"
           >
-            <span
-              className="material-symbols-outlined"
-              style={{
-                fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0",
-                fontSize: "22px",
-              }}
-            >
-              {item.icon}
-            </span>
-            <span className="text-[11px] font-semibold leading-none whitespace-nowrap">{item.label}</span>
+            <NavItemContent icon={item.icon} label={item.label} isActive={isActive} />
           </Link>
         );
       })}

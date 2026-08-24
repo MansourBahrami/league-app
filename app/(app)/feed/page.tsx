@@ -6,18 +6,23 @@ import { getReactionsForActivities } from "@/lib/reaction";
 
 export const dynamic = "force-dynamic";
 
+const FEED_PAGE_SIZE = 30;
+
 export default async function FeedPage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
   const activities = await prisma.activityLog.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 200,
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: FEED_PAGE_SIZE + 1,
     include: { user: { select: { name: true, avatarUrl: true } } },
   });
 
+  const hasMore = activities.length > FEED_PAGE_SIZE;
+  const visibleActivities = hasMore ? activities.slice(0, FEED_PAGE_SIZE) : activities;
+
   const { counts, mine } = await getReactionsForActivities(
-    activities.map((a) => a.id),
+    visibleActivities.map((activity) => activity.id),
     session.userId
   );
 
@@ -36,10 +41,12 @@ export default async function FeedPage() {
       </div>
 
       <LiveFeed
-        initialActivities={activities}
+        initialActivities={visibleActivities}
         meId={session.userId}
         initialCounts={counts}
         initialMine={mine}
+        initialHasMore={hasMore}
+        initialCursor={visibleActivities.at(-1)?.id ?? null}
       />
     </div>
   );

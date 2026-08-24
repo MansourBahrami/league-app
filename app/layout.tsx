@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Vazirmatn } from "next/font/google";
 import localFont from "next/font/local";
+import PerformanceMetrics from "@/components/analytics/PerformanceMetrics";
 import "./globals.css";
 
 const vazirmatn = Vazirmatn({
@@ -28,6 +29,7 @@ const materialSymbols = localFont({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://app.gcamp.ir"),
   title: "G-camp | تنهایی درس نخون!",
   description: "وقتی بقیه هم دارن میخونن، ادامه دادن آسون‌تره.",
   manifest: "/manifest.json",
@@ -85,6 +87,7 @@ export default function RootLayout({
       className={`${vazirmatn.variable} ${pinar.variable} ${materialSymbols.variable}`}
     >
       <body className="min-h-screen bg-background text-on-surface font-sans antialiased">
+        <PerformanceMetrics />
         {children}
       </body>
     </html>

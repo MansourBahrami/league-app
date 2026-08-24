@@ -1,6 +1,7 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import StatsGrid from "@/components/profile/StatsGrid";
 import MedalsSection from "@/components/profile/MedalsSection";
 import ProfileActions from "@/components/profile/ProfileActions";
@@ -15,11 +16,40 @@ import LogoutButton from "@/components/profile/LogoutButton";
 
 export const dynamic = "force-dynamic";
 
+function ProfileSectionFallback({ label, height }: { label: string; height: string }) {
+  return (
+    <div
+      role="status"
+      aria-label={label}
+      className={`${height} rounded-xl border border-outline-variant/20 bg-surface-container-low/60 animate-pulse motion-reduce:animate-none`}
+    />
+  );
+}
+
+async function ProfileMedals({ userId }: { userId: string }) {
+  const userMedals = await prisma.userMedal.findMany({
+    where: { userId },
+    include: { medal: true },
+    orderBy: { earnedAt: "desc" },
+  });
+
+  return (
+    <MedalsSection
+      medals={userMedals.map((userMedal) => ({
+        id: userMedal.id,
+        name: userMedal.medal.name,
+        targetHours: userMedal.medal.targetHours,
+        earnedAt: userMedal.earnedAt,
+      }))}
+    />
+  );
+}
+
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [user, totalStudyAgg, userMedals, totalUsers] = await Promise.all([
+  const [user, totalStudyAgg, totalUsers] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
       select: { name: true, avatarUrl: true, xp: true, coins: true, level: true, stars: true, phone: true, grade: true, field: true, role: true, streak: true, lastStudyDate: true, telegramId: true, baleId: true },
@@ -28,22 +58,19 @@ export default async function ProfilePage() {
       where: { userId: session.userId },
       _sum: { durationMin: true },
     }),
-    prisma.userMedal.findMany({
-      where: { userId: session.userId },
-      include: { medal: true },
-      orderBy: { earnedAt: "desc" },
-    }),
     prisma.user.count(),
   ]);
 
   if (!user) redirect("/login");
 
-  const userRank = await prisma.user.count({ where: { xp: { gt: user.xp } } });
+  const [userRank, medalCounts] = await Promise.all([
+    prisma.user.count({ where: { xp: { gt: user.xp } } }),
+    getUserMedalCounts(session.userId),
+  ]);
   const totalHours = Math.floor((totalStudyAgg._sum.durationMin ?? 0) / 60);
   const streak = effectiveStreak(user.streak, user.lastStudyDate);
 
   // پیشرفت تا سطح بعدی بر اساس جدول مرکزی (XP + شرط مدال)
-  const medalCounts = await getUserMedalCounts(session.userId);
   const nextReq = getNextLevelRequirement(user.xp, medalCounts);
   const xpToNext = nextReq?.xpNeeded ?? 0;
   const levelProgress = nextReq && nextReq.xpNeeded > 0
@@ -121,10 +148,14 @@ export default async function ProfilePage() {
       <StatsGrid totalHours={totalHours} streak={streak} rank={userRank + 1} totalUsers={totalUsers} />
 
       {/* روند مطالعه، مهم‌ترین داده‌ی عملکردی پروفایل */}
-      <StudyReportCard userId={session.userId} />
+      <Suspense fallback={<ProfileSectionFallback label="در حال آماده‌سازی گزارش مطالعه" height="h-64" />}>
+        <StudyReportCard userId={session.userId} />
+      </Suspense>
 
       {/* دستاوردها پیش از تنظیمات */}
-      <MedalsSection medals={userMedals.map((um) => ({ id: um.id, name: um.medal.name, targetHours: um.medal.targetHours, earnedAt: um.earnedAt }))} />
+      <Suspense fallback={<ProfileSectionFallback label="در حال دریافت مدال‌ها" height="h-32" />}>
+        <ProfileMedals userId={session.userId} />
+      </Suspense>
 
       {/* تنظیمات و اتصال‌های حساب در انتهای صفحه */}
       <section className="flex flex-col gap-3" aria-labelledby="account-settings-title">

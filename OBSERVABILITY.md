@@ -34,6 +34,8 @@
 | `signed_out` | خروج کاربر | بدون اطلاعات شخصی |
 | `study_started` | ساخت موفق جلسه در سرور | `planned_minutes` |
 | `study_completed` | پایان معتبر جلسه در سرور | `planned_minutes`, `verified_minutes`, `xp_earned`, `coins_earned`, `onboarding_day_completed` |
+| `web_vital` | گزارش Core Web Vitals مرورگر | `metric`, `value`, `rating`, `pathname`, `network_type`, `display_mode` |
+| `route_navigation` | اولین paint پس از کلیک روی لینک داخلی | `from_path`, `to_path`, `duration_ms`, `network_type`, `display_mode` |
 
 رویدادهای اصلی مطالعه از route handlerهای سرور و پس از موفقیت عملیات ارسال
 می‌شوند؛ بنابراین کلیک ناموفق یا دستکاری کلاینت به‌عنوان مطالعهٔ معتبر شمرده
@@ -46,6 +48,10 @@
 - Session Recording، Heatmap و Web Vitals autocapture خاموش‌اند.
 - فقط شناسهٔ داخلی و غیرقابل‌نمایش کاربر برای اتصال رویدادهای یک حساب استفاده
   می‌شود؛ نام و شماره موبایل به PostHog فرستاده نمی‌شوند.
+- رویدادهای کارایی فقط pathname را ثبت می‌کنند؛ query string، متن لینک و ورودی
+  کاربر ارسال نمی‌شود.
+- SDK مرورگر PostHog پس از فرصت idle بار می‌شود تا مسیر بحرانی ورود و hydration
+  را مسدود نکند.
 - بعد از خروج، هویت محلی PostHog reset می‌شود تا فعالیت کاربر بعدی با حساب قبلی
   ترکیب نشود.
 
@@ -57,6 +63,8 @@
 - میانگین زمان برنامه‌ریزی‌شده و زمان تأییدشده چقدر است؟
 - چه سهمی از جلسه‌های شروع‌شده به پایان معتبر می‌رسد؟
 - چند کاربر بعد از روز یا هفتهٔ اول برمی‌گردند؟
+- p75 و p95 تعویض هر route روی شبکه‌های مختلف چقدر است؟
+- کدام device/network بیشترین INP، LCP یا navigation time نامطلوب را دارد؟
 
 برای آمار کم‌حجم، بازهٔ حداقل ۷ تا ۱۴ روز معمولاً معنی‌دارتر از ساعت‌های اول
 انتشار است. رویداد آزمایشی اتصال با نام `observability_connection_test` دادهٔ

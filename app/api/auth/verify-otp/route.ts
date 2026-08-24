@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { signToken, setSessionCookie } from "@/lib/auth";
 import { normalizePhone, normalizeDigits } from "@/lib/phone";
 import { consumeOtp } from "@/lib/otp";
+import { ensureVariant } from "@/lib/ab";
 import { after } from "next/server";
 import { captureServerEvent } from "@/lib/analytics-server";
 
@@ -33,6 +34,9 @@ export async function POST(req: NextRequest) {
       update: {},
       create: { phone: normalized },
     });
+
+    // تخصیص A/B یک‌بار و در mutation ورود انجام می‌شود؛ render صفحات نباید write داشته باشد.
+    await ensureVariant(user.id, user.videoAccess);
 
     const token = await signToken({ userId: user.id, sessionVersion: user.sessionVersion });
     const { name, value, options } = setSessionCookie(token);

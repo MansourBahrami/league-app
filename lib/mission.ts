@@ -101,9 +101,10 @@ export async function processUserMissions(userId: string): Promise<void> {
   });
 
   for (const um of activeMissions) {
-    // مجموع دقایق مطالعه در بازه ماموریت
+    // مجموع دقایق مطالعه در بازه معتبر ماموریت
+    const windowEnd = new Date(Math.min(now.getTime(), um.expiresAt.getTime()));
     const agg = await prisma.studySession.aggregate({
-      where: { userId, startTime: { gte: um.activatesAt, lte: now } },
+      where: { userId, startTime: { gte: um.activatesAt, lt: windowEnd } },
       _sum: { durationMin: true },
     });
     const studiedMin = agg._sum.durationMin ?? 0;

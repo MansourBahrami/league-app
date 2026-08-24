@@ -1,6 +1,13 @@
 export default function MissionRoomsLoading() {
   return (
-    <div className="flex flex-col gap-4 px-4 pb-4 animate-pulse" dir="rtl">
+    <div
+      className="flex flex-col gap-4 px-4 pb-4 animate-pulse motion-reduce:animate-none"
+      dir="rtl"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <span className="sr-only">در حال بارگذاری مأموریت‌ها…</span>
       {/* Header Skeleton */}
       <div className="glass-card rounded-2xl px-4 py-3 border border-outline-variant/30">
         <div className="flex items-center gap-3">

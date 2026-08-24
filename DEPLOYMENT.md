@@ -71,6 +71,22 @@ Caddy Reverse Proxy  (پورت 80 و 443)
 کانتینر app:3000  (Next.js)
 ```
 
+### چک‌لیست کارایی CDN
+
+برای تشخیص کندی‌ای که در process داخلی Next دیده نمی‌شود، این موارد پس از هر
+تغییر CDN از حداقل دو اپراتور موبایل ایران کنترل شوند:
+
+- `/_next/static/*` باید با cache بلندمدت و `HIT` از edge پاسخ بگیرد؛ HTML/RSC
+  شخصی‌سازی‌شده نباید به‌صورت عمومی cache شود.
+- HTTP/2 یا HTTP/3 در سمت کاربر و keep-alive بین CDN و origin فعال باشد.
+- زمان DNS، TCP، TLS، TTFB و مقدار `server-timing` جدا ثبت شود. افزایش TLS به
+  چند ثانیه، مشکل application/DB نیست و باید با شناسه POP برای پشتیبانی CDN
+  ارسال شود.
+- یک A/B کوتاه بین CDN و origin انجام شود؛ حذف یا تغییر دائمی CDN فقط بعد از
+  مقایسه p75/p95 چند اپراتور انجام شود.
+- هدف عملیاتی: acknowledgment رابط کمتر از ۱۰۰ms، INP کمتر از ۲۰۰ms و p75
+  navigation گرم کمتر از ۳۰۰ms.
+
 ### پیکربندی Caddy روی سرور (`/etc/caddy/Caddyfile`):
 ```caddyfile
 {

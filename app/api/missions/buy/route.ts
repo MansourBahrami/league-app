@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { broadcastActivity } from "@/app/api/feed/stream/route";
 import { getNextTehranMissionWeek, tehranDayStart } from "@/lib/date";
+import { processUserMissions } from "@/lib/mission";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -10,6 +11,8 @@ export async function POST(req: NextRequest) {
 
   const { missionId } = await req.json();
   if (!missionId) return NextResponse.json({ error: "missionId required" }, { status: 400 });
+
+  await processUserMissions(session.userId);
 
   const [user, mission] = await Promise.all([
     prisma.user.findUnique({ where: { id: session.userId }, select: { coins: true, onboardingDay: true } }),
@@ -24,12 +27,14 @@ export async function POST(req: NextRequest) {
   if (user.coins < mission.entryCost) return NextResponse.json({ error: "سکه کافی نیست" }, { status: 400 });
 
   const isDaily = mission.kind === "daily";
+  const now = new Date();
 
   // محدودیت هم‌زمانی: روزانه فقط با روزانه‌ی فعال تداخل دارد، هفتگی با هفتگی
   const existing = await prisma.userMission.findFirst({
     where: {
       userId: session.userId,
       status: { in: ["active", "pending"] },
+      expiresAt: { gt: now },
       mission: { kind: isDaily ? "daily" : "weekly" },
     },
   });

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { getOnboardingState } from "@/lib/onboarding";
@@ -44,9 +45,15 @@ async function getPulseActivities(userIds?: string[]): Promise<FocusPulseActivit
     .slice(0, 15);
 }
 
-async function getActiveDailyMission(userId: string) {
+async function getActiveDailyMission(userId: string, now = new Date()) {
   const daily = await prisma.userMission.findFirst({
-    where: { userId, status: "active", mission: { kind: "daily" } },
+    where: {
+      userId,
+      status: "active",
+      mission: { kind: "daily" },
+      activatesAt: { lte: now },
+      expiresAt: { gt: now },
+    },
     include: { mission: true },
     orderBy: { activatesAt: "desc" },
   });
@@ -64,17 +71,24 @@ async function getActiveDailyMission(userId: string) {
   };
 }
 
-export default async function DashboardPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+function StudyTimerFallback() {
+  return (
+    <div role="status" aria-label="در حال آماده‌سازی تایمر" className="h-[360px] rounded-[24px] border border-outline-variant/25 bg-surface-container-low/80 animate-pulse motion-reduce:animate-none" />
+  );
+}
 
-  const [onboarding, user, activeDaily, weekly, activities, activeFocusCount] = await Promise.all([
-    getOnboardingState(session.userId),
-    prisma.user.findUnique({ where: { id: session.userId }, select: { phone: true } }),
-    getActiveDailyMission(session.userId),
-    getWeeklyMissionState(session.userId),
-    getPulseActivities(),
-    getActiveFocusCount(),
+function FocusPulseFallback() {
+  return (
+    <div role="status" aria-label="در حال دریافت فعالیت‌های زنده" className="h-24 rounded-[20px] border border-outline-variant/20 bg-surface-container-low/60 animate-pulse motion-reduce:animate-none" />
+  );
+}
+
+async function DashboardStudy({ userId }: { userId: string }) {
+  const [onboarding, user, activeDaily, weekly] = await Promise.all([
+    getOnboardingState(userId),
+    prisma.user.findUnique({ where: { id: userId }, select: { phone: true } }),
+    getActiveDailyMission(userId),
+    getWeeklyMissionState(userId),
   ]);
 
   const inOnboarding = onboarding?.inOnboarding ?? false;
@@ -110,14 +124,33 @@ export default async function DashboardPage() {
   }
 
   return (
+    <div data-tour="mission">
+      <StudyTimer mission={mission} userId={userId} hasPhone={!!user?.phone} />
+    </div>
+  );
+}
+
+async function DashboardPulse() {
+  const [activities, activeFocusCount] = await Promise.all([
+    getPulseActivities(),
+    getActiveFocusCount(),
+  ]);
+
+  return <FocusPulse initialActivities={activities} initialActiveCount={activeFocusCount} />;
+}
+
+export default async function DashboardPage() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+
+  return (
     <div className="flex flex-col gap-3 px-4 pb-2">
-      <div data-tour="mission">
-        <StudyTimer mission={mission} userId={session.userId} hasPhone={!!user?.phone} />
-      </div>
-      <FocusPulse
-        initialActivities={activities}
-        initialActiveCount={activeFocusCount}
-      />
+      <Suspense fallback={<StudyTimerFallback />}>
+        <DashboardStudy userId={session.userId} />
+      </Suspense>
+      <Suspense fallback={<FocusPulseFallback />}>
+        <DashboardPulse />
+      </Suspense>
     </div>
   );
 }
