@@ -160,10 +160,9 @@ curl -s "https://api.telegram.org/bot$TG_TOKEN/getWebhookInfo"
 اسکریپت `/app/league/run-cron.sh` به صورت دوره‌ای توسط crontab سرور صدا زده می‌شود و بدون وابستگی به شبکه بیرونی، با `http://localhost:3000` ارتباط برقرار می‌کند:
 
 ```bash
-# محتوای /app/league/run-cron.sh
-#!/bin/bash
-TASKS=${1:-"missions,tournaments,notifRules"}
-docker compose -f /app/league/docker-compose.yml exec -T app node -e "fetch('http://localhost:3000/api/cron/run?tasks=${TASKS}',{method:'POST',headers:{Authorization:'Bearer '+process.env.CRON_SECRET}}).then(r=>r.text()).then(console.log)"
+# فایل نسخه‌شدهٔ `run-cron.sh` در ریشهٔ پروژه باید در همین مسیر deploy و executable باشد.
+# این runner کد خروج ناموفق endpoint را به cron برمی‌گرداند تا خرابی در مانیتورینگ پنهان نشود.
+chmod 0755 /app/league/run-cron.sh
 ```
 
 زمان‌بندی crontab سرور (`crontab -l`):
