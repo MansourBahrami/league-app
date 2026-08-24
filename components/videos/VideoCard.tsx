@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 interface Props {
   video: {
@@ -27,7 +28,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
       <div className="flex gap-4 bg-white rounded-xl p-3 items-center">
         <div className="w-24 h-24 rounded-xl overflow-hidden relative shrink-0 bg-primary-fixed flex items-center justify-center">
           {video.thumbnailUrl ? (
-            <img src={video.thumbnailUrl} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt={video.title} />
+            <Image src={video.thumbnailUrl} width={96} height={96} unoptimized className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" alt={video.title} />
           ) : (
             <span className="material-symbols-outlined text-primary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
           )}

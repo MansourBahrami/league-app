@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Header from "./Header";
 import BottomNav from "./BottomNav";
 import LeadCaptureModal from "@/components/onboarding/LeadCaptureModal";
 import PushRegister from "@/components/push/PushRegister";
 import BotConnectModal from "@/components/onboarding/BotConnectModal";
-import Day2MissionModal from "@/components/onboarding/Day2MissionModal";
 import ProgressiveOnboarding from "@/components/onboarding/ProgressiveOnboarding";
 import TehranDayBoundaryRefresh from "./TehranDayBoundaryRefresh";
 
@@ -34,26 +32,20 @@ interface AppShellProps {
   hasPhone?: boolean;
   unreadCount?: number;
   showBotConnect?: boolean;
-  showMissionPrompt?: boolean;
   botAvailability?: { telegram: boolean; bale: boolean };
 }
 
-export default function AppShell({ user, children, onboardingHints = [], hasCompletedSession = false, setupPromptSnoozed = false, needsLead = false, hasPhone = false, unreadCount = 0, showBotConnect = false, showMissionPrompt = false, botAvailability = { telegram: false, bale: false } }: AppShellProps) {
+export default function AppShell({ user, children, onboardingHints = [], hasCompletedSession = false, setupPromptSnoozed = false, needsLead = false, hasPhone = false, unreadCount = 0, showBotConnect = false, botAvailability = { telegram: false, bale: false } }: AppShellProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const [missionPromptDismissed, setMissionPromptDismissed] = useState(false);
-  const [missionPromptHandledThisVisit, setMissionPromptHandledThisVisit] = useState(false);
-  const missionPromptEligibleHere = showMissionPrompt && pathname === "/dashboard";
-  const missionPromptVisible = missionPromptEligibleHere && !missionPromptDismissed;
-  const setupBlockedByMissionPrompt = missionPromptEligibleHere || missionPromptHandledThisVisit;
-  const botConnectVisible = showBotConnect && pathname === "/dashboard" && !missionPromptEligibleHere;
+  const botConnectVisible = showBotConnect && pathname === "/dashboard";
   // مقادیر مستقیم از prop سرور؛ با router.refresh() (بعد از خرید/پایان جلسه) به‌روز می‌شوند
   return (
     <ProgressiveOnboarding
       initialHints={onboardingHints}
       hasCompletedSession={hasCompletedSession}
       initialSetupSnoozed={setupPromptSnoozed}
-      allowSetupPrompt={!needsLead && !setupBlockedByMissionPrompt}
+      allowSetupPrompt={!needsLead}
     >
       <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-28 md:pb-12">
         <TehranDayBoundaryRefresh />
@@ -67,14 +59,6 @@ export default function AppShell({ user, children, onboardingHints = [], hasComp
             available={botAvailability}
             onComplete={() => router.refresh()}
             onDismiss={() => router.refresh()}
-          />
-        )}
-        {missionPromptVisible && !needsLead && (
-          <Day2MissionModal
-            onDismiss={() => {
-              setMissionPromptDismissed(true);
-              setMissionPromptHandledThisVisit(true);
-            }}
           />
         )}
         {/* Cyber grid background */}

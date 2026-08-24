@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { formatStudyMinutes } from "@/lib/gamification";
 
@@ -30,6 +31,7 @@ export default function LeaderboardList({ entries }: Props) {
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
+    centeredRef.current = false;
     let ticking = false;
 
     const apply = () => {
@@ -45,6 +47,17 @@ export default function LeaderboardList({ entries }: Props) {
           el.style.opacity = "";
         }
         return;
+      }
+
+      if (!centeredRef.current) {
+        const meIdx = entries.findIndex((entry) => entry.isCurrentUser);
+        const currentUserRow = meIdx >= 0 ? rowsRef.current[meIdx] : null;
+        if (currentUserRow) {
+          const boxRect = box.getBoundingClientRect();
+          const rowRect = currentUserRow.getBoundingClientRect();
+          box.scrollTop += (rowRect.top + rowRect.height / 2) - (boxRect.top + boxRect.height / 2);
+          centeredRef.current = true;
+        }
       }
 
       const boxRect = box.getBoundingClientRect();
@@ -72,19 +85,6 @@ export default function LeaderboardList({ entries }: Props) {
       ticking = true;
       requestAnimationFrame(apply);
     };
-
-    // یک‌بار (پس از فعال‌شدن حالت غلتکی و چیدمانِ padding) باکس را طوری اسکرول
-    // کن که ردیفِ «شما» در مرکزِ باکس قرار بگیرد، نه از بالای لیست.
-    if (rolling && !centeredRef.current) {
-      const meIdx = entries.findIndex((e) => e.isCurrentUser);
-      const el = meIdx >= 0 ? rowsRef.current[meIdx] : null;
-      if (el) {
-        const boxRect = box.getBoundingClientRect();
-        const elRect = el.getBoundingClientRect();
-        box.scrollTop += (elRect.top + elRect.height / 2) - (boxRect.top + boxRect.height / 2);
-        centeredRef.current = true;
-      }
-    }
 
     apply();
     requestAnimationFrame(apply);
@@ -135,7 +135,14 @@ export default function LeaderboardList({ entries }: Props) {
               </div>
               <div className={`rounded-full overflow-hidden border shrink-0 ${entry.isCurrentUser ? "w-12 h-12 border-2 border-primary" : "w-10 h-10 border border-outline-variant/20"}`}>
                 {entry.avatarUrl ? (
-                  <img src={entry.avatarUrl} className="w-full h-full object-cover" alt={entry.name} />
+                  <Image
+                    src={entry.avatarUrl}
+                    width={entry.isCurrentUser ? 48 : 40}
+                    height={entry.isCurrentUser ? 48 : 40}
+                    unoptimized
+                    className="h-full w-full object-cover"
+                    alt={entry.name}
+                  />
                 ) : (
                   <div className="w-full h-full bg-primary-fixed flex items-center justify-center font-bold text-primary">
                     {entry.name[0]}

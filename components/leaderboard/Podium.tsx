@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { formatStudyMinutes } from "@/lib/gamification";
 
 interface Entry {
@@ -92,7 +93,14 @@ export default function Podium({ top3 }: Props) {
               <div className="relative mb-4">
                 <div className={`overflow-hidden rounded-full border-2 bg-surface-container-lowest shadow-sm ${avatarClass}`}>
                   {entry.avatarUrl ? (
-                    <img src={entry.avatarUrl} className="h-full w-full object-cover" alt={entry.name} />
+                    <Image
+                      src={entry.avatarUrl}
+                      width={isFirst ? 76 : 56}
+                      height={isFirst ? 76 : 56}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                      alt={entry.name}
+                    />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-[22px] font-extrabold text-primary">
                       {entry.name[0]}

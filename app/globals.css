@@ -217,8 +217,8 @@ body {
 /* === Glassmorphism === */
 .glass-card {
   background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.5);
   box-shadow: 0 4px 14px color-mix(in oklab, var(--color-primary) 8%, transparent);
 }
@@ -229,8 +229,8 @@ body {
  */
 .liquid-glass {
   background: color-mix(in oklab, var(--color-surface) 30%, transparent);
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
-  backdrop-filter: blur(22px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.6);
   box-shadow:
     0 8px 30px color-mix(in oklab, var(--color-primary) 14%, transparent),
@@ -238,16 +238,91 @@ body {
     inset 0 1px 0 0 rgba(255, 255, 255, 0.7);
 }
 
+/* فقط آخرین مقصد pending پررنگ می‌ماند؛ تب قبلی هم‌زمان active دیده نمی‌شود. */
+.bottom-nav:has(.bottom-nav-item[aria-busy="true"])
+  a[aria-current="page"]
+  .bottom-nav-item:not([aria-busy="true"]) {
+  background: transparent;
+  color: var(--color-on-surface-variant);
+  box-shadow: none;
+}
+
+.bottom-nav-pending-dot {
+  opacity: 0;
+  transform: scale(0.5);
+  visibility: hidden;
+}
+
+.bottom-nav-pending-dot.is-pending {
+  visibility: visible;
+  animation: navPendingDotIn 160ms ease-out 100ms forwards,
+    navPendingDotPulse 900ms ease-in-out 260ms infinite;
+}
+
+@keyframes navPendingDotIn {
+  to { opacity: 0.75; transform: scale(1); }
+}
+
+@keyframes navPendingDotPulse {
+  50% { opacity: 0.3; transform: scale(0.78); }
+}
+
+@keyframes routeLoadingProgress {
+  from { transform: translateX(320%); }
+  to { transform: translateX(-320%); }
+}
+
+.route-loading-progress {
+  animation: routeLoadingProgress 1.15s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes coachmarkEnter {
+  from { opacity: 0; transform: translateY(6px) scale(0.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.coachmark-enter {
+  animation: coachmarkEnter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card,
+  .liquid-glass {
+    background: var(--color-surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bottom-nav-pending-dot.is-pending {
+    opacity: 0.75;
+    transform: none;
+    animation: none;
+  }
+
+  .route-loading-progress {
+    width: 100%;
+    opacity: 0.45;
+    transform: none;
+    animation: none;
+  }
+
+  .coachmark-enter {
+    animation: none;
+  }
+}
+
 /* === Gamified Button === */
 .gamified-btn {
   border-bottom: 4px solid var(--color-on-primary-fixed-variant);
-  transition: all 0.1s ease;
+  transition: transform 100ms ease, filter 100ms ease, box-shadow 160ms ease;
   cursor: pointer;
 }
 .gamified-btn:active {
-  border-bottom-width: 0px;
-  transform: translateY(4px);
-  margin-top: 4px;
+  transform: translateY(2px) scale(0.985);
+  filter: brightness(0.96);
 }
 
 /* === Progress Glow === */

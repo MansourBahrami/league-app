@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 const AVATARS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"].map((a) => `/avatars/${a}.svg`);
 
@@ -217,7 +218,7 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
         className="relative w-24 h-24 rounded-full overflow-hidden border-4 border-primary/20 mb-3 group"
       >
         {currentUrl ? (
-          <img src={currentUrl} className="w-full h-full object-cover" alt={name ? `عکس پروفایل ${name}` : "عکس پروفایل"} />
+          <Image src={currentUrl} width={96} height={96} unoptimized className="h-full w-full object-cover" alt={name ? `عکس پروفایل ${name}` : "عکس پروفایل"} />
         ) : (
           <div className="w-full h-full bg-primary-fixed flex items-center justify-center text-[36px] font-extrabold text-primary">
             {name ? name[0] : "؟"}
@@ -264,7 +265,7 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
               <>
                 <div className="flex justify-center mb-4">
                   <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-primary/20">
-                    <img src={preview.url} className="w-full h-full object-cover" alt="پیش‌نمایش" />
+                    <Image src={preview.url} width={128} height={128} unoptimized className="h-full w-full object-cover" alt="پیش‌نمایش" />
                   </div>
                 </div>
                 {error && <p role="alert" className="rounded-xl bg-error/10 px-3 py-2 text-[12px] text-error text-center mb-3">{error}</p>}
@@ -359,7 +360,7 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
                           isSelected ? "border-primary scale-105" : "border-transparent hover:border-primary/40"
                         } disabled:opacity-50`}
                       >
-                        <img src={url} className="w-full h-full object-cover" alt="" />
+                        <Image src={url} width={80} height={80} unoptimized className="h-full w-full object-cover" alt="" />
                       </button>
                     );
                   })}

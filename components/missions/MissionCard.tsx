@@ -16,10 +16,9 @@ interface Props {
   userCoins: number;
   isLocked: boolean;
   hasActiveMission: boolean;
-  userId: string;
 }
 
-export default function MissionCard({ mission, userCoins, isLocked, hasActiveMission, userId }: Props) {
+export default function MissionCard({ mission, userCoins, isLocked, hasActiveMission }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const canBuy = !isLocked && !hasActiveMission && userCoins >= mission.entryCost;

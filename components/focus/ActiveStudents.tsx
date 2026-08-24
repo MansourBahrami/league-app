@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ActiveFocusSnapshot, ActiveFocusUser } from "@/lib/focus";
 
@@ -132,7 +133,7 @@ export default function ActiveStudents({ initialSnapshot, currentUserId }: Props
                 <div className="flex items-center gap-3">
                   <div className="relative shrink-0">
                     {user.avatarUrl ? (
-                      <img src={user.avatarUrl} className="h-12 w-12 rounded-full border-2 border-surface-container-lowest object-cover shadow-sm" alt={name} />
+                      <Image src={user.avatarUrl} width={48} height={48} unoptimized className="h-12 w-12 rounded-full border-2 border-surface-container-lowest object-cover shadow-sm" alt={name} />
                     ) : (
                       <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-surface-container-lowest bg-primary-fixed text-[17px] font-extrabold text-primary shadow-sm">
                         {name[0]}

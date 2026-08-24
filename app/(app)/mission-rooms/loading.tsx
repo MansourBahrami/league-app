@@ -1,7 +1,7 @@
 export default function MissionRoomsLoading() {
   return (
     <div
-      className="flex flex-col gap-4 px-4 pb-4 animate-pulse motion-reduce:animate-none"
+      className="route-loading flex flex-col gap-4 px-4 pb-4"
       dir="rtl"
       role="status"
       aria-live="polite"

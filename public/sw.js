@@ -1,6 +1,6 @@
 /* Service Worker — Web Push + نمایش نوتیف پس‌زمینه */
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
 });
 
@@ -12,7 +12,7 @@ self.addEventListener("push", (event) => {
   let data = {};
   try {
     data = event.data ? event.data.json() : {};
-  } catch (e) {
+  } catch {
     data = { title: "تمرکز", body: event.data ? event.data.text() : "" };
   }
 

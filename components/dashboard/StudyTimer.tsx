@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, type KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -10,18 +10,14 @@ import { restoreStudyTimerSession, type StoredStudyTimerSession } from "@/lib/st
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 import {
   getRandomMotivationalQuote,
-  requestStudyNotificationPermission,
   showOrUpdateStudyNotification,
   closeStudyNotification,
-  getTimerNotificationStatus,
-  sendTestNotification,
-  type NotificationStatus,
 } from "@/lib/timer-notification";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
 
-type TimerState = "idle" | "running" | "paused" | "done";
+type TimerState = "idle" | "starting" | "running" | "paused" | "done";
 
 export type FocusMission =
   | {
@@ -216,13 +212,9 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [restored, setRestored] = useState(false);
-  const [notifStatus, setNotifStatus] = useState<NotificationStatus>("default");
-  const [notifFeedback, setNotifFeedback] = useState<string>("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
-  const timerCardRef = useRef<HTMLElement | null>(null);
-  const startButtonRef = useRef<HTMLButtonElement | null>(null);
   const quoteRef = useRef<string>(getRandomMotivationalQuote());
   const storageKey = `study_session:${userId}`;
 
@@ -368,34 +360,14 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
 
   useEffect(() => {
     if (!restored) return;
-    reportStudyState(timerState === "running" || timerState === "paused" || showGoalSetting);
+    reportStudyState(timerState === "starting" || timerState === "running" || timerState === "paused" || showGoalSetting);
   }, [reportStudyState, restored, showGoalSetting, timerState]);
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setNotifStatus(getTimerNotificationStatus());
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  async function handleTestNotification() {
-    setNotifFeedback("در حال ارسال اعلان...");
-    const res = await sendTestNotification();
-    setNotifStatus(getTimerNotificationStatus());
-    if (res.ok) {
-      setNotifFeedback("اعلان تستی با موفقیت ارسال شد! بالای صفحه گوشی را ببینید.");
-    } else {
-      setNotifFeedback(res.reason || "ارسال ناموفق بود");
-    }
-    window.setTimeout(() => setNotifFeedback(""), 6000);
-  }
 
   async function handleToggle() {
     setError("");
     if (timerState === "idle") {
       setIsSubmitting(true);
-      // درخواست اجازه نوتیفیکیشن بلافاصله در لحظهٔ تعامل کاربر (غیرمسدودکننده)
-      const permPromise = requestStudyNotificationPermission();
+      setTimerState("starting");
 
       try {
         const response = await fetch("/api/study/start", {
@@ -425,19 +397,18 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         void markHints(ONBOARDING_HINTS.TIMER_STARTED);
         window.dispatchEvent(new Event("focus-session-changed"));
 
-        void permPromise.then((granted) => {
-          setNotifStatus(getTimerNotificationStatus());
-          if (granted) {
-            void showOrUpdateStudyNotification({
-              secondsLeft: totalSeconds,
-              totalSeconds,
-              state: "running",
-              quote: newQuote,
-              isInitial: true,
-            });
-          }
-        });
+        // شروع مطالعه نباید با permission prompt مرورگر قطع شود؛ فقط مجوز قبلی را مصرف کن.
+        if ("Notification" in window && Notification.permission === "granted") {
+          void showOrUpdateStudyNotification({
+            secondsLeft: totalSeconds,
+            totalSeconds,
+            state: "running",
+            quote: newQuote,
+            isInitial: true,
+          });
+        }
       } catch {
+        setTimerState("idle");
         setError("شروع تایمر انجام نشد؛ دوباره تلاش کن.");
       } finally {
         setIsSubmitting(false);
@@ -554,70 +525,25 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
 
   const button = {
     idle: { icon: "play_arrow", label: "شروع مطالعه", cls: "bg-primary text-on-primary" },
+    starting: { icon: "progress_activity", label: "در حال آماده‌سازی…", cls: "bg-primary text-on-primary" },
     running: { icon: "pause", label: "مکث", cls: "bg-tertiary-fixed-dim text-on-tertiary-fixed" },
     paused: { icon: "play_arrow", label: "ادامه مطالعه", cls: "bg-primary text-on-primary" },
     done: { icon: "replay", label: "دوباره شروع کن", cls: "bg-primary text-on-primary" },
   }[timerState];
-  const isActive = timerState === "running" || timerState === "paused";
+  const isSessionActive = timerState === "running" || timerState === "paused";
+  const isInteractionLocked = timerState === "starting" || isSessionActive;
   const needsStartHint = !hasHint(ONBOARDING_HINTS.TIMER_STARTED);
   const showsStartHint = needsStartHint && timerState === "idle";
   const needsRewardLesson = !hasHint(ONBOARDING_HINTS.REWARDS_EXPLAINED);
   const showsRewardLesson = needsRewardLesson && (sessionResult?.xpEarned ?? 0) > 0;
 
-  useEffect(() => {
-    if (!showsStartHint) return;
-
-    const previouslyFocused = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
-    const focusTimer = window.setTimeout(() => startButtonRef.current?.focus(), 0);
-
-    return () => {
-      window.clearTimeout(focusTimer);
-      previouslyFocused?.focus();
-    };
-  }, [showsStartHint]);
-
-  function trapStartHintFocus(event: KeyboardEvent<HTMLElement>) {
-    if (!showsStartHint || event.key !== "Tab") return;
-
-    const focusableElements = Array.from(
-      timerCardRef.current?.querySelectorAll<HTMLElement>("[data-start-hint-focus='true']") ?? [],
-    );
-    if (focusableElements.length === 0) return;
-
-    const firstElement = focusableElements[0];
-    const lastElement = focusableElements.at(-1)!;
-    if (event.shiftKey && document.activeElement === firstElement) {
-      event.preventDefault();
-      lastElement.focus();
-    } else if (!event.shiftKey && document.activeElement === lastElement) {
-      event.preventDefault();
-      firstElement.focus();
-    }
-  }
-
   return (
     <>
-      {/* Spotlight Backdrop */}
-      {showsStartHint && (
-        <div
-          className="fixed inset-0 z-[70] bg-black/65 backdrop-blur-[2px] transition-all"
-          aria-hidden="true"
-        />
-      )}
-
       <section
-        ref={timerCardRef}
         data-tour="timer"
-        role={showsStartHint ? "dialog" : undefined}
-        aria-modal={showsStartHint ? true : undefined}
-        aria-labelledby={showsStartHint ? "timer-start-hint-title" : undefined}
-        aria-describedby={showsStartHint ? "timer-start-hint-description" : undefined}
-        onKeyDown={trapStartHintFocus}
-        className={`glass-card rounded-[2rem] px-4 py-4 transition-all duration-300 ${
+        className={`glass-card rounded-[2rem] px-4 py-4 transition-[border-color,box-shadow] duration-200 ${
           showsStartHint
-            ? "relative z-[75] bg-surface ring-2 ring-tertiary/70 shadow-[0_0_40px_rgba(207,146,6,0.45)] border border-tertiary/60"
+            ? "border border-tertiary/60 ring-2 ring-tertiary/35 shadow-[0_12px_35px_color-mix(in_oklab,var(--color-tertiary)_16%,transparent)]"
             : "border border-tertiary-fixed/65 shadow-[0_12px_35px_color-mix(in_oklab,var(--color-primary)_9%,transparent)]"
         }`}
       >
@@ -625,7 +551,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
 
         <div className="pt-4">
           <div
-            className={`focus-timer-halo mx-auto ${isActive ? "focus-timer-halo-active" : ""}`}
+            className={`focus-timer-halo mx-auto ${isInteractionLocked ? "focus-timer-halo-active" : ""}`}
             style={{ "--timer-elapsed-angle": `${elapsedRatio}turn` } as CSSProperties}
           >
             <span className="material-symbols-outlined focus-timer-spark text-tertiary text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
@@ -643,6 +569,8 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             <p className="text-[11.5px] text-on-surface-variant mt-2 text-center px-2">
               {timerState === "running"
                 ? `جایزه بعدی تا ${minToNext.toLocaleString("fa-IR")} دقیقه دیگر`
+                : timerState === "starting"
+                ? "در حال ثبت شروع مطالعه…"
                 : timerState === "paused"
                 ? "تایمر متوقف شده"
                 : "تمرکز عمیق، پیشرفت واقعی"}
@@ -655,8 +583,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
                 key={minutes}
                 type="button"
                 onClick={() => setTimer(minutes)}
-                disabled={isActive}
-                data-start-hint-focus={showsStartHint ? "true" : undefined}
+                disabled={isInteractionLocked}
                 aria-pressed={selectedMinutes === minutes}
                 className={`h-11 rounded-xl text-[13px] font-bold transition-all flex items-center justify-center ${
                   selectedMinutes === minutes
@@ -670,7 +597,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
           </div>
 
           {showsStartHint && (
-            <div role="note" className="mt-3 flex items-start gap-3 rounded-2xl border border-tertiary/45 bg-tertiary-fixed/70 p-3.5 shadow-md pop-in">
+            <div role="note" className="coachmark-enter mt-3 flex items-start gap-3 rounded-2xl border border-tertiary/45 bg-tertiary-fixed/70 p-3.5 shadow-sm">
               <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tertiary text-on-tertiary shadow-md">
                 <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
                   play_circle
@@ -689,28 +616,26 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
           )}
 
           <button
-            ref={startButtonRef}
             type="button"
             onClick={handleToggle}
             disabled={isSubmitting}
             data-onboarding="timer-start"
-            data-start-hint-focus={showsStartHint ? "true" : undefined}
             aria-describedby={showsStartHint ? "timer-start-hint-description" : undefined}
             className={`gamified-btn mt-3 w-full text-[16px] font-extrabold py-3.5 rounded-xl flex justify-center items-center gap-2 shadow-lg ${button.cls} ${
-              showsStartHint ? "ring-2 ring-white/80 animate-pulse" : ""
+              showsStartHint ? "ring-2 ring-tertiary/35" : ""
             } ${isSubmitting ? "opacity-75 cursor-not-allowed" : ""}`}
           >
-            {isSubmitting && timerState === "idle" ? (
+            {timerState === "starting" ? (
               <span className="material-symbols-outlined text-[21px] animate-spin">progress_activity</span>
             ) : (
               <span className="material-symbols-outlined text-[21px]" style={{ fontVariationSettings: "'FILL' 1" }}>{button.icon}</span>
             )}
-            {isSubmitting && timerState === "idle" ? "در حال شروع…" : button.label}
+            {button.label}
           </button>
 
           {error && <p role="alert" className="text-[12px] text-error text-center mt-2">{error}</p>}
 
-          {isActive && (
+          {isSessionActive && (
             <button
               type="button"
               onClick={handleStop}
@@ -728,58 +653,6 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             </button>
           )}
 
-          {/* نوار وضعیت نوتیفیکیشن زنده */}
-          <div className="mt-3 pt-2 border-t border-outline-variant/30">
-            {notifStatus === "default" && (
-              <button
-                type="button"
-                onClick={handleTestNotification}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl bg-tertiary-fixed/30 border border-tertiary/30 text-[11.5px] text-on-surface hover:bg-tertiary-fixed/50 transition-colors"
-              >
-                <div className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-tertiary text-[17px]">notifications_active</span>
-                  <span>نمایش زنده تایمر در بالای گوشی</span>
-                </div>
-                <span className="font-bold text-tertiary underline">فعال‌سازی و تست</span>
-              </button>
-            )}
-
-            {notifStatus === "granted" && (
-              <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-surface-container-low border border-outline-variant/40 text-[11px] text-on-surface-variant">
-                <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-medium">
-                  <span className="material-symbols-outlined text-[15px]">check_circle</span>
-                  <span>اعلان زنده در بالای صفحه فعال است</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleTestNotification}
-                  className="text-primary font-bold hover:underline pr-2"
-                >
-                  تست
-                </button>
-              </div>
-            )}
-
-            {notifStatus === "denied" && (
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-error-container/30 border border-error/25 text-[11px] text-on-error-container">
-                <span className="material-symbols-outlined text-error text-[16px]">notifications_off</span>
-                <span>اعلان در مرورگر مسدود است؛ از آیکون قفل کنار آدرس‌بار فعالش کنید.</span>
-              </div>
-            )}
-
-            {notifStatus === "ios_browser" && (
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-surface-container border border-outline-variant/50 text-[11px] text-on-surface-variant">
-                <span className="material-symbols-outlined text-primary text-[16px]">ios_share</span>
-                <span>در آیفون برای نوتیفیکیشن، از منوی اشتراک‌گذاری گزینه «Add to Home Screen» را بزنید.</span>
-              </div>
-            )}
-
-            {notifFeedback && (
-              <p className="text-[11.5px] text-center font-bold text-primary mt-1.5 animate-pulse">
-                {notifFeedback}
-              </p>
-            )}
-          </div>
         </div>
       </section>
 

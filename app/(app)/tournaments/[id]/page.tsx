@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getTournamentLeaderboard, eligibleForTournament } from "@/lib/tournament";
 import JoinButton from "@/components/tournament/JoinButton";
 
@@ -85,7 +86,7 @@ export default async function TournamentRoomPage({ params }: { params: Promise<{
                 {r.rank.toLocaleString("fa-IR")}
               </span>
               {r.avatarUrl ? (
-                <img src={r.avatarUrl} className="w-10 h-10 rounded-full object-cover" alt={r.name} />
+                <Image src={r.avatarUrl} width={40} height={40} unoptimized className="h-10 w-10 rounded-full object-cover" alt={r.name} />
               ) : (
                 <div className="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center text-[16px] font-bold text-primary">{r.name[0]}</div>
               )}

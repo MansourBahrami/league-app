@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { faIR } from "date-fns/locale";
@@ -231,7 +232,7 @@ export default function LiveFeed({
               {/* آواتار + نشان نوع فعالیت (سمت راست در RTL) */}
               <Link href={`/profile/${a.userId}`} className="relative shrink-0 hover:scale-105 transition-transform">
                 {a.user.avatarUrl ? (
-                  <img src={a.user.avatarUrl} className="w-10 h-10 rounded-full object-cover border border-outline-variant" alt={name} />
+                  <Image src={a.user.avatarUrl} width={40} height={40} unoptimized className="h-10 w-10 rounded-full border border-outline-variant object-cover" alt={name} />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center border border-primary/20 text-[16px] font-bold text-primary">
                     {name[0]}

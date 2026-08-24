@@ -92,11 +92,14 @@ export const PROFILE_UNLOCK_HOURS = 1;
 
 /** هدف روز اول آنبوردینگ: ۱ ساعت مطالعه (۶۰ دقیقه) */
 export function getFullDay1Hours(_pastAvgHours?: number | null): number {
+  void _pastAvgHours;
   return 1;
 }
 
 /** ماموریت روز اول: ۱ ساعت */
 export function getDay1MissionHours(_pastAvgHours?: number | null, _hourOfDay?: number): number {
+  void _pastAvgHours;
+  void _hourOfDay;
   return 1;
 }
 
@@ -109,6 +112,8 @@ export function getOnboardingDailyGoalMinutes(
   _pastAvgHours?: number | null,
   day1GoalMinutes?: number | null
 ): number {
+  void _onboardingDay;
+  void _pastAvgHours;
   return day1GoalMinutes ?? 60;
 }
 

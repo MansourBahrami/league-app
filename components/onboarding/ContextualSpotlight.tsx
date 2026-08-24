@@ -29,10 +29,8 @@ export default function ContextualSpotlight({
   const { hasHint, markHints, suppressSetup, resumeSetup } = useProgressiveOnboarding();
   const shouldShow = !hasHint(hint);
   const ownsOnboardingVisit = useRef(shouldShow);
-  const buttonRef = useRef<HTMLButtonElement>(null);
   const [position, setPosition] = useState<GuidePosition | null>(null);
   const [busy, setBusy] = useState(false);
-  const guideReady = position !== null;
 
   const handleDismiss = useCallback(async () => {
     if (busy) return;
@@ -61,21 +59,18 @@ export default function ContextualSpotlight({
       transition: target.style.transition,
     };
     const previousDescribedBy = target.getAttribute("aria-describedby");
-    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
     target.style.transition = "box-shadow 220ms ease, outline-color 220ms ease";
     target.style.outline = "2px solid var(--color-tertiary)";
     target.style.outlineOffset = "3px";
     target.style.boxShadow = "inset 0 0 0 2px var(--color-tertiary-fixed-dim), 0 0 28px color-mix(in oklab, var(--color-tertiary) 55%, transparent)";
     target.setAttribute("aria-describedby", "contextual-spotlight-description");
-    target.scrollIntoView({
-      behavior: reducedMotion ? "auto" : "smooth",
-      block: "center",
-      inline: "nearest",
-    });
-
     const updatePosition = () => {
       const rect = target.getBoundingClientRect();
+      const targetIsVisible = rect.bottom > 72 && rect.top < window.innerHeight - 88;
+      if (!targetIsVisible) {
+        setPosition(null);
+        return;
+      }
       const viewportPadding = 16;
       const cardWidth = Math.min(340, window.innerWidth - viewportPadding * 2);
       const targetCenter = rect.left + rect.width / 2;
@@ -90,7 +85,7 @@ export default function ContextualSpotlight({
       });
     };
 
-    const positionTimer = window.setTimeout(updatePosition, reducedMotion ? 0 : 320);
+    const positionTimer = window.setTimeout(updatePosition, 120);
     window.addEventListener("resize", updatePosition);
     window.addEventListener("scroll", updatePosition, true);
 
@@ -108,19 +103,6 @@ export default function ContextualSpotlight({
   }, [shouldShow, targetElementSelector]);
 
   useEffect(() => {
-    if (!shouldShow || !guideReady) return;
-    const previouslyFocused = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
-    const focusTimer = window.setTimeout(() => buttonRef.current?.focus(), 0);
-
-    return () => {
-      window.clearTimeout(focusTimer);
-      previouslyFocused?.focus();
-    };
-  }, [guideReady, shouldShow]);
-
-  useEffect(() => {
     if (!shouldShow) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || busy) return;
@@ -135,10 +117,10 @@ export default function ContextualSpotlight({
 
   return createPortal(
     <aside
-      role="dialog"
+      role="note"
       aria-labelledby="contextual-spotlight-title"
       aria-describedby="contextual-spotlight-description"
-      className="fixed z-[90] w-[calc(100vw-2rem)] max-w-[340px] rounded-2xl border border-tertiary/45 bg-surface p-4 text-right shadow-2xl pop-in"
+      className="coachmark-enter fixed z-[60] w-[calc(100vw-2rem)] max-w-[340px] rounded-2xl border border-tertiary/45 bg-surface p-4 text-right shadow-xl"
       style={{ left: position.left, bottom: position.bottom }}
     >
       <h2 id="contextual-spotlight-title" className="text-[15px] font-extrabold text-on-surface">
@@ -148,7 +130,6 @@ export default function ContextualSpotlight({
         {description}
       </p>
       <button
-        ref={buttonRef}
         type="button"
         onClick={handleDismiss}
         disabled={busy}

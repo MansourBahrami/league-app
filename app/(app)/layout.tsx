@@ -5,7 +5,6 @@ import { getUnreadCount } from "@/lib/inbox";
 import { hasOnboardingHint, ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { isMessengerPromptSnoozed } from "@/lib/messenger-prompt";
 import { isSetupPromptSnoozed } from "@/lib/setup-prompt";
-import { wasMissionPromptHandledToday } from "@/lib/mission-prompt";
 import AppShell from "@/components/layout/AppShell";
 import AnalyticsIdentity from "@/components/analytics/AnalyticsIdentity";
 
@@ -16,7 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const [user, completedSession, unreadCount] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
-      select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, missionPromptHandledAt: true, messengerPromptDismissedAt: true },
+      select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, messengerPromptDismissedAt: true },
     }),
     prisma.studySession.findFirst({
       where: { userId: session.userId, endTime: { not: null }, durationMin: { gte: 15 } },
@@ -36,27 +35,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const setupHandled = hasOnboardingHint(user.onboardingHints, ONBOARDING_HINTS.PUSH_PROMPTED)
     && hasOnboardingHint(user.onboardingHints, ONBOARDING_HINTS.INSTALL_PROMPTED);
 
-  // بعد از روز اول: تا وقتی مأموریتی ندارد، هر روز یک‌بار دعوتش کن.
-  const shouldCheckMission = user.onboardingDay >= 1 && user.isLeadComplete && !wasMissionPromptHandledToday(user.missionPromptHandledAt);
-
-  const currentMission = shouldCheckMission
-    ? await prisma.userMission.findFirst({
-        where: {
-          userId: user.id,
-          status: { in: ["active", "pending"] },
-          expiresAt: { gt: new Date() },
-        },
-        select: { id: true },
-      })
-    : null;
-
   const showBotConnect = setupHandled
     && hasAvailableBot
     && completedSession !== null
     && !hasMessenger
     && !isMessengerPromptSnoozed(user.messengerPromptDismissedAt);
 
-  const showMissionPrompt = shouldCheckMission ? !currentMission : false;
   const needsLead = user.onboardingDay >= 1 && !user.isLeadComplete;
 
   return (
@@ -71,7 +55,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         hasPhone={!!user.phone}
         unreadCount={unreadCount}
         showBotConnect={showBotConnect}
-        showMissionPrompt={showMissionPrompt}
         botAvailability={botAvailability}
       >
         {children}

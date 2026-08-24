@@ -91,7 +91,7 @@ export default function VideoPlayerClient({ videoId, hlsUrl, title, durationMin,
     <section className="flex flex-col gap-3">
       <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-outline-variant/20 bg-black aspect-video">
         {hlsUrl ? (
-          <video ref={videoRef} className="w-full h-full" controls playsInline />
+          <video ref={videoRef} className="h-full w-full" controls playsInline aria-label={title} />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-white/50">
             <span className="material-symbols-outlined text-[48px]">video_file</span>

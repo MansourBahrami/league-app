@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import StarBadge from "@/components/ui/StarBadge";
 
 interface User {
@@ -34,7 +35,7 @@ export default function Header({ user, xp, coins, unreadCount = 0 }: HeaderProps
       <Link href="/profile" className="flex items-center gap-2.5 cursor-pointer hover:scale-105 transition-transform">
         <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary/20 p-0.5">
           {user.avatarUrl ? (
-            <img src={user.avatarUrl} className="w-full h-full object-cover rounded-full" alt="Avatar" />
+            <Image src={user.avatarUrl} width={40} height={40} unoptimized className="h-full w-full rounded-full object-cover" alt={user.name ? `عکس پروفایل ${user.name}` : "عکس پروفایل"} />
           ) : (
             <div className="w-full h-full rounded-full bg-primary-fixed flex items-center justify-center">
               <span className="text-[18px] font-bold text-primary">

@@ -2,6 +2,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { PROFILE_UNLOCK_COST, PROFILE_UNLOCK_HOURS, effectiveStreak } from "@/lib/gamification";
 import { tehranDayStartDaysAgo, formatJalaliLong, tehranParts } from "@/lib/date";
 import { formatDistanceToNow } from "date-fns";
@@ -77,10 +78,11 @@ export default async function PublicProfilePage({ params }: Props) {
             style={{ width: 64, height: 64, minWidth: 64, minHeight: 64, maxWidth: 64, maxHeight: 64 }}
           >
             {target.avatarUrl ? (
-              <img
+              <Image
                 src={target.avatarUrl}
                 width={64}
                 height={64}
+                unoptimized
                 className="block h-full w-full object-cover"
                 style={{ width: "100%", height: "100%", maxWidth: "100%", maxHeight: "100%" }}
                 alt={target.name ?? ""}
