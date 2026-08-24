@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { broadcastActivity } from "@/lib/feed-broadcast";
 import { fireEvent } from "@/lib/notification-engine";
 import { tehranDayStart, tehranDayDiff } from "@/lib/date";
 

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { broadcastActivity } from "@/lib/feed-broadcast";
 import { tryCompleteOnboardingDay } from "@/lib/onboarding";
 import {
   VIDEO_BASE_REWARD_COINS,

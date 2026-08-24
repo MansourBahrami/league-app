@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { broadcastActivity } from "@/lib/feed-broadcast";
 import { getNextTehranMissionWeek, tehranDayStart } from "@/lib/date";
 import { processUserMissions } from "@/lib/mission";
 

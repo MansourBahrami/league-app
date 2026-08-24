@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { calcRewards } from "@/lib/gamification";
-import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { broadcastActivity } from "@/lib/feed-broadcast";
 import { processUserMissions, recalcUserLevel } from "@/lib/mission";
 import { getOnboardingState, tryCompleteOnboardingDay } from "@/lib/onboarding";
 import { getWeeklyMissionState } from "@/lib/weekly-mission";

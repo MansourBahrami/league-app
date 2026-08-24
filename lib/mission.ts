@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { calcLevel, type MedalCount, DAILY_MISSION_TABLE, MISSION_TABLE } from "@/lib/gamification";
-import { broadcastActivity } from "@/app/api/feed/stream/route";
+import { broadcastActivity } from "@/lib/feed-broadcast";
 import { fireEvent } from "@/lib/notification-engine";
 
 /** شمارش مدال‌های کاربر بر اساس ساعت هدف */
