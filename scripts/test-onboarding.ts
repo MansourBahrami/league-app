@@ -3,6 +3,7 @@ import { DEFAULT_ONBOARDING_DAYS } from "../lib/onboarding";
 import { gradeRequiresField, isStudentProfileComplete } from "../lib/student-profile";
 import { isSetupPromptSnoozed } from "../lib/setup-prompt";
 import { wasMissionPromptHandledToday } from "../lib/mission-prompt";
+import { millisecondsUntilNextTehranDay, tehranDayKey } from "../lib/date";
 
 console.log("🧪 تست منطق آنبوردینگ ۱ روزه (هدف ۱ ساعت مطالعه)\n");
 
@@ -69,3 +70,14 @@ const missionPromptOk = wasMissionPromptHandledToday(sameTehranDay, afterTehranM
 console.log(missionPromptOk ? "  ✅ دعوت در همان روز تکرار نمی‌شود و روز بعد برمی‌گردد" : "  ❌ خطا در مرز روز تهران برای دعوت مأموریت");
 
 if (!missionPromptOk) process.exitCode = 1;
+
+console.log("\n--- بررسی تازه‌سازی داده‌ها در نیمه‌شب تهران ---");
+const oneSecondBeforeMidnight = new Date("2026-08-22T20:29:59.000Z");
+const oneSecondAfterMidnight = new Date("2026-08-22T20:30:01.000Z");
+const tehranBoundaryOk =
+  tehranDayKey(oneSecondAfterMidnight) - tehranDayKey(oneSecondBeforeMidnight) === 24 * 60 * 60 * 1000
+  && millisecondsUntilNextTehranDay(oneSecondBeforeMidnight) === 1_000
+  && millisecondsUntilNextTehranDay(oneSecondAfterMidnight) === 24 * 60 * 60 * 1000 - 1_000;
+console.log(tehranBoundaryOk ? "  ✅ عبور از نیمه‌شب تهران دقیق تشخیص داده می‌شود" : "  ❌ خطا در تشخیص نیمه‌شب تهران");
+
+if (!tehranBoundaryOk) process.exitCode = 1;

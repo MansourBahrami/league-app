@@ -7,17 +7,28 @@
  */
 
 export const TEHRAN_OFFSET_MIN = 210; // +03:30
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** لحظه‌ی (UTC) متناظر با ۰۰:۰۰ همان روزِ تهران که `instant` در آن قرار دارد */
 export function tehranDayStart(instant: Date = new Date()): Date {
   const shifted = instant.getTime() + TEHRAN_OFFSET_MIN * 60000;
-  const flooredToDay = Math.floor(shifted / 86400000) * 86400000;
+  const flooredToDay = Math.floor(shifted / DAY_MS) * DAY_MS;
   return new Date(flooredToDay - TEHRAN_OFFSET_MIN * 60000);
+}
+
+/** شناسهٔ پایدار روز تهران؛ مناسب تشخیص عبور اپِ باز از نیمه‌شب */
+export function tehranDayKey(instant: Date = new Date()): number {
+  return tehranDayStart(instant).getTime();
+}
+
+/** زمان باقی‌مانده تا شروع روز بعد تهران */
+export function millisecondsUntilNextTehranDay(instant: Date = new Date()): number {
+  return Math.max(0, tehranDayKey(instant) + DAY_MS - instant.getTime());
 }
 
 /** شروع روزِ تهران به فاصله‌ی `daysAgo` روز قبل از امروز */
 export function tehranDayStartDaysAgo(daysAgo: number, instant: Date = new Date()): Date {
-  return new Date(tehranDayStart(instant).getTime() - daysAgo * 86400000);
+  return new Date(tehranDayStart(instant).getTime() - daysAgo * DAY_MS);
 }
 
 /**
@@ -32,12 +43,12 @@ export function tehranInstantAt(
   instant: Date = new Date()
 ): Date {
   const dayStart = tehranDayStart(instant).getTime();
-  return new Date(dayStart + daysFromToday * 86400000 + (hour * 60 + minute) * 60000);
+  return new Date(dayStart + daysFromToday * DAY_MS + (hour * 60 + minute) * 60000);
 }
 
 /** اختلاف روزِ تقویمیِ تهران بین دو لحظه (تعداد روزهای کامل بین شروعِ روزها) */
 export function tehranDayDiff(a: Date, b: Date): number {
-  return Math.round((tehranDayStart(a).getTime() - tehranDayStart(b).getTime()) / 86400000);
+  return Math.round((tehranDayStart(a).getTime() - tehranDayStart(b).getTime()) / DAY_MS);
 }
 
 /** شماره روز هفته در تهران با قرارداد جاوااسکریپت: یکشنبه=۰ ... جمعه=۵، شنبه=۶ */
@@ -55,11 +66,11 @@ export function getNextTehranMissionWeek(instant: Date = new Date()): {
   const weekday = tehranWeekdayIndex(instant);
   const untilSaturday = (6 - weekday + 7) % 7;
   const daysUntilSaturday = untilSaturday === 0 ? 7 : untilSaturday;
-  const startsAt = new Date(todayStart.getTime() + daysUntilSaturday * 86400000);
+  const startsAt = new Date(todayStart.getTime() + daysUntilSaturday * DAY_MS);
   return {
     enrollmentOpen: weekday === 5,
     startsAt,
-    endsAt: new Date(startsAt.getTime() + 7 * 86400000),
+    endsAt: new Date(startsAt.getTime() + 7 * DAY_MS),
   };
 }
 

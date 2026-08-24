@@ -9,6 +9,7 @@ import PushRegister from "@/components/push/PushRegister";
 import BotConnectModal from "@/components/onboarding/BotConnectModal";
 import Day2MissionModal from "@/components/onboarding/Day2MissionModal";
 import ProgressiveOnboarding from "@/components/onboarding/ProgressiveOnboarding";
+import TehranDayBoundaryRefresh from "./TehranDayBoundaryRefresh";
 
 interface User {
   id: string;
@@ -55,6 +56,7 @@ export default function AppShell({ user, children, onboardingHints = [], hasComp
       allowSetupPrompt={!needsLead && !setupBlockedByMissionPrompt}
     >
       <div className="relative min-h-screen flex flex-col items-center overflow-x-hidden pb-28 md:pb-12">
+        <TehranDayBoundaryRefresh />
         <PushRegister />
         {/* قفل اجباری لید بعد از روز اول — تا تکمیل نشود کل اپ مسدود است */}
         {needsLead && (
