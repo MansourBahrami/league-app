@@ -170,6 +170,14 @@ chmod 0755 /app/league/run-cron.sh
 */5 * * * * /app/league/run-cron.sh studySessions,missions,tournaments,notifRules,invariants,analytics >> /var/log/league-cron.log 2>&1
 0   * * * * /app/league/run-cron.sh ranks                            >> /var/log/league-cron.log 2>&1
 20  3 * * * /app/league/run-cron.sh retention                        >> /var/log/league-cron.log 2>&1
+35  3 * * * /app/league/backup-production.sh                         >> /var/log/league-backup.log 2>&1
+```
+
+فایل نسخه‌شدهٔ `gcamp.crontab` منبع حقیقت زمان‌بندی production است. پس از deploy:
+
+```bash
+chmod 0755 /app/league/run-cron.sh /app/league/backup-production.sh
+crontab /app/league/gcamp.crontab
 ```
 
 ---
@@ -218,13 +226,12 @@ curl --fail http://127.0.0.1:3000/api/health
 
 ## ۹. بکاپ و تمرین بازیابی
 
-بکاپ روزانه باید قبل از استقرار و مستقل از volume snapshot گرفته شود. فایل خروجی حاوی داده شخصی است و باید رمزگذاری و با دسترسی محدود نگه‌داری شود.
+بکاپ روزانه باید قبل از استقرار و مستقل از volume snapshot گرفته شود. فایل خروجی حاوی داده شخصی است و باید با دسترسی محدود نگه‌داری شود. اسکریپت نسخه‌شدهٔ `backup-production.sh` خروجی را ابتدا در فایل موقت می‌نویسد، catalog را با `pg_restore` اعتبارسنجی می‌کند، سپس به‌صورت atomic منتشر می‌کند و نسخه‌های قدیمی‌تر از ۱۴ روز را حذف می‌کند.
 
 ```bash
 cd /app/league
 mkdir -p /app/backups/league
-sudo docker compose exec -T postgres pg_dump -U league_user -d league_db -Fc > /app/backups/league/league-$(date +%F-%H%M).dump
-find /app/backups/league -type f -name 'league-*.dump' -mtime +14 -delete
+/app/league/backup-production.sh
 ```
 
 ماهانه یک restore drill روی دیتابیس staging خالی انجام دهید و پس از بازیابی، migration status، `/api/health` و تست‌های invariant را بررسی کنید.

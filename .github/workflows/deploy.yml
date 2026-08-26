@@ -23,6 +23,8 @@ jobs:
 
       - name: Build and push (linux/amd64)
         uses: docker/build-push-action@v6
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
         with:
           context: .
           platforms: linux/amd64
@@ -43,5 +45,5 @@ jobs:
             NEXT_PUBLIC_APP_ENV=production
             SENTRY_ORG=ayandetalayee
             SENTRY_PROJECT=javascript-nextjs
-          secrets: |
-            sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
+          secret-envs: |
+            sentry_auth_token=SENTRY_AUTH_TOKEN

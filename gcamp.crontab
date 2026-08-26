@@ -1,0 +1,4 @@
+*/5 * * * * /app/league/run-cron.sh studySessions,missions,tournaments,notifRules,invariants,analytics >> /var/log/league-cron.log 2>&1
+0 * * * * /app/league/run-cron.sh ranks >> /var/log/league-cron.log 2>&1
+20 3 * * * /app/league/run-cron.sh retention >> /var/log/league-cron.log 2>&1
+35 3 * * * /app/league/backup-production.sh >> /var/log/league-backup.log 2>&1
