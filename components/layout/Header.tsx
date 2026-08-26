@@ -72,11 +72,11 @@ export default function Header({ user, xp, coins, unreadCount = 0 }: HeaderProps
           )}
         </Link>
         <div data-tour="rewards" className="flex items-center gap-2">
-          <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full" title="امتیاز تجربه" aria-label={`${xp.toLocaleString("fa-IR")} امتیاز تجربه`}>
+          <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer" title="امتیاز تجربه" aria-label={`${xp.toLocaleString("fa-IR")} امتیاز تجربه`}>
             <span className="material-symbols-outlined text-[16px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>bolt</span>
             <span className="text-[14px] font-bold text-primary">{xp.toLocaleString("fa-IR")}</span>
           </div>
-          <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full" title="موجودی سکه" aria-label={`${coins.toLocaleString("fa-IR")} سکه`}>
+          <div className="flex items-center gap-1 bg-surface-container-high px-2 py-1.5 rounded-full hover:scale-105 transition-transform cursor-pointer" title="موجودی سکه" aria-label={`${coins.toLocaleString("fa-IR")} سکه`}>
             <span className="material-symbols-outlined text-[16px] text-tertiary-fixed-dim" style={{ fontVariationSettings: "'FILL' 1" }}>generating_tokens</span>
             <span className="text-[14px] font-bold text-tertiary">{coins.toLocaleString("fa-IR")}</span>
           </div>

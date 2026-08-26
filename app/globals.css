@@ -57,8 +57,8 @@
   --color-on-background: #2a2419;
   --color-inverse-surface: #2a2419;
   --color-inverse-on-surface: #fef9ef;
-  --color-outline: #74674f;
-  --color-outline-variant: #cabc9e;
+  --color-outline: #9c8e72;
+  --color-outline-variant: #ddd0b4;
 
   /* --- خطا (مجزا از زرشکی) --- */
   --color-error: #b3261e;
@@ -186,7 +186,7 @@
  * برای فشرده‌تر/بازتر کردن کل اپ کافی است همین عدد تغییر کند.
  */
 html {
-  font-size: 14px;
+  font-size: 13px;
 }
 
 body {

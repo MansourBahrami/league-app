@@ -384,7 +384,7 @@ export default function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             {/* سطح ۴ */}
             <div className="p-4 sm:p-5 rounded-3xl bg-surface-container border border-outline-variant/60 text-center flex flex-col items-center">
               <div className="w-12 h-12 rounded-2xl bg-primary-container text-on-primary flex items-center justify-center font-black mb-3">
-                <span className="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+                ⭐
               </div>
               <h4 className="font-bold text-[16px] text-primary mb-1">سرآمد</h4>
               <span className="text-[11px] font-semibold text-on-surface-variant">عبور از مأموریت‌های سخت</span>
@@ -393,7 +393,7 @@ export default function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             {/* سطح ۵ */}
             <div className="col-span-2 sm:col-span-1 p-4 sm:p-5 rounded-3xl bg-secondary text-on-secondary text-center flex flex-col items-center shadow-md">
               <div className="w-12 h-12 rounded-2xl bg-on-secondary/20 flex items-center justify-center font-black mb-3 text-on-secondary">
-                <span className="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
+                👑
               </div>
               <h4 className="font-bold text-[16px] text-on-secondary mb-1">الگو</h4>
               <span className="text-[11px] font-semibold text-secondary-fixed">بالاترین سطح جی‌کمپ</span>
