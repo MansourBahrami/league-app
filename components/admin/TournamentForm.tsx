@@ -73,11 +73,11 @@ export default function TournamentForm({ initial }: { initial?: TournamentData }
     }
   }
 
-  const inputCls = "w-full rounded-xl border border-outline-variant bg-white px-4 py-2.5 text-[15px] text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all";
+  const inputCls = "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-[15px] text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all";
   const labelCls = "text-[13px] font-semibold text-on-surface";
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-4 bg-white rounded-2xl p-6 border border-outline-variant/30">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4 bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30">
       <h1 className="text-[20px] font-extrabold text-on-surface">{isEdit ? "ویرایش تورنومنت" : "تورنومنت جدید"}</h1>
 
       <div className="flex flex-col gap-1.5">
@@ -125,7 +125,7 @@ export default function TournamentForm({ initial }: { initial?: TournamentData }
               type="button"
               onClick={() => toggleLevel(l)}
               className={`px-3 py-2 rounded-xl text-[13px] font-semibold border transition-all flex items-center gap-1 ${
-                form.levels.includes(l) ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
+                form.levels.includes(l) ? "bg-primary text-on-primary border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
               }`}
             >
               {form.levels.includes(l) && <span className="material-symbols-outlined text-[14px]">check</span>}
@@ -138,7 +138,7 @@ export default function TournamentForm({ initial }: { initial?: TournamentData }
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>وضعیت</label>
         <button type="button" onClick={() => set("isActive", !form.isActive)}
-          className={`py-2.5 rounded-xl text-[14px] font-semibold border ${form.isActive ? "bg-[#d4f5e6] text-tertiary border-tertiary/30" : "bg-[#f3f3f3] text-outline border-outline-variant"}`}>
+          className={`py-2.5 rounded-xl text-[14px] font-semibold border ${form.isActive ? "bg-success-container text-on-success-container border-success/30" : "bg-info-container text-info border-outline-variant"}`}>
           {form.isActive ? "فعال" : "غیرفعال"}
         </button>
       </div>
@@ -149,7 +149,7 @@ export default function TournamentForm({ initial }: { initial?: TournamentData }
         <button type="button" onClick={() => router.back()} className="flex-1 py-3 rounded-xl border border-outline-variant text-on-surface-variant text-[14px] font-semibold">
           انصراف
         </button>
-        <button type="submit" disabled={saving} className="flex-grow bg-primary text-white font-bold text-[15px] py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
+        <button type="submit" disabled={saving} className="flex-grow bg-primary text-on-primary font-bold text-[15px] py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
           {saving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : (isEdit ? "ذخیره تغییرات" : "ایجاد تورنومنت")}
         </button>
       </div>

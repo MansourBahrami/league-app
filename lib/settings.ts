@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { captureCaughtError } from "@/lib/observability";
 
 export const SETTING_KEYS = {
   VIDEO_UNLOCK_MODE: "video_unlock_mode",
@@ -13,7 +14,8 @@ export async function getAppSetting(key: string, defaultValue = ""): Promise<str
       where: { key },
     });
     return setting?.value ?? defaultValue;
-  } catch {
+  } catch (caught) {
+    captureCaughtError("settings.get", caught, { key });
     return defaultValue;
   }
 }
@@ -26,8 +28,9 @@ export async function setAppSetting(key: string, value: string): Promise<void> {
       create: { key, value },
       update: { value },
     });
-  } catch (err) {
-    console.error("Failed to set app setting:", err);
+  } catch (caught) {
+    captureCaughtError("settings.set", caught, { key });
+    throw caught;
   }
 }
 

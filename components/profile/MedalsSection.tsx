@@ -41,9 +41,9 @@ export default function MedalsSection({ medals, title = "مدال‌های من"
           const count = medals.filter((m) => m.targetHours === hours).length;
           return (
             <div key={hours} className={`flex flex-col items-center gap-1 rounded-xl p-2 ${earned ? "bg-surface-container-low" : "bg-surface opacity-50 grayscale"}`}>
-              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${earned ? "bg-gradient-to-br from-tertiary-fixed to-tertiary border-white shadow-inner" : "bg-outline-variant border-white"}`}>
+              <div className={`w-12 h-12 rounded-full flex items-center justify-center border-2 ${earned ? "bg-gradient-to-br from-tertiary-fixed to-tertiary border-surface-container-lowest shadow-inner" : "bg-outline-variant border-surface-container-lowest"}`}>
                 {earned ? (
-                  <span className="text-white font-bold text-[12px]">{hours}h</span>
+                  <span className="text-on-tertiary font-bold text-[12px]">{hours.toLocaleString("fa-IR")}</span>
                 ) : (
                   <span className="material-symbols-outlined text-outline text-[18px]">lock</span>
                 )}

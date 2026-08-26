@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { captureClientError } from "@/lib/analytics-client";
 
 type Messenger = "telegram" | "bale";
 
@@ -17,7 +18,10 @@ export default function MessengerConnections({ connected: initialConnected, avai
   const [error, setError] = useState("");
 
   const checkConnectionStatus = useCallback(async () => {
-    const res = await fetch("/api/profile/bot-link", { cache: "no-store" }).catch(() => null);
+    const res = await fetch("/api/profile/bot-link", { cache: "no-store" }).catch((caught) => {
+      captureClientError("messenger_connections.status", caught);
+      return null;
+    });
     if (!res?.ok) return;
     const data = (await res.json()) as { telegram?: boolean; bale?: boolean };
     setConnected({
@@ -68,7 +72,10 @@ export default function MessengerConnections({ connected: initialConnected, avai
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messenger }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("messenger_connections.link", caught, { messenger });
+      return null;
+    });
     const data = (await res?.json().catch(() => ({}))) as { url?: string; error?: string } | undefined;
     if (!res?.ok || !data?.url) {
       setError(data?.error ?? "ساخت لینک اتصال انجام نشد.");

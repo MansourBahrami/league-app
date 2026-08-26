@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { captureClientError } from "@/lib/analytics-client";
 
 type Messenger = "telegram" | "bale";
 
@@ -22,7 +23,10 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
       : "یادآوری‌ها رو در تلگرام بگیر";
 
   const refreshStatus = useCallback(async () => {
-    const res = await fetch("/api/profile/bot-link", { cache: "no-store" }).catch(() => null);
+    const res = await fetch("/api/profile/bot-link", { cache: "no-store" }).catch((caught) => {
+      captureClientError("bot_connect.status", caught);
+      return null;
+    });
     if (!res?.ok) return false;
     const data = (await res.json()) as { telegram?: boolean; bale?: boolean };
     if (data.telegram || data.bale) {
@@ -75,7 +79,10 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messenger }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("bot_connect.link", caught, { messenger });
+      return null;
+    });
     const data = (await res?.json().catch(() => ({}))) as { url?: string; error?: string } | undefined;
     if (!res?.ok || !data?.url) {
       setError(data?.error ?? "ساخت لینک اتصال انجام نشد؛ دوباره تلاش کن.");
@@ -87,17 +94,25 @@ export default function BotConnectModal({ available, onComplete, onDismiss }: Pr
 
   async function dismiss() {
     setLoading("dismiss");
-    await fetch("/api/profile/bot-link", {
+    const response = await fetch("/api/profile/bot-link", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ dismiss: true }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("bot_connect.dismiss", caught);
+      return null;
+    });
+    if (!response?.ok) {
+      setError("ثبت انتخاب انجام نشد؛ دوباره تلاش کن.");
+      setLoading(null);
+      return;
+    }
     onDismiss();
   }
 
   return (
     <div
-      className="fixed inset-0 z-[85] flex items-center justify-center bg-black/50 px-4 backdrop-blur-sm"
+      className="fixed inset-0 z-[85] flex items-center justify-center bg-on-surface/50 px-4 backdrop-blur-sm"
       onKeyDown={(event) => {
         if (event.key === "Escape" && loading === null) void dismiss();
       }}

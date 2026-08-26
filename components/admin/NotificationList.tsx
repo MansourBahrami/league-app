@@ -78,28 +78,28 @@ export default function NotificationList({ rules }: { rules: RuleListItem[] }) {
 
   return (
     <div className="flex flex-col gap-3">
-      {msg && <p className="text-[13px] text-tertiary bg-[#d4f5e6] rounded-xl px-3 py-2">{msg}</p>}
+      {msg && <p className="text-[13px] text-on-success-container bg-success-container rounded-xl px-3 py-2">{msg}</p>}
       {rules.length === 0 ? (
         <p className="text-outline text-center py-10">هنوز قانونی تعریف نشده.</p>
       ) : (
         rules.map((r) => (
-          <div key={r.id} className="bg-white rounded-xl p-4 border border-outline-variant/30 flex flex-col gap-2">
+          <div key={r.id} className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant/30 flex flex-col gap-2">
             <div className="flex items-start justify-between gap-2">
               <div className="text-right">
                 <div className="flex items-center gap-2">
                   <p className="font-bold text-[15px] text-on-surface">{r.name}</p>
-                  {!r.enabled && <span className="text-[11px] text-error bg-[#ffe5e5] px-2 py-0.5 rounded-full">غیرفعال</span>}
+                  {!r.enabled && <span className="text-[11px] text-on-error-container bg-error-container px-2 py-0.5 rounded-full">غیرفعال</span>}
                 </div>
                 <p className="text-[12px] text-outline mt-0.5">
                   {TRIGGER_LABELS[r.triggerType]} · {triggerSummary(r)} · {r.segment ? SEGMENT_MAP[r.segment]?.label ?? r.segment : "همه"}
                 </p>
-                <p className="text-[11px] text-[#a09eb0] mt-0.5">
+                <p className="text-[11px] text-outline mt-0.5">
                   کانال: {r.channels.map((c) => CHANNEL_LABELS[c] ?? c).join("، ") || "—"} · {r.sentCount.toLocaleString("fa-IR")} ارسال
                 </p>
               </div>
               <button onClick={() => toggle(r)} disabled={busy === r.id}
                 className={`shrink-0 w-11 h-6 rounded-full transition-colors relative ${r.enabled ? "bg-primary" : "bg-outline-variant"}`}>
-                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full transition-all ${r.enabled ? "left-0.5" : "right-0.5"}`} />
+                <span className={`absolute top-0.5 w-5 h-5 bg-surface-container-lowest rounded-full transition-all ${r.enabled ? "left-0.5" : "right-0.5"}`} />
               </button>
             </div>
             <div className="flex items-center gap-2 pt-1">

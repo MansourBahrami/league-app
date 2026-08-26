@@ -22,9 +22,9 @@ export default function StatsGrid({ totalHours, streak, rank, totalUsers }: Prop
       iconClass: "bg-tertiary-fixed text-tertiary",
     },
     {
-      label: "رتبه کلی",
+      label: "رتبه کل دوره",
       value: rank.toLocaleString("fa-IR"),
-      unit: `از ${totalUsers.toLocaleString("fa-IR")}`,
+      unit: `بین همهٔ ${totalUsers.toLocaleString("fa-IR")} کاربر` ,
       icon: "emoji_events",
       iconClass: "bg-secondary-container text-secondary",
     },

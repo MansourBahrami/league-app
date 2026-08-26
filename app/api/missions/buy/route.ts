@@ -4,6 +4,9 @@ import { getSession } from "@/lib/auth";
 import { broadcastActivity } from "@/lib/feed-broadcast";
 import { getNextTehranMissionWeek, tehranDayStart } from "@/lib/date";
 import { processUserMissions } from "@/lib/mission";
+import { withUserLock } from "@/lib/user-lock";
+import { after } from "next/server";
+import { captureServerEvent } from "@/lib/analytics-server";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -14,36 +17,14 @@ export async function POST(req: NextRequest) {
 
   await processUserMissions(session.userId);
 
-  const [user, mission] = await Promise.all([
-    prisma.user.findUnique({ where: { id: session.userId }, select: { coins: true, onboardingDay: true } }),
-    prisma.mission.findUnique({ where: { id: missionId } }),
-  ]);
+  const mission = await prisma.mission.findUnique({ where: { id: missionId } });
 
-  if (!user || !mission || !mission.isActive) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!mission || !mission.isActive) return NextResponse.json({ error: "Not found" }, { status: 404 });
   if (mission.kind !== "daily" && mission.kind !== "weekly") {
     return NextResponse.json({ error: "نوع ماموریت پشتیبانی نمی‌شود" }, { status: 400 });
   }
-  if (user.onboardingDay < 1) return NextResponse.json({ error: "ماموریت‌ها پس از روز اول فعال می‌شوند" }, { status: 403 });
-  if (user.coins < mission.entryCost) return NextResponse.json({ error: "سکه کافی نیست" }, { status: 400 });
-
   const isDaily = mission.kind === "daily";
   const now = new Date();
-
-  // محدودیت هم‌زمانی: روزانه فقط با روزانه‌ی فعال تداخل دارد، هفتگی با هفتگی
-  const existing = await prisma.userMission.findFirst({
-    where: {
-      userId: session.userId,
-      status: { in: ["active", "pending"] },
-      expiresAt: { gt: now },
-      mission: { kind: isDaily ? "daily" : "weekly" },
-    },
-  });
-  if (existing) {
-    return NextResponse.json(
-      { error: isDaily ? "امروز ماموریت روزانه‌ی فعال داری" : "ماموریت هفتگی فعال داری" },
-      { status: 400 }
-    );
-  }
 
   // روزانه: همین امروز فعال و پایان امروز (به وقت تهران) منقضی می‌شود.
   // هفتگی: فقط جمعه انتخاب می‌شود، شنبه شروع و جمعه بعد تمام می‌شود.
@@ -64,12 +45,29 @@ export async function POST(req: NextRequest) {
     select: { name: true, avatarUrl: true },
   });
 
-  const joined = await prisma.$transaction(async (tx) => {
+  const joined = await withUserLock(session.userId, async (tx) => {
+    const currentUser = await tx.user.findUnique({
+      where: { id: session.userId },
+      select: { onboardingDay: true },
+    });
+    if (!currentUser) return { status: "not_found" } as const;
+    if (currentUser.onboardingDay < 1) return { status: "onboarding" } as const;
+
+    const existing = await tx.userMission.findFirst({
+      where: {
+        userId: session.userId,
+        status: { in: ["active", "pending"] },
+        expiresAt: { gt: now },
+        mission: { kind: isDaily ? "daily" : "weekly" },
+      },
+    });
+    if (existing) return { status: "existing" } as const;
+
     const debit = await tx.user.updateMany({
       where: { id: session.userId, coins: { gte: mission.entryCost } },
       data: { coins: { decrement: mission.entryCost } },
     });
-    if (debit.count !== 1) throw new Error("INSUFFICIENT_COINS");
+    if (debit.count !== 1) return { status: "insufficient" } as const;
 
     const userMission = await tx.userMission.create({
       data: {
@@ -94,13 +92,24 @@ export async function POST(req: NextRequest) {
     await tx.missionRoomMember.create({
       data: { roomId: room.id, userId: session.userId, userMissionId: userMission.id },
     });
-    return { roomId: room.id };
-  }).catch((error: unknown) => {
-    if (error instanceof Error && error.message === "INSUFFICIENT_COINS") return null;
-    throw error;
+    return { status: "joined", roomId: room.id } as const;
   });
 
-  if (!joined) return NextResponse.json({ error: "سکه کافی نیست" }, { status: 400 });
+  if (joined.status === "not_found") {
+    return NextResponse.json({ error: "کاربر یافت نشد" }, { status: 404 });
+  }
+  if (joined.status === "onboarding") {
+    return NextResponse.json({ error: "ماموریت‌ها پس از روز اول فعال می‌شوند" }, { status: 403 });
+  }
+  if (joined.status === "existing") {
+    return NextResponse.json(
+      { error: isDaily ? "امروز ماموریت روزانه‌ی فعال داری" : "ماموریت هفتگی فعال داری" },
+      { status: 400 },
+    );
+  }
+  if (joined.status === "insufficient") {
+    return NextResponse.json({ error: "سکه کافی نیست" }, { status: 400 });
+  }
 
   const log = await prisma.activityLog.create({
     data: {
@@ -116,6 +125,16 @@ export async function POST(req: NextRequest) {
     },
   });
   broadcastActivity({ ...log, user: activityUser });
+  after(() => captureServerEvent({
+    distinctId: session.userId,
+    event: "mission_joined",
+    properties: {
+      mission_kind: mission.kind,
+      target_hours: mission.targetHours,
+      entry_cost: mission.entryCost,
+    },
+    insertId: `mission-joined:${session.userId}:${missionId}:${joined.roomId}`,
+  }));
 
   return NextResponse.json({ message: "وارد کمپ مأموریت شدی", roomId: joined.roomId });
 }

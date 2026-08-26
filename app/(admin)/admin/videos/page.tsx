@@ -20,7 +20,7 @@ export default async function AdminVideosPage() {
         <h1 className="text-[22px] font-extrabold text-on-surface">مدیریت ویدیوهای آموزشی</h1>
         <Link
           href="/admin/videos/new"
-          className="bg-primary text-white font-bold text-[14px] px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-[#3a3cc0] transition-colors"
+          className="bg-primary text-on-primary font-bold text-[14px] px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-primary-container transition-colors"
         >
           <span className="material-symbols-outlined text-[18px]">add</span>
           ویدیوی جدید

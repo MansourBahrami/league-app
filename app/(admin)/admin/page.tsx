@@ -1,22 +1,28 @@
 import { prisma } from "@/lib/db";
+import { tehranDayStart } from "@/lib/date";
 
 export const dynamic = "force-dynamic";
 
 async function getStats() {
   const now = Date.now();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = tehranDayStart();
   const day1 = new Date(now - 24 * 60 * 60 * 1000);
   const day7 = new Date(now - 7 * 24 * 60 * 60 * 1000);
 
-  const [totalUsers, newToday, active24hRows, active7dRows, day1Done, leadDone, week2, totalSessions] = await Promise.all([
+  const [totalUsers, newToday, active24hRows, active7dRows, day1Done, leadDone, week2Rows, totalSessions] = await Promise.all([
     prisma.user.count(),
     prisma.user.count({ where: { createdAt: { gte: today } } }),
     prisma.studySession.findMany({ where: { startTime: { gte: day1 } }, distinct: ["userId"], select: { userId: true } }),
     prisma.studySession.findMany({ where: { startTime: { gte: day7 } }, distinct: ["userId"], select: { userId: true } }),
     prisma.user.count({ where: { onboardingDay: { gte: 1 } } }),
     prisma.user.count({ where: { isLeadComplete: true } }),
-    prisma.user.count({ where: { onboardingDay: { gte: 6 } } }),
+    prisma.$queryRaw<Array<{ count: bigint }>>`
+      SELECT COUNT(DISTINCT users."id") AS count
+      FROM "User" AS users
+      INNER JOIN "StudySession" AS sessions ON sessions."userId" = users."id"
+      WHERE sessions."durationMin" > 0
+        AND sessions."startTime" >= users."createdAt" + INTERVAL '7 days'
+    `,
     prisma.studySession.count(),
   ]);
 
@@ -26,13 +32,13 @@ async function getStats() {
     active24h: active24hRows.length,
     active7d: active7dRows.length,
     totalSessions,
-    funnel: { registered: totalUsers, day1Done, leadDone, week2 },
+    funnel: { registered: totalUsers, day1Done, leadDone, week2: Number(week2Rows[0]?.count ?? 0) },
   };
 }
 
 function StatCard({ icon, label, value, color }: { icon: string; label: string; value: string; color: string }) {
   return (
-    <div className="bg-white rounded-2xl p-5 border border-outline-variant/30 flex items-center gap-4">
+    <div className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30 flex items-center gap-4">
       <div className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0" style={{ backgroundColor: `${color}1a` }}>
         <span className="material-symbols-outlined text-[24px]" style={{ color, fontVariationSettings: "'FILL' 1" }}>{icon}</span>
       </div>
@@ -81,12 +87,12 @@ export default async function AdminDashboard() {
       </div>
 
       {/* قیف تبدیل */}
-      <section className="bg-white rounded-2xl p-6 border border-outline-variant/30">
+      <section className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30">
         <h2 className="text-[18px] font-bold text-on-surface mb-1">قیف تبدیل و نرخ ریزش</h2>
         <p className="text-[13px] text-outline mb-5">مسیر کاربر از ثبت‌نام تا ورود به هفته دوم</p>
         <div className="flex flex-col gap-4">
           <FunnelBar label="۱. ثبت‌نام / ورود" count={registered} total={registered} color="var(--color-primary)" />
-          <FunnelBar label="۲. اتمام روز اول" count={day1Done} total={registered} color="#5658d8" />
+          <FunnelBar label="۲. اتمام روز اول" count={day1Done} total={registered} color="var(--color-primary-container)" />
           <FunnelBar label="۳. تکمیل لید (پروفایل)" count={leadDone} total={registered} color="var(--color-secondary-container)" />
           <FunnelBar label="۴. ورود به هفته دوم" count={week2} total={registered} color="var(--color-secondary)" />
         </div>

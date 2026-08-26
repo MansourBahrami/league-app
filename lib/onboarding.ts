@@ -2,22 +2,20 @@ import { prisma } from "@/lib/db";
 import { getOnboardingDailyGoalMinutes } from "@/lib/gamification";
 import { getVideoPrice, type VideoAccess } from "@/lib/ab";
 import { tehranDayDiff } from "@/lib/date";
+import { DEFAULT_ONBOARDING_DAYS } from "@/lib/onboarding-config";
+import { withUserLock } from "@/lib/user-lock";
 
 /**
- * منطق مسیر آنبوردینگ (روز دوبخشی: دقیقه‌های مطالعه + ویدیوی روز).
+ * منطق مسیر یک‌روزهٔ آنبوردینگ: هدف مطالعه + ویدیوی پاداش اختیاری.
  *
  * قواعد:
- *  - طول مسیر منعطف است: بیشترین `day` بین ویدیوهای فعال (پیش‌فرض ۶). ادمین با
- *    افزودن/حذف روزِ ویدیو مسیر را بلند/کوتاه می‌کند.
- *  - روز N وقتی کامل می‌شود که هم دقیقه‌های هدف پر شده باشد و هم ویدیوی روز N
- *    (متناسب با پایه) ≥۹۰٪ دیده شده باشد. اگر برای آن روز/پایه ویدیویی نباشد،
- *    دقیقه‌ها کافی است.
- *  - ویدیوی روز N از همان ابتدا باز است (بدون قفل)؛ `unlockedAt` صرفاً زمان در
+ *  - مسیر با تکمیل هدف دقیقه‌ای روز اول تمام می‌شود؛ ویدیو شرط پیشروی نیست.
+ *  - ویدیوی روز اول از همان ابتدا باز است (بدون قفل)؛ `unlockedAt` صرفاً زمان در
  *    دسترس قرار گرفتن آن است و تماشای ویدیو در ۲۴ ساعت اول سکه دوبرابر می‌دهد.
  *  - رقابت (تایمر/XP/لیدربورد) هیچ‌وقت پشت ویدیو قفل نمی‌شود.
  */
 
-export const DEFAULT_ONBOARDING_DAYS = 1;
+export { DEFAULT_ONBOARDING_DAYS } from "@/lib/onboarding-config";
 
 /** طول مسیر آنبوردینگ: ۱ روز */
 export async function getOnboardingTotalDays(): Promise<number> {
@@ -158,16 +156,37 @@ export async function getOnboardingState(userId: string): Promise<OnboardingStat
 export async function tryCompleteOnboardingDay(
   userId: string
 ): Promise<{ dayCompleted: boolean; state: OnboardingState | null }> {
-  const state = await getOnboardingState(userId);
-  if (!state || !state.inOnboarding) return { dayCompleted: false, state };
-
-  if (state.minutesDone) {
-    await prisma.user.update({
+  const totalDays = await getOnboardingTotalDays();
+  const dayCompleted = await withUserLock(userId, async (tx) => {
+    const user = await tx.user.findUnique({
       where: { id: userId },
+      select: {
+        onboardingDay: true,
+        onboardingStepMinutes: true,
+        pastAvgStudyHours: true,
+        day1GoalMinutes: true,
+        lastStudyDate: true,
+      },
+    });
+    if (!user || user.onboardingDay >= totalDays) return false;
+
+    const stepMinutes =
+      !user.lastStudyDate || tehranDayDiff(new Date(), user.lastStudyDate) >= 1
+        ? 0
+        : user.onboardingStepMinutes;
+    const goalMinutes = getOnboardingDailyGoalMinutes(
+      user.onboardingDay,
+      user.pastAvgStudyHours,
+      user.day1GoalMinutes,
+    );
+    if (stepMinutes < goalMinutes) return false;
+
+    const claimed = await tx.user.updateMany({
+      where: { id: userId, onboardingDay: user.onboardingDay },
       data: { onboardingDay: { increment: 1 }, onboardingStepMinutes: 0 },
     });
-    return { dayCompleted: true, state };
-  }
-
-  return { dayCompleted: false, state };
+    return claimed.count === 1;
+  });
+  const state = await getOnboardingState(userId);
+  return { dayCompleted, state };
 }

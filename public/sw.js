@@ -1,11 +1,40 @@
-/* Service Worker — Web Push + نمایش نوتیف پس‌زمینه */
+/* Service Worker — Web Push + پوسته امن آفلاین (بدون cache کردن داده خصوصی کاربر) */
 
-self.addEventListener("install", () => {
+const STATIC_CACHE = "gcamp-static-v2";
+const STATIC_ASSETS = [
+  "/offline.html",
+  "/manifest.json",
+  "/icon-192.png",
+  "/icon-512.png",
+  "/brand/gcamp-logo.webp",
+];
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(caches.open(STATIC_CACHE).then((cache) => cache.addAll(STATIC_ASSETS)));
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(Promise.all([
+    self.clients.claim(),
+    caches.keys().then((keys) => Promise.all(
+      keys.filter((key) => key.startsWith("gcamp-static-") && key !== STATIC_CACHE).map((key) => caches.delete(key)),
+    )),
+  ]));
+});
+
+self.addEventListener("fetch", (event) => {
+  if (event.request.method !== "GET") return;
+  const url = new URL(event.request.url);
+  if (url.origin !== self.location.origin) return;
+
+  if (event.request.mode === "navigate") {
+    event.respondWith(fetch(event.request).catch(() => caches.match("/offline.html")));
+    return;
+  }
+  if (STATIC_ASSETS.includes(url.pathname)) {
+    event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  }
 });
 
 self.addEventListener("push", (event) => {
@@ -32,7 +61,12 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/dashboard";
+  const requestedUrl = (event.notification.data && event.notification.data.url) || "/dashboard";
+  let url = "/dashboard";
+  try {
+    const parsed = new URL(requestedUrl, self.location.origin);
+    if (parsed.origin === self.location.origin) url = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+  } catch {}
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {

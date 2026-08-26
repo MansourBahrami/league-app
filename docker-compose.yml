@@ -1,26 +1,43 @@
+x-app: &app
+  image: ${APP_IMAGE:-league-app:local}
+  build: .
+  restart: unless-stopped
+  mem_limit: 768m
+  pids_limit: 256
+  environment:
+    - TZ=Asia/Tehran
+    - NODE_OPTIONS=--max-old-space-size=640
+  env_file: .env.production
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+    interval: 15s
+    timeout: 5s
+    start_period: 30s
+    retries: 3
+  networks:
+    - league-net
+  logging:
+    driver: local
+    options:
+      max-size: "10m"
+      max-file: "5"
+
 services:
 
   app:
-    build: .
-    restart: unless-stopped
+    <<: *app
     ports:
-      - "3000:3000"
-    # منطق تاریخ/ساعت اپ (زمان‌بندی نوتیف، مرز «امروز»، ساعت سکوت) بر اساس این TZ کار می‌کند
-    environment:
-      - TZ=Asia/Tehran
-    env_file: .env.production
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - league-net
-    logging:
-      driver: local
-      options:
-        max-size: "10m"
-        max-file: "5"
+      - "127.0.0.1:3000:3000"
+
+  app-replica:
+    <<: *app
+    ports:
+      - "127.0.0.1:3001:3000"
 
   postgres:
     image: postgres:17-alpine

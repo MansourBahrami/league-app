@@ -1,6 +1,18 @@
 import * as Sentry from "@sentry/nextjs";
 import { schedulePostHogInitialization } from "@/lib/posthog-client";
 
+const device = navigator as Navigator & {
+  deviceMemory?: number;
+  connection?: { saveData?: boolean };
+};
+const lowMemory = typeof device.deviceMemory === "number" && device.deviceMemory <= 2;
+const constrainedDevice = typeof device.deviceMemory === "number"
+  && device.deviceMemory <= 4
+  && navigator.hardwareConcurrency <= 4;
+if (device.connection?.saveData || lowMemory || constrainedDevice) {
+  document.documentElement.dataset.performance = "low";
+}
+
 const sentryDsn = process.env.NEXT_PUBLIC_SENTRY_DSN;
 
 Sentry.init({
@@ -8,7 +20,7 @@ Sentry.init({
   enabled: Boolean(sentryDsn),
   environment: process.env.NEXT_PUBLIC_APP_ENV ?? process.env.NODE_ENV,
   sendDefaultPii: false,
-  tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 0,
+  tracesSampleRate: 0,
   beforeSend(event) {
     if (event.request) {
       delete event.request.cookies;

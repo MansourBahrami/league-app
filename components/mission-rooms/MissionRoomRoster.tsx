@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import RoomCheerButton from "@/components/mission-rooms/RoomCheerButton";
 import type { MissionRoomSnapshot } from "@/lib/mission-room";
+import { captureClientError } from "@/lib/analytics-client";
 
 function formatMinutes(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -22,11 +23,14 @@ export default function MissionRoomRoster({ initialRoom }: { initialRoom: Missio
     setIsRefreshing(true);
     try {
       const response = await fetch(`/api/mission-rooms/${initialRoom.id}`, { cache: "no-store" });
-      if (!response.ok) return;
+      if (!response.ok) {
+        if (response.status >= 500) captureClientError("mission_room.refresh", new Error(`http_${response.status}`));
+        return;
+      }
       const next = (await response.json()) as MissionRoomSnapshot;
       if (next?.id) setRoom(next);
-    } catch {
-      // Background refresh errors are non-fatal
+    } catch (caught) {
+      captureClientError("mission_room.refresh", caught);
     } finally {
       setIsRefreshing(false);
     }
@@ -62,7 +66,9 @@ export default function MissionRoomRoster({ initialRoom }: { initialRoom: Missio
         if (isCheerForThisRoom || isMemberStudyEvent) {
           debouncedRefresh();
         }
-      } catch {}
+      } catch (caught) {
+        captureClientError("mission_room.sse_parse", caught);
+      }
     };
 
     return () => {

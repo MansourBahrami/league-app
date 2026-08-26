@@ -14,9 +14,9 @@ const PUBLIC_PATHS = [
   "/about",
   "/api/auth/send-otp",
   "/api/auth/verify-otp",
+  "/api/health",
   "/api/cron/",
   "/api/bot/", // webhook و API داخلی ربات‌ها با secret مستقل احراز می‌شوند
-  "/api/avatar/", // سروِ عکس پروفایلِ آپلودی — عمومی مثل آواتارهای آماده (در فید/لیدربورد دیده می‌شود)
 ];
 
 function isPublicPath(pathname: string): boolean {
@@ -28,15 +28,26 @@ function isPublicPath(pathname: string): boolean {
   );
 }
 
+function attachRequestId(response: NextResponse, requestId: string) {
+  response.headers.set("x-request-id", requestId);
+  return response;
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const suppliedRequestId = request.headers.get("x-request-id");
+  const requestId = suppliedRequestId && /^[A-Za-z0-9._:-]{8,100}$/.test(suppliedRequestId)
+    ? suppliedRequestId
+    : crypto.randomUUID();
+  const baseHeaders = new Headers(request.headers);
+  baseHeaders.set("x-request-id", requestId);
 
   if (pathname.startsWith("/api/") && isCrossSiteMutation(request)) {
-    return NextResponse.json({ error: "Cross-site request blocked" }, { status: 403 });
+    return attachRequestId(NextResponse.json({ error: "Cross-site request blocked" }, { status: 403 }), requestId);
   }
 
   if (isPublicPath(pathname)) {
-    return NextResponse.next();
+    return attachRequestId(NextResponse.next({ request: { headers: baseHeaders } }), requestId);
   }
 
   if (
@@ -53,15 +64,15 @@ export async function proxy(request: NextRequest) {
     pathname.endsWith(".ico") ||
     pathname.endsWith(".json")
   ) {
-    return NextResponse.next();
+    return attachRequestId(NextResponse.next({ request: { headers: baseHeaders } }), requestId);
   }
 
   const token = request.cookies.get(COOKIE_NAME)?.value;
   if (!token) {
     if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return attachRequestId(NextResponse.json({ error: "Unauthorized" }, { status: 401 }), requestId);
     }
-    return NextResponse.redirect(new URL("/login", request.url));
+    return attachRequestId(NextResponse.redirect(new URL("/login", request.url)), requestId);
   }
 
   const payload = await verifyToken(token);
@@ -70,10 +81,10 @@ export async function proxy(request: NextRequest) {
       ? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
       : NextResponse.redirect(new URL("/login", request.url));
     response.cookies.delete(COOKIE_NAME);
-    return response;
+    return attachRequestId(response, requestId);
   }
 
-  const requestHeaders = new Headers(request.headers);
+  const requestHeaders = baseHeaders;
   requestHeaders.set("x-user-id", payload.userId);
 
   const response = NextResponse.next({ request: { headers: requestHeaders } });
@@ -86,7 +97,7 @@ export async function proxy(request: NextRequest) {
     response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2]);
   }
 
-  return response;
+  return attachRequestId(response, requestId);
 }
 
 export const config = {

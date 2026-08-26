@@ -83,7 +83,7 @@ export default function SectionInfoButton({
 
       {open && (
         <div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-on-surface/60 backdrop-blur-sm p-4"
           onClick={closeDialog}
         >
           <div

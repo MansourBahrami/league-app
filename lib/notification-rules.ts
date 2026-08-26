@@ -1,3 +1,5 @@
+import { DEFAULT_ONBOARDING_DAYS } from "@/lib/onboarding-config";
+
 /**
  * کاتالوگ و منطق ارزیابی قانون‌های نوتیفیکیشن.
  *
@@ -128,7 +130,7 @@ export const SEGMENTS: SegmentDef[] = [
   { key: "all", label: "همه کاربران", conditions: [] },
   { key: "inactive", label: "ریزشی‌ها (۳+ روز نخوانده)", conditions: [{ field: "daysInactive", op: "gte", value: 3 }] },
   { key: "newbie", label: "تازه‌نفس‌ها", conditions: [{ field: "level", op: "eq", value: "تازه‌نفس" }] },
-  { key: "onboarding", label: "در آنبوردینگ", conditions: [{ field: "onboardingDay", op: "lt", value: 6 }] },
+  { key: "onboarding", label: "در آنبوردینگ", conditions: [{ field: "onboardingDay", op: "lt", value: DEFAULT_ONBOARDING_DAYS }] },
   { key: "streakHolders", label: "استریک‌دارها", conditions: [{ field: "streak", op: "gte", value: 1 }] },
   { key: "notStudiedToday", label: "امروز نخوانده‌اند", conditions: [{ field: "studiedToday", op: "eq", value: false }] },
   { key: "incompleteProfile", label: "پروفایل ناقص", conditions: [{ field: "isLeadComplete", op: "eq", value: false }] },

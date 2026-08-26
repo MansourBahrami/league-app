@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { captureClientError } from "@/lib/analytics-client";
 
 const AVATARS = ["a1", "a2", "a3", "a4", "a5", "a6", "a7", "a8"].map((a) => `/avatars/${a}.svg`);
 
@@ -77,7 +78,10 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ avatarUrl: url }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("profile.avatar_select", caught);
+      return null;
+    });
     setSaving(null);
     if (res?.ok) {
       closeAll();
@@ -106,7 +110,11 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
       const url = URL.createObjectURL(blob);
       previewUrlRef.current = url;
       setPreview({ url, blob });
-    } catch {
+    } catch (caught) {
+      captureClientError("profile.avatar_process", caught, {
+        mime_type: file.type,
+        input_bytes: file.size,
+      });
       setError("پردازش تصویر انجام نشد؛ تصویر دیگری انتخاب کن.");
     }
   }
@@ -119,7 +127,13 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
       method: "POST",
       headers: { "Content-Type": preview.blob.type },
       body: preview.blob,
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("profile.avatar_upload", caught, {
+        mime_type: preview.blob.type,
+        input_bytes: preview.blob.size,
+      });
+      return null;
+    });
     setSaving(null);
     if (res?.ok) {
       closeAll();
@@ -132,7 +146,10 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
   async function removeAvatar() {
     setSaving("__remove__");
     setError(null);
-    const res = await fetch("/api/profile/avatar", { method: "DELETE" }).catch(() => null);
+    const res = await fetch("/api/profile/avatar", { method: "DELETE" }).catch((caught) => {
+      captureClientError("profile.avatar_remove", caught);
+      return null;
+    });
     setSaving(null);
     if (res?.ok) {
       closeAll();
@@ -225,14 +242,14 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
           </div>
         )}
         {/* دکمه ویرایش روی آواتار */}
-        <span className="absolute bottom-0 inset-x-0 bg-primary/80 text-white text-[10px] font-bold py-1 flex items-center justify-center gap-0.5">
+        <span className="absolute bottom-0 inset-x-0 bg-primary/80 text-on-primary text-[10px] font-bold py-1 flex items-center justify-center gap-0.5">
           <span className="material-symbols-outlined text-[12px]">edit</span>
           تغییر
         </span>
       </button>
 
       {open && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-black/50 backdrop-blur-sm overflow-y-auto" onClick={closeAll}>
+        <div className="fixed inset-0 z-[80] flex items-center justify-center px-4 pt-4 pb-[calc(5rem_+_env(safe-area-inset-bottom))] bg-on-surface/50 backdrop-blur-sm overflow-y-auto" onClick={closeAll}>
           <div
             ref={dialogRef}
             role="dialog"
@@ -273,7 +290,7 @@ export default function AvatarPicker({ currentUrl, name }: Props) {
                   <button
                     onClick={confirmUpload}
                     disabled={!!saving}
-                    className="flex-1 py-2.5 rounded-xl bg-primary text-white text-[14px] font-bold disabled:opacity-50 flex items-center justify-center gap-1"
+                    className="flex-1 py-2.5 rounded-xl bg-primary text-on-primary text-[14px] font-bold disabled:opacity-50 flex items-center justify-center gap-1"
                   >
                     {saving === "__upload__" ? (
                       <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>

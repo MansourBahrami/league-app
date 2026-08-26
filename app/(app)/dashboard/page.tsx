@@ -25,6 +25,7 @@ async function getPulseActivities(userIds?: string[]): Promise<FocusPulseActivit
   const activities = await prisma.activityLog.findMany({
     where: {
       type: { in: PULSE_TYPES },
+      user: { activityPublic: true },
       ...(userIds && userIds.length > 0 ? { userId: { in: userIds } } : {}),
     },
     orderBy: { createdAt: "desc" },

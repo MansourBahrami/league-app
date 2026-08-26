@@ -9,6 +9,7 @@ import {
   EVENTS,
   type Op,
 } from "@/lib/notification-rules";
+import { isSafeWebUrl } from "@/lib/url-safety";
 
 const TRIGGER_TYPES = ["scheduled", "relative", "event"] as const;
 const VALID_OPS: Op[] = ["eq", "ne", "gt", "lt", "gte", "lte", "between", "in"];
@@ -105,5 +106,6 @@ export function validateRule(r: ParsedRule): string | null {
     return "ساعت پایان سکوت نامعتبر است.";
   if (r.cooldownHours < 0) return "فاصله‌ی ارسال مجدد نمی‌تواند منفی باشد.";
   if (r.maxPerDay !== null && r.maxPerDay < 1) return "سقف روزانه باید حداقل ۱ باشد.";
+  if (r.linkUrl && !isSafeWebUrl(r.linkUrl)) return "لینک پیام باید مسیر داخلی یا HTTPS معتبر باشد.";
   return null;
 }

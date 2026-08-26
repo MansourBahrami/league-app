@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { grantStudyTick } from "@/lib/study-session";
 
 /**
  * پاداش فوری هر ۱۵ دقیقه (۱ XP + ۱ سکه) — کاملاً سمت سرور اعتبارسنجی می‌شود:
@@ -16,32 +16,16 @@ export async function POST(req: NextRequest) {
   const { sessionId } = await req.json().catch(() => ({}));
   if (!sessionId) return NextResponse.json({ error: "sessionId required" }, { status: 400 });
 
-  const s = await prisma.studySession.findUnique({
-    where: { id: sessionId, userId: session.userId },
+  const result = await grantStudyTick({
+    userId: session.userId,
+    sessionId,
   });
-  if (!s) return NextResponse.json({ error: "Session not found" }, { status: 404 });
-  if (s.endTime) return NextResponse.json({ granted: 0 });
+  if (result.status === "not_found") {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
 
-  const now = Date.now();
-  const pausedMs = s.pausedSec * 1000 + (s.pausedAt ? Math.max(0, now - s.pausedAt.getTime()) : 0);
-  const effectiveMin = Math.floor((now - s.startTime.getTime() - pausedMs) / 60000);
-  const capIntervals = s.plannedMin > 0 ? Math.floor(s.plannedMin / 15) : 0;
-  const entitled = Math.min(Math.floor(effectiveMin / 15), capIntervals);
-  const grant = Math.max(0, entitled - s.tickCount);
-
-  if (grant === 0) return NextResponse.json({ granted: 0 });
-
-  // قفل خوش‌بینانه: فقط اگر tickCount از زمان خواندن تغییری نکرده باشد
-  const updated = await prisma.studySession.updateMany({
-    where: { id: s.id, tickCount: s.tickCount, endTime: null },
-    data: { tickCount: { increment: grant } },
+  return NextResponse.json({
+    granted: result.granted,
+    ...(result.granted > 0 ? { xp: result.granted, coins: result.granted } : {}),
   });
-  if (updated.count === 0) return NextResponse.json({ granted: 0 });
-
-  await prisma.user.update({
-    where: { id: session.userId },
-    data: { xp: { increment: grant }, coins: { increment: grant } },
-  });
-
-  return NextResponse.json({ granted: grant, xp: grant, coins: grant });
 }

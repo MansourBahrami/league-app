@@ -39,7 +39,7 @@ export default function MissionCard({ mission, userCoins, isLocked, hasActiveMis
   }
 
   return (
-    <div className="bg-white/80 backdrop-blur-[20px] border border-white/50 rounded-xl p-5 shadow-[0_4px_14px_color-mix(in_oklab,var(--color-primary)_7%,transparent)] flex flex-col justify-between relative overflow-hidden">
+    <div className="bg-surface-container-lowest/80 backdrop-blur-[20px] border border-surface-container-lowest/50 rounded-xl p-5 shadow-[0_4px_14px_color-mix(in_oklab,var(--color-primary)_7%,transparent)] flex flex-col justify-between relative overflow-hidden">
       <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 rounded-bl-full -mr-4 -mt-4" />
       <div>
         <div className="flex justify-between items-start mb-4">
@@ -71,10 +71,10 @@ export default function MissionCard({ mission, userCoins, isLocked, hasActiveMis
         onClick={handleBuy}
         disabled={!canBuy || loading}
         className={`gamified-btn w-full py-3 rounded-xl text-[14px] font-bold transition-all ${
-          canBuy ? "bg-primary text-white" : "bg-outline-variant text-outline cursor-not-allowed border-b-[#a0a0b0]"
+          canBuy ? "bg-primary text-on-primary" : "bg-outline-variant text-outline cursor-not-allowed border-b-outline"
         }`}
       >
-        {loading ? "در حال خرید..." : isLocked ? "قفل تا روز ششم" : hasActiveMission ? "ماموریت فعال دارید" : userCoins < mission.entryCost ? "سکه کافی نیست" : "خرید ماموریت"}
+        {loading ? "در حال خرید..." : isLocked ? "قفل تا پایان آنبوردینگ" : hasActiveMission ? "ماموریت فعال دارید" : userCoins < mission.entryCost ? "سکه کافی نیست" : "خرید ماموریت"}
       </button>
     </div>
   );

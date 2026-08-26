@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { captureClientError, captureProductEvent } from "@/lib/analytics-client";
 
 interface VideoStep {
   id: string;
@@ -15,7 +16,7 @@ interface VideoStep {
 }
 
 interface Props {
-  /** آیا کاربر هنوز در مسیر آنبوردینگ است (مسیر ۶ روزه نمایش داده شود) */
+  /** آیا کاربر هنوز در مسیر آنبوردینگ است */
   inOnboarding: boolean;
   /** تعداد روزهای کامل‌شده (۰ یعنی روز اول) */
   currentDay: number;
@@ -54,8 +55,20 @@ export default function DailyMissionCard({
     if (!video) return;
     setBuying(true);
     setBuyError("");
-    const res = await fetch(`/api/videos/${video.id}/buy`, { method: "POST" }).catch(() => null);
-    const data = await res?.json().catch(() => null);
+    const res = await fetch(`/api/videos/${video.id}/buy`, { method: "POST" }).catch((caught) => {
+      captureClientError("daily_mission.video_purchase", caught, { video_id: video.id });
+      return null;
+    });
+    const data = await res?.json().catch((caught) => {
+      captureClientError("daily_mission.video_purchase_response", caught, { video_id: video.id });
+      return null;
+    });
+    captureProductEvent("video_purchase_result", {
+      video_id: video.id,
+      result: res?.ok ? "succeeded" : "failed",
+      status: res?.status ?? 0,
+      price: video.price,
+    });
     if (res?.ok) {
       router.refresh();
     } else {
@@ -85,7 +98,7 @@ export default function DailyMissionCard({
 
   return (
     <section className="glass-card rounded-xl p-4">
-      {/* مسیر ۶ روزه (فقط در آنبوردینگ) */}
+      {/* مسیر روزهای onboarding (در نسخه فعلی یک روز) */}
       {inOnboarding && (
         <>
           <p className="text-[13px] font-semibold text-on-surface-variant mb-3 text-right">
@@ -117,13 +130,13 @@ export default function DailyMissionCard({
                       isDone
                         ? "bg-primary shadow-md shadow-primary/30"
                         : isCurrent
-                        ? "bg-white border-2 border-primary"
+                        ? "bg-surface-container-lowest border-2 border-primary"
                         : "bg-surface-container border border-outline-variant"
                     }`}
                   >
                     <span
                       className={`material-symbols-outlined text-[16px] ${
-                        isDone ? "text-white" : isCurrent ? "text-primary" : "text-outline-variant"
+                        isDone ? "text-on-primary" : isCurrent ? "text-primary" : "text-outline-variant"
                       }`}
                       style={{ fontVariationSettings: isDone ? "'FILL' 1" : "'FILL' 0" }}
                     >
@@ -174,7 +187,7 @@ export default function DailyMissionCard({
           className="bg-gradient-to-l from-tertiary to-tertiary-fixed-dim h-full rounded-full relative transition-all duration-500"
           style={{ width: `${progress}%` }}
         >
-          <div className="absolute left-0 top-0 w-3 h-full bg-white/50 blur-[2px] rounded-full" />
+          <div className="absolute left-0 top-0 w-3 h-full bg-on-tertiary/50 blur-[2px] rounded-full" />
         </div>
       </div>
       <p className="text-[12px] font-medium text-on-surface-variant mt-1.5 text-right">
@@ -234,7 +247,7 @@ export default function DailyMissionCard({
                 play_circle
               </span>
               تماشا
-              <span className="text-[11px] font-bold bg-white/20 px-2 py-0.5 rounded-full">سکه ۲×</span>
+              <span className="text-[11px] font-bold bg-on-tertiary/20 px-2 py-0.5 rounded-full">سکه ۲×</span>
             </Link>
           )}
         </div>

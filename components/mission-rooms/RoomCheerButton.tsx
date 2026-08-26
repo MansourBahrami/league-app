@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { captureClientError } from "@/lib/analytics-client";
 
 const OPTIONS = [
   { key: "lets_go", label: "بزن بریم", icon: "fitness_center" },
@@ -20,7 +21,10 @@ export default function RoomCheerButton({ roomId, targetUserId }: { roomId: stri
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ targetUserId, cheer }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("mission_room.cheer", caught);
+      return null;
+    });
     const data = await response?.json().catch(() => ({})) as { message?: string; error?: string } | undefined;
     setBusy(false);
     setOpen(false);

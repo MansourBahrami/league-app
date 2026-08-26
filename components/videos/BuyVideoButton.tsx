@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { captureClientError, captureProductEvent } from "@/lib/analytics-client";
 
 interface Props {
   videoId: string;
@@ -25,8 +26,20 @@ export default function BuyVideoButton({ videoId, price, userCoins, className = 
   async function handleBuy() {
     setBuying(true);
     setError("");
-    const res = await fetch(`/api/videos/${videoId}/buy`, { method: "POST" }).catch(() => null);
-    const data = await res?.json().catch(() => null);
+    const res = await fetch(`/api/videos/${videoId}/buy`, { method: "POST" }).catch((caught) => {
+      captureClientError("video.purchase", caught, { video_id: videoId });
+      return null;
+    });
+    const data = await res?.json().catch((caught) => {
+      captureClientError("video.purchase_response", caught, { video_id: videoId });
+      return null;
+    });
+    captureProductEvent("video_purchase_result", {
+      video_id: videoId,
+      result: res?.ok ? "succeeded" : "failed",
+      status: res?.status ?? 0,
+      price,
+    });
     if (res?.ok) {
       router.refresh();
     } else {

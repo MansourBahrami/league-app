@@ -22,6 +22,7 @@ ARG NEXT_PUBLIC_SENTRY_DSN
 ARG NEXT_PUBLIC_APP_ENV
 ARG SENTRY_ORG
 ARG SENTRY_PROJECT
+ARG APP_VERSION=unknown
 ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 ENV NEXT_PUBLIC_VAPID_PUBLIC_KEY=$NEXT_PUBLIC_VAPID_PUBLIC_KEY
 ENV NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN=$NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN
@@ -30,9 +31,17 @@ ENV NEXT_PUBLIC_SENTRY_DSN=$NEXT_PUBLIC_SENTRY_DSN
 ENV NEXT_PUBLIC_APP_ENV=$NEXT_PUBLIC_APP_ENV
 ENV SENTRY_ORG=$SENTRY_ORG
 ENV SENTRY_PROJECT=$SENTRY_PROJECT
-ENV NODE_OPTIONS="--max-old-space-size=768"
-# Source Map فعلاً اختیاری و غیرفعال است؛ build نباید به توکن Sentry وابسته باشد.
-RUN npm run build
+ENV SENTRY_RELEASE=$APP_VERSION
+ENV APP_VERSION=$APP_VERSION
+# Webpack/SWC peaks just above 768 MB on the production builder. This limit is
+# build-only; the runtime containers remain capped separately in Compose.
+ENV NODE_OPTIONS="--max-old-space-size=1280"
+# توکن Sentry فقط هنگام build از BuildKit secret خوانده می‌شود و داخل layer نمی‌ماند.
+# خواندن از فایل با BuildKit قدیمی سرور production هم سازگار است؛ نبودن secret
+# فقط upload کردن source map را غیرفعال می‌کند و خود build را متوقف نمی‌کند.
+RUN --mount=type=secret,id=sentry_auth_token,required=false \
+    export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
+    && npm run build
 
 # Stage 2: Runner
 FROM node:22-slim AS runner
@@ -44,6 +53,8 @@ RUN apt-get update -q \
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+ARG APP_VERSION=unknown
+ENV APP_VERSION=$APP_VERSION
 
 # کل node_modules بیلدشده (شامل prisma CLI + موتور schema لینوکس) تا migration آفلاین روی سرور کار کند
 COPY --from=builder /app/node_modules ./node_modules
@@ -57,6 +68,9 @@ COPY --from=builder /app/next.config.ts ./next.config.ts
 COPY --from=builder /app/prisma.config.ts ./prisma.config.ts
 
 EXPOSE 3000
+
+HEALTHCHECK --interval=15s --timeout=4s --start-period=30s --retries=3 \
+  CMD node -e 'fetch("http://127.0.0.1:3000/api/health").then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))'
 
 # اجرای migration (موتور schema داخل ایمیج پخته شده، بدون نیاز به نت) و سپس start
 CMD ["sh", "-c", "npx prisma migrate deploy && npm start"]

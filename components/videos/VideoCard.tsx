@@ -24,8 +24,8 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
   const badge = `روز ${video.day.toLocaleString("fa-IR")}`;
 
   const inner = (
-    <div className={`relative bg-white/80 rounded-xl p-1 shadow-[0_10px_25px_color-mix(in_oklab,var(--color-primary)_10%,transparent)] border border-primary/20 backdrop-blur-xl group overflow-hidden transition-all duration-300 ${isLocked ? "opacity-80" : "hover:shadow-[0_15px_30px_color-mix(in_oklab,var(--color-primary)_15%,transparent)] cursor-pointer"}`}>
-      <div className="flex gap-4 bg-white rounded-xl p-3 items-center">
+    <div className={`relative bg-surface-container-lowest/80 rounded-xl p-1 shadow-[0_10px_25px_color-mix(in_oklab,var(--color-primary)_10%,transparent)] border border-primary/20 backdrop-blur-xl group overflow-hidden transition-all duration-300 ${isLocked ? "opacity-80" : "hover:shadow-[0_15px_30px_color-mix(in_oklab,var(--color-primary)_15%,transparent)] cursor-pointer"}`}>
+      <div className="flex gap-4 bg-surface-container-lowest rounded-xl p-3 items-center">
         <div className="w-24 h-24 rounded-xl overflow-hidden relative shrink-0 bg-primary-fixed flex items-center justify-center">
           {video.thumbnailUrl ? (
             <Image src={video.thumbnailUrl} width={96} height={96} unoptimized className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" alt={video.title} />
@@ -34,17 +34,17 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
           )}
           {isLocked && (
             <div className="absolute inset-0 bg-on-surface/60 flex items-center justify-center backdrop-blur-[1px]">
-              <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+              <span className="material-symbols-outlined text-inverse-on-surface text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
             </div>
           )}
           {!isLocked && purchasable && (
             <div className="absolute inset-0 bg-tertiary/70 flex items-center justify-center">
-              <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
+              <span className="material-symbols-outlined text-on-tertiary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>shopping_cart</span>
             </div>
           )}
           {!isLocked && !purchasable && isCompleted && (
             <div className="absolute inset-0 bg-secondary/70 flex items-center justify-center">
-              <span className="material-symbols-outlined text-white text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+              <span className="material-symbols-outlined text-on-secondary text-3xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
             </div>
           )}
         </div>

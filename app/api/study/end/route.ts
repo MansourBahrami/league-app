@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
-import { calcRewards } from "@/lib/gamification";
 import { broadcastActivity } from "@/lib/feed-broadcast";
 import { processUserMissions, recalcUserLevel } from "@/lib/mission";
 import { getOnboardingState, tryCompleteOnboardingDay } from "@/lib/onboarding";
@@ -11,6 +10,7 @@ import { fireEvent } from "@/lib/notification-engine";
 import { tehranDayDiff } from "@/lib/date";
 import { after } from "next/server";
 import { captureServerEvent } from "@/lib/analytics-server";
+import { endStudySession } from "@/lib/study-session";
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
@@ -30,24 +30,12 @@ export async function POST(req: NextRequest) {
   }
 
   const endTime = new Date();
-  const now = endTime.getTime();
-
-  // مدت واقعی = زمان سپری‌شده منهای کل زمان pause (سمت سرور). سقف = مدت انتخابی تایمر.
-  const pausedMs =
-    studySession.pausedSec * 1000 +
-    (studySession.pausedAt ? Math.max(0, now - studySession.pausedAt.getTime()) : 0);
-  let durationMin = Math.floor((now - studySession.startTime.getTime() - pausedMs) / 60000);
-  if (studySession.plannedMin > 0) durationMin = Math.min(durationMin, studySession.plannedMin);
-  durationMin = Math.max(0, durationMin);
-
-  // پاداش نهایی = استحقاق کل منهای آنچه در tickها قبلاً پرداخت شده (جلوگیری از پاداش دوباره)
-  const { xp: totalXp, coins: totalCoins } = calcRewards(durationMin);
-  const xp = Math.max(0, totalXp - studySession.tickCount);
-  const coins = Math.max(0, totalCoins - studySession.tickCount);
+  const isLoadTest = process.env.GCAMP_LOAD_TEST_MODE === "1"
+    && req.headers.get("x-gcamp-load-test") === "1";
 
   const userBefore = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { isLeadComplete: true, lastStudyDate: true, onboardingDay: true, name: true, avatarUrl: true },
+    select: { isLeadComplete: true, lastStudyDate: true, onboardingDay: true, name: true, avatarUrl: true, streak: true },
   });
   if (!userBefore) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
@@ -61,38 +49,41 @@ export async function POST(req: NextRequest) {
   const startsNewTehranDay =
     !userBefore.lastStudyDate || tehranDayDiff(endTime, userBefore.lastStudyDate) >= 1;
 
-  await prisma.$transaction([
-    prisma.studySession.update({
-      where: { id: sessionId },
-      data: {
-        endTime,
-        durationMin,
-        xpEarned: xp + studySession.tickCount,
-        coinsEarned: coins + studySession.tickCount,
-        pausedAt: null,
-      },
-    }),
-    prisma.user.update({
-      where: { id: session.userId },
-      data: {
-        xp: { increment: xp },
-        coins: { increment: coins },
-        // پیشرفت روز جاری آنبوردینگ: دقیقه‌های مطالعه‌ی همین روزِ تقویمی (با شروع
-        // روز جدید از نو شمرده می‌شود تا روزِ ناتمامِ قبلی سرریز نکند).
-        ...(inOnboarding
-          ? { onboardingStepMinutes: startsNewTehranDay ? durationMin : { increment: durationMin } }
-          : {}),
-      },
-    }),
-  ]);
+  const endResult = await endStudySession({
+    userId: session.userId,
+    sessionId,
+    inOnboarding,
+    startsNewTehranDay,
+    now: endTime,
+  });
+  if (endResult.status === "not_found") {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
+  if (endResult.status === "already_ended") {
+    return NextResponse.json(
+      { error: "Session already ended", alreadyEnded: true },
+      { status: 409 },
+    );
+  }
+
+  const {
+    studySession: closedStudySession,
+    durationMin,
+    totalXp,
+    totalCoins,
+  } = endResult;
 
   // استریک (زنجیره روزهای متوالی) — ممکن است رویداد فید streak ثبت کند
-  const streakResult = await applyStreak(session.userId);
+  const streakResult = durationMin > 0
+    ? await applyStreak(session.userId)
+    : { streak: userBefore.streak, milestone: null };
 
-  const log = await prisma.activityLog.create({
-    data: { userId: session.userId, type: "session_complete", metadata: { durationMin, xp: totalXp, coins: totalCoins } },
-  });
-  broadcastActivity({ ...log, user: { name: userBefore.name, avatarUrl: userBefore.avatarUrl } });
+  if (durationMin > 0) {
+    const log = await prisma.activityLog.create({
+      data: { userId: session.userId, type: "session_complete", metadata: { durationMin, xp: totalXp, coins: totalCoins } },
+    });
+    broadcastActivity({ ...log, user: { name: userBefore.name, avatarUrl: userBefore.avatarUrl } });
+  }
 
   // تلاش برای تکمیل روز آنبوردینگ (دقیقه‌ها + ویدیو). ویدیوی روز را در صورت پر شدن دقیقه‌ها باز می‌کند.
   let dayCompleted = false;
@@ -182,25 +173,46 @@ export async function POST(req: NextRequest) {
 
   after(async () => {
     // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به پایان جلسه مطالعه (در پس‌زمینه بدون مسدودسازی پاسخ کاربر)
-    await fireEvent("session_complete", session.userId, {
-      durationMin,
-      xp: totalXp,
-      coins: totalCoins,
-      streak: streakResult.streak,
-    });
+    if (durationMin > 0) {
+      await fireEvent("session_complete", session.userId, {
+        durationMin,
+        xp: totalXp,
+        coins: totalCoins,
+        streak: streakResult.streak,
+      });
+    }
 
     await captureServerEvent({
       distinctId: session.userId,
-      event: "study_completed",
+      event: durationMin > 0 ? "study_completed" : "study_discarded",
       properties: {
-        planned_minutes: studySession.plannedMin,
+        planned_minutes: closedStudySession.plannedMin,
         verified_minutes: durationMin,
         xp_earned: totalXp,
         coins_earned: totalCoins,
         onboarding_day_completed: dayCompleted,
       },
-      insertId: `study-completed:${studySession.id}`,
+      insertId: `study-completed:${closedStudySession.id}`,
+      deferDelivery: isLoadTest,
     });
+    if (inOnboarding && dayCompleted) {
+      await captureServerEvent({
+        distinctId: session.userId,
+        event: "onboarding_step_completed",
+        properties: { onboarding_day: newOnboardingDay },
+        insertId: `onboarding-step:${session.userId}:${newOnboardingDay}`,
+        deferDelivery: isLoadTest,
+      });
+    }
+    if (inOnboarding && dayCompleted && !stateAfter?.inOnboarding) {
+      await captureServerEvent({
+        distinctId: session.userId,
+        event: "onboarding_completed",
+        properties: { verified_minutes: durationMin },
+        insertId: `onboarding-completed:${session.userId}`,
+        deferDelivery: isLoadTest,
+      });
+    }
   });
 
   return NextResponse.json({

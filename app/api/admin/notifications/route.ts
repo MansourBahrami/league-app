@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 import { parseRuleBody, validateRule } from "@/lib/notification-admin";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 // فهرست همه‌ی قانون‌ها (جدیدترین اول)
 export async function GET() {
@@ -22,5 +23,6 @@ export async function POST(req: NextRequest) {
   if (err) return NextResponse.json({ error: err }, { status: 400 });
 
   const rule = await prisma.notificationRule.create({ data });
+  await recordAdminAudit({ adminUserId: admin.userId, action: "notification_rule.create", request: req, targetType: "notification_rule", targetId: rule.id });
   return NextResponse.json(rule, { status: 201 });
 }

@@ -41,6 +41,8 @@ model User {
   // A/B تست مدل دسترسی به ویدیو: "free" (باز با پیشرفت روز) یا "paid" (خرید با سکه).
   // null = هنوز تخصیص نیافته؛ در اولین ورود به اپ مقداردهی می‌شود.
   videoAccess                String?
+  profilePublic              Boolean   @default(true) // نمایش پروفایل برای سایر کاربران
+  activityPublic             Boolean   @default(true) // نمایش فعالیت در بورد زنده
   createdAt                  DateTime  @default(now())
   updatedAt                  DateTime  @updatedAt
 
@@ -61,11 +63,89 @@ model User {
   inboxActed         InboxItem[]             @relation("InboxActor")
   missionRoomMembers MissionRoomMember[]
   avatarImage        AvatarImage?
+  blocksMade         UserBlock[]               @relation("BlocksMade")
+  blocksReceived     UserBlock[]               @relation("BlocksReceived")
+  reportsMade        UserReport[]              @relation("ReportsMade")
+  reportsReceived    UserReport[]              @relation("ReportsReceived")
   // آخرین رتبه هفتگی شناخته‌شده (برای نوتیف «فلانی ازت جلو زد»)
   lastWeeklyRank     Int?
 
   @@index([xp])
   @@index([level])
+}
+
+model UserBlock {
+  id        String   @id @default(cuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("BlocksMade", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+  @@index([blockedId])
+}
+
+model UserReport {
+  id           String   @id @default(cuid())
+  reporterId   String
+  targetUserId String
+  reason       String
+  details      String?
+  status       String   @default("open") // open | reviewed | dismissed
+  createdAt    DateTime @default(now())
+
+  reporter User @relation("ReportsMade", fields: [reporterId], references: [id], onDelete: Cascade)
+  target   User @relation("ReportsReceived", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([targetUserId, createdAt])
+}
+
+model AdminAuditLog {
+  id          String   @id @default(cuid())
+  adminUserId String
+  action      String
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  requestId   String?
+  createdAt   DateTime @default(now())
+
+  @@index([adminUserId, createdAt(sort: Desc)])
+  @@index([action, createdAt(sort: Desc)])
+}
+
+model AuthAttempt {
+  id           String   @id @default(cuid())
+  identityHash String
+  action       String // otp_request | otp_verify
+  status       String // succeeded | failed | rate_limited
+  errorCode    String?
+  durationMs   Int
+  requestId    String?
+  createdAt    DateTime @default(now())
+
+  @@index([action, status, createdAt(sort: Desc)])
+  @@index([identityHash, createdAt(sort: Desc)])
+}
+
+model ProductEventOutbox {
+  id            String    @id @default(cuid())
+  distinctId    String
+  event         String
+  properties    Json      @default("{}")
+  insertId      String    @unique
+  status        String    @default("pending") // pending | sent
+  attempts      Int       @default(0)
+  nextAttemptAt DateTime  @default(now())
+  lastError     String?
+  createdAt     DateTime  @default(now())
+  sentAt        DateTime?
+
+  @@index([status, nextAttemptAt])
+  @@index([createdAt(sort: Desc)])
 }
 
 // عکس پروفایل آپلودیِ کاربر — به‌صورت bytes داخل دیتابیس نگه داشته می‌شود
@@ -99,6 +179,7 @@ model ProfileUnlock {
 model StudySession {
   id          String    @id @default(cuid())
   userId      String
+  clientRequestId String? // کلید idempotency شروع تایمر؛ توسط کلاینت ساخته می‌شود
   startTime   DateTime
   endTime     DateTime?
   durationMin Int       @default(0)
@@ -117,6 +198,11 @@ model StudySession {
   @@index([userId, startTime])
   @@index([userId, endTime])
   @@index([endTime, pausedAt, startTime])
+  @@unique([userId, clientRequestId])
+
+  // قید partial unique برای فقط یک session باز در migration
+  // 20260825120000_single_open_study_session تعریف شده است؛ Prisma schema
+  // در نسخه فعلی partial index را مستقیماً مدل نمی‌کند.
 }
 
 model Mission {
@@ -199,10 +285,11 @@ model Medal {
 }
 
 model UserMedal {
-  id       String   @id @default(cuid())
-  userId   String
-  medalId  String
-  earnedAt DateTime @default(now())
+  id                  String   @id @default(cuid())
+  userId              String
+  medalId             String
+  sourceUserMissionId String?  @unique // idempotency اعطای مدال برای هر مأموریت
+  earnedAt            DateTime @default(now())
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   medal Medal @relation(fields: [medalId], references: [id])
@@ -239,6 +326,7 @@ model VideoProgress {
   rewardGiven    Boolean   @default(false)
   unlockedAt     DateTime? // زمان باز شدن ویدیو (مبنای جایزه ۲× تماشای سریع در ۲۴ ساعت)
   purchasedAt    DateTime? // زمان خرید ویدیو با سکه (فقط گروه A/B «paid»)
+  lastProgressAt DateTime? // آخرین heartbeat معتبر پخش؛ مبنای محدودکردن جهش پیشرفت
   updatedAt      DateTime  @updatedAt
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -252,6 +340,7 @@ model ActivityLog {
   userId    String
   type      String
   metadata  Json?
+  dedupeKey String?  @unique // کلید idempotency برای side-effectهای حساس
   createdAt DateTime @default(now())
 
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -290,6 +379,7 @@ model InboxItem {
   actorId   String? // کاربری که باعث این آیتم شد (مثلاً واکنش‌دهنده)
   body      String? // متن (برای پیام خصوصی آینده)
   metadata  Json? // داده‌ی نمایشی (emoji، نوع فعالیت، coins، ...)
+  dedupeKey String?  @unique // جلوگیری از جایزه/اعلان تکراری
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
 
@@ -406,15 +496,20 @@ model NotificationRule {
 
 // لاگ ارسال هر نوتیف (برای cooldown، سقف روزانه و گزارش).
 model NotificationLog {
-  id      String   @id @default(cuid())
-  ruleId  String
-  userId  String
-  channel String
-  sentAt  DateTime @default(now())
+  id         String   @id @default(cuid())
+  ruleId     String
+  userId     String
+  channel    String
+  // attempted | sent | failed؛ رکوردهای قدیمی به‌صورت sent مهاجرت می‌کنند.
+  status     String   @default("sent")
+  errorCode  String?
+  durationMs Int?
+  sentAt     DateTime @default(now())
 
   rule NotificationRule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
 
   @@index([ruleId, userId, sentAt])
+  @@index([ruleId, status, sentAt])
   @@index([userId, sentAt])
 }
 

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { DEFAULT_ONBOARDING_DAYS } from "@/lib/onboarding-config";
 
 export const dynamic = "force-dynamic";
 
@@ -13,13 +14,13 @@ interface VariantStats {
   usersWithVideo: number; // ≥۱ ویدیوی تکمیل‌شده
   totalVideosCompleted: number;
   totalVideoBuys: number;
-  sumOnboardingDay: number;
+  onboardingCompleted: number;
 }
 
 function emptyStats(): VariantStats {
   return {
     users: 0, activeUsers: 0, active7d: 0, totalStudyMinutes: 0, totalSessions: 0,
-    usersWithVideo: 0, totalVideosCompleted: 0, totalVideoBuys: 0, sumOnboardingDay: 0,
+    usersWithVideo: 0, totalVideosCompleted: 0, totalVideoBuys: 0, onboardingCompleted: 0,
   };
 }
 
@@ -56,7 +57,7 @@ export default async function AnalyticsPage() {
     const v: Variant = u.videoAccess === "paid" ? "paid" : "free";
     const s = stats[v];
     s.users += 1;
-    s.sumOnboardingDay += u.onboardingDay;
+    if (u.onboardingDay >= DEFAULT_ONBOARDING_DAYS) s.onboardingCompleted += 1;
     const sess = sessMap.get(u.id);
     if (sess) {
       s.activeUsers += 1;
@@ -78,7 +79,7 @@ export default async function AnalyticsPage() {
     { label: "میانگین جلسه مطالعه", free: avg(stats.free.totalSessions, stats.free.users), paid: avg(stats.paid.totalSessions, stats.paid.users), hint: "به ازای هر کاربر" },
     { label: "نرخ فعال‌بودن", free: pct(stats.free.activeUsers, stats.free.users), paid: pct(stats.paid.activeUsers, stats.paid.users), hint: "٪ کاربرانی که حداقل یک جلسه ثبت کرده‌اند" },
     { label: "فعال در ۷ روز اخیر", free: pct(stats.free.active7d, stats.free.users), paid: pct(stats.paid.active7d, stats.paid.users), hint: "ریتنشن کوتاه‌مدت" },
-    { label: "میانگین روز آنبوردینگ", free: avg(stats.free.sumOnboardingDay, stats.free.users), paid: avg(stats.paid.sumOnboardingDay, stats.paid.users), hint: "پیشرفت در مسیر" },
+    { label: "نرخ تکمیل آنبوردینگ", free: pct(stats.free.onboardingCompleted, stats.free.users), paid: pct(stats.paid.onboardingCompleted, stats.paid.users), hint: "٪ کاربرانی که هدف روز اول را کامل کرده‌اند" },
     { label: "تعداد خرید ویدیو", free: "—", paid: stats.paid.totalVideoBuys.toLocaleString("fa-IR"), hint: "فقط گروه paid" },
   ];
 
@@ -92,14 +93,14 @@ export default async function AnalyticsPage() {
         </p>
       </div>
 
-      <div className="bg-white rounded-2xl border border-outline-variant/40 overflow-hidden">
-        <div className="grid grid-cols-[1.6fr_1fr_1fr] bg-on-surface text-white text-[13px] font-bold">
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/40 overflow-hidden">
+        <div className="grid grid-cols-[1.6fr_1fr_1fr] bg-inverse-surface text-inverse-on-surface text-[13px] font-bold">
           <div className="p-3">معیار</div>
-          <div className="p-3 text-center border-r border-white/10">گروه free</div>
-          <div className="p-3 text-center border-r border-white/10">گروه paid</div>
+          <div className="p-3 text-center border-r border-inverse-on-surface/10">گروه free</div>
+          <div className="p-3 text-center border-r border-inverse-on-surface/10">گروه paid</div>
         </div>
         {rows.map((r, i) => (
-          <div key={r.label} className={`grid grid-cols-[1.6fr_1fr_1fr] items-center ${i % 2 ? "bg-surface" : "bg-white"}`}>
+          <div key={r.label} className={`grid grid-cols-[1.6fr_1fr_1fr] items-center ${i % 2 ? "bg-surface" : "bg-surface-container-lowest"}`}>
             <div className="p-3 text-right">
               <div className="text-[14px] font-semibold text-on-surface">{r.label}</div>
               {r.hint && <div className="text-[11px] text-outline mt-0.5">{r.hint}</div>}

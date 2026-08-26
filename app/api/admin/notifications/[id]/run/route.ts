@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { runRuleManually } from "@/lib/notification-engine";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -21,5 +22,6 @@ export async function POST(req: NextRequest, { params }: Params) {
   const isTest = body && typeof body === "object" && (body as { test?: boolean }).test === true;
 
   const result = await runRuleManually(id, isTest ? admin.userId : undefined);
+  await recordAdminAudit({ adminUserId: admin.userId, action: isTest ? "notification_rule.test" : "notification_rule.run", request: req, targetType: "notification_rule", targetId: id, metadata: { matched: result.matched, sent: result.sent } });
   return NextResponse.json({ ok: true, ...result, test: Boolean(isTest) });
 }

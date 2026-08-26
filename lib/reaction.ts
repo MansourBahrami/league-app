@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { tehranDayStart } from "@/lib/date";
 import { sendPushToUser } from "@/lib/push";
 import { createInboxItem } from "@/lib/inbox";
+import { withUserLock } from "@/lib/user-lock";
 
 /**
  * واکنش (Reaction) روی آیتم‌های فید.
@@ -76,44 +77,107 @@ export async function toggleReaction(
 ): Promise<ToggleResult | { error: string }> {
   if (!isValidEmoji(emoji)) return { error: "واکنش نامعتبر است" };
 
-  const activity = await prisma.activityLog.findUnique({
-    where: { id: activityId },
-    select: { id: true, userId: true },
+  const dayStart = tehranDayStart();
+  const mutation = await withUserLock(actorId, async (tx) => {
+    const activity = await tx.activityLog.findUnique({
+      where: { id: activityId },
+      select: { userId: true },
+    });
+    if (!activity) return { status: "not_found" } as const;
+    const targetUserId = activity.userId;
+
+    const existing = await tx.reaction.findUnique({
+      where: { actorId_activityId: { actorId, activityId } },
+    });
+
+    let action: ToggleResult["action"];
+    let myEmoji: string | null;
+    let isNew = false;
+    if (!existing) {
+      await tx.reaction.create({
+        data: { actorId, activityId, targetUserId, emoji },
+      });
+      action = "added";
+      myEmoji = emoji;
+      isNew = true;
+    } else if (existing.emoji === emoji) {
+      await tx.reaction.delete({ where: { id: existing.id } });
+      action = "removed";
+      myEmoji = null;
+    } else {
+      await tx.reaction.update({ where: { id: existing.id }, data: { emoji } });
+      action = "changed";
+      myEmoji = emoji;
+    }
+
+    let rewardGranted = false;
+    if (isNew && targetUserId !== actorId) {
+      const distinctTargets = await tx.reaction.findMany({
+        where: {
+          actorId,
+          targetUserId: { not: actorId },
+          createdAt: { gte: dayStart },
+        },
+        distinct: ["targetUserId"],
+        select: { targetUserId: true },
+      });
+      if (distinctTargets.length >= REACTION_REWARD_TARGETS) {
+        const dedupeKey = `reaction-reward:${actorId}:${dayStart.toISOString()}`;
+        const existingReward = await tx.inboxItem.findUnique({
+          where: { dedupeKey },
+          select: { id: true },
+        });
+        if (!existingReward) {
+          await tx.user.update({
+            where: { id: actorId },
+            data: { coins: { increment: REACTION_REWARD_COINS } },
+          });
+          await tx.inboxItem.create({
+            data: {
+              userId: actorId,
+              type: "reaction_reward",
+              metadata: {
+                coins: REACTION_REWARD_COINS,
+                targets: REACTION_REWARD_TARGETS,
+              },
+              dedupeKey,
+            },
+          });
+          rewardGranted = true;
+        }
+      }
+    }
+
+    return {
+      status: "updated",
+      action,
+      myEmoji,
+      isNew,
+      targetUserId,
+      rewardGranted,
+    } as const;
   });
-  if (!activity) return { error: "آیتم پیدا نشد" };
-  const targetUserId = activity.userId;
 
-  const existing = await prisma.reaction.findUnique({
-    where: { actorId_activityId: { actorId, activityId } },
-  });
-
-  let action: ToggleResult["action"];
-  let myEmoji: string | null;
-  let isNew = false;
-
-  if (!existing) {
-    await prisma.reaction.create({ data: { actorId, activityId, targetUserId, emoji } });
-    action = "added";
-    myEmoji = emoji;
-    isNew = true;
-  } else if (existing.emoji === emoji) {
-    await prisma.reaction.delete({ where: { id: existing.id } });
-    action = "removed";
-    myEmoji = null;
-  } else {
-    await prisma.reaction.update({ where: { id: existing.id }, data: { emoji } });
-    action = "changed";
-    myEmoji = emoji;
+  if (mutation.status === "not_found") return { error: "آیتم پیدا نشد" };
+  if (mutation.isNew && mutation.targetUserId !== actorId) {
+    await notifyReaction(actorId, mutation.targetUserId, activityId, emoji);
   }
-
-  let rewardGranted = false;
-  if (isNew && targetUserId !== actorId) {
-    await notifyReaction(actorId, targetUserId, activityId, emoji);
-    rewardGranted = await maybeGrantDailyReward(actorId);
+  if (mutation.rewardGranted) {
+    await sendPushToUser(actorId, {
+      title: `${faNum(REACTION_REWARD_COINS)} سکه جایزه گرفتی`,
+      body: `امروز ${faNum(REACTION_REWARD_TARGETS)} نفر رو تشویق کردی.`,
+      url: "/inbox",
+      tag: "reaction_reward",
+    });
   }
 
   const counts = await getReactionCounts(activityId);
-  return { action, myEmoji, counts, rewardGranted };
+  return {
+    action: mutation.action,
+    myEmoji: mutation.myEmoji,
+    counts,
+    rewardGranted: mutation.rewardGranted,
+  };
 }
 
 /** اعلانِ واکنش به گیرنده: آیتم صندوق + Web Push */
@@ -134,39 +198,4 @@ async function notifyReaction(actorId: string, targetUserId: string, activityId:
     url: "/inbox",
     tag: "reaction",
   });
-}
-
-/** جایزه‌ی روزانه: اگر امروز به ≥ ۵ نفر واکنش داده و هنوز جایزه نگرفته، ۵ سکه می‌گیرد. */
-async function maybeGrantDailyReward(actorId: string): Promise<boolean> {
-  const dayStart = tehranDayStart();
-
-  const already = await prisma.inboxItem.findFirst({
-    where: { userId: actorId, type: "reaction_reward", createdAt: { gte: dayStart } },
-    select: { id: true },
-  });
-  if (already) return false;
-
-  const distinct = await prisma.reaction.findMany({
-    where: { actorId, targetUserId: { not: actorId }, createdAt: { gte: dayStart } },
-    distinct: ["targetUserId"],
-    select: { targetUserId: true },
-  });
-  if (distinct.length < REACTION_REWARD_TARGETS) return false;
-
-  await prisma.user.update({
-    where: { id: actorId },
-    data: { coins: { increment: REACTION_REWARD_COINS } },
-  });
-  await createInboxItem({
-    userId: actorId,
-    type: "reaction_reward",
-    metadata: { coins: REACTION_REWARD_COINS, targets: REACTION_REWARD_TARGETS },
-  });
-  await sendPushToUser(actorId, {
-    title: `${faNum(REACTION_REWARD_COINS)} سکه جایزه گرفتی`,
-    body: `امروز ${faNum(REACTION_REWARD_TARGETS)} نفر رو تشویق کردی.`,
-    url: "/inbox",
-    tag: "reaction_reward",
-  });
-  return true;
 }

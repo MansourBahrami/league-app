@@ -12,6 +12,7 @@ import {
   VIDEO_FAST_REWARD_HOURS,
 } from "@/lib/gamification";
 import Link from "next/link";
+import ProductViewEvent from "@/components/analytics/ProductViewEvent";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -83,6 +84,7 @@ export default async function VideoPlayerPage({ params }: Props) {
     const price = getVideoPrice(video.day);
     return (
       <div className="flex flex-col gap-6 px-5 pb-6">
+        <ProductViewEvent event="video_opened" properties={{ video_id: id, access: "locked" }} />
         <Link href="/videos" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mt-2">
           <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_back</span>
           <span className="text-[14px] font-semibold">بازگشت به لیست ویدیوها</span>

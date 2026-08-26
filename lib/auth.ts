@@ -1,6 +1,7 @@
 import { cache } from "react";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { captureCaughtError } from "@/lib/observability";
 
 // راز JWT به‌صورت lazy خوانده می‌شود تا در زمان build (که JWT_SECRET هنوز در محیط
 // نیست) خطا ندهد، ولی در زمان اجرا اگر در production نبود، fail-closed شود —
@@ -67,12 +68,26 @@ export const getSession = cache(async function getSession(): Promise<JwtPayload 
   if (!payload) return null;
 
   // اعتبارسنجی امن نزدیک داده: logout با افزایش sessionVersion همه توکن‌های قبلی را باطل می‌کند.
+  const { redis } = await import("@/lib/redis");
+  const cacheKey = `gcamp:session-version:${payload.userId}`;
+  const cachedVersion = await redis.get(cacheKey).catch((caught) => {
+    captureCaughtError("auth.session_cache_read", caught);
+    return null;
+  });
+  if (cachedVersion !== null) {
+    return Number(cachedVersion) === payload.sessionVersion ? payload : null;
+  }
+
   const { prisma } = await import("@/lib/db");
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
     select: { sessionVersion: true },
   });
-  return user?.sessionVersion === payload.sessionVersion ? payload : null;
+  if (!user) return null;
+  await redis.set(cacheKey, String(user.sessionVersion), "EX", 300).catch((caught) => {
+    captureCaughtError("auth.session_cache_write", caught);
+  });
+  return user.sessionVersion === payload.sessionVersion ? payload : null;
 });
 
 /** سشن را برمی‌گرداند فقط اگر کاربر ادمین باشد، در غیر این صورت null. */

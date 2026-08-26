@@ -6,6 +6,7 @@ import { formatJalaliLong, getNextTehranMissionWeek } from "@/lib/date";
 import { suggestMissions } from "@/lib/gamification";
 import MissionRoomChooser, { type MissionChoice } from "@/components/mission-rooms/MissionRoomChooser";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
+import ProductViewEvent from "@/components/analytics/ProductViewEvent";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,7 @@ export default async function MissionRoomsPage() {
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-4">
+      <ProductViewEvent event="mission_viewed" />
       <header data-tour="mission-rooms" className="glass-card rounded-2xl px-4 py-3">
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-on-primary shadow-lg shadow-primary/20">

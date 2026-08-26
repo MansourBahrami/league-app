@@ -8,6 +8,7 @@ import { getReactionsForActivities } from "@/lib/reaction";
 import { formatJalaliLong } from "@/lib/date";
 import MissionRoomRoster from "@/components/mission-rooms/MissionRoomRoster";
 import LiveFeed from "@/components/feed/LiveFeed";
+import { getBlockedUserIds } from "@/lib/privacy";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,11 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
   if (!room) notFound();
 
   const memberIds = room.members.map((member) => member.userId);
-  const [rawActivities, hasRunningTimer] = await Promise.all([
+  const [rawActivities, hasRunningTimer, blockedUserIds] = await Promise.all([
     prisma.activityLog.findMany({
       where: {
         userId: { in: memberIds },
+        OR: [{ userId: session.userId }, { user: { activityPublic: true } }],
         createdAt: { gte: new Date(room.startsAt), lt: new Date(room.endsAt) },
       },
       orderBy: { createdAt: "desc" },
@@ -39,8 +41,10 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
       include: { user: { select: { name: true, avatarUrl: true } } },
     }),
     hasRunningStudyTimer(session.userId, now),
+    getBlockedUserIds(session.userId),
   ]);
   const activities = rawActivities.filter((activity) => {
+    if (blockedUserIds.includes(activity.userId)) return false;
     if (activity.type !== "session_complete") return true;
     const metadata = (activity.metadata ?? {}) as Record<string, unknown>;
     return Number(metadata.durationMin ?? 0) > 0;
@@ -54,15 +58,15 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
       <header className="glass-card overflow-hidden rounded-[2rem] border border-primary/25">
         <div className="bg-gradient-to-l from-primary to-primary-container px-4 pb-5 pt-4 text-on-primary">
           <div className="flex items-center justify-between">
-            <Link href="/dashboard" className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15" aria-label="بازگشت به مطالعه">
+            <Link href="/dashboard" className="flex h-9 w-9 items-center justify-center rounded-full bg-on-primary/15" aria-label="بازگشت به مطالعه">
               <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_forward</span>
             </Link>
-            <span className="rounded-full bg-white/15 px-2.5 py-1 text-[10.5px] font-bold">
+            <span className="rounded-full bg-on-primary/15 px-2.5 py-1 text-[10.5px] font-bold">
               {pending ? "در انتظار شروع" : ended ? "پایان‌یافته" : "در حال اجرا"}
             </span>
           </div>
           <div className="mt-3 flex items-center gap-3">
-            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/15">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-on-primary/15">
               <span className="material-symbols-outlined text-[30px]" style={{ fontVariationSettings: "'FILL' 1" }}>groups_3</span>
             </span>
             <div className="min-w-0 flex-1 text-right">
@@ -121,6 +125,7 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
           initialCounts={counts}
           initialMine={mine}
           allowedUserIds={memberIds}
+          blockedUserIds={blockedUserIds}
           emptyLabel="هنوز اتفاقی در این کمپ ثبت نشده؛ اولین جلسه را تو شروع کن."
         />
       </section>

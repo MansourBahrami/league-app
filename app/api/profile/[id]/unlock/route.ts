@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
 import { PROFILE_UNLOCK_COST, PROFILE_UNLOCK_HOURS } from "@/lib/gamification";
+import { withUserLock } from "@/lib/user-lock";
+import { isBlockedBetween } from "@/lib/privacy";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -16,35 +18,54 @@ export async function POST(_req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "نمی‌توانی لاگ خودت را بخری" }, { status: 400 });
   }
 
-  const [viewer, target] = await Promise.all([
-    prisma.user.findUnique({ where: { id: session.userId }, select: { coins: true } }),
-    prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true } }),
-  ]);
-
-  if (!viewer || !target) return NextResponse.json({ error: "کاربر یافت نشد" }, { status: 404 });
-
-  // اگر هنوز قفل فعالی دارد، نیازی به پرداخت دوباره نیست
-  const existing = await prisma.profileUnlock.findUnique({
-    where: { viewerId_targetUserId: { viewerId: session.userId, targetUserId } },
+  const target = await prisma.user.findUnique({
+    where: { id: targetUserId },
+    select: { id: true, profilePublic: true },
   });
-  if (existing && existing.expiresAt > new Date()) {
-    return NextResponse.json({ message: "قبلاً باز شده", expiresAt: existing.expiresAt });
+  if (!target || !target.profilePublic || await isBlockedBetween(session.userId, targetUserId)) {
+    return NextResponse.json({ error: "کاربر یافت نشد" }, { status: 404 });
   }
 
-  if (viewer.coins < PROFILE_UNLOCK_COST) {
+  const result = await withUserLock(session.userId, async (tx) => {
+    const viewer = await tx.user.findUnique({
+      where: { id: session.userId },
+      select: { id: true },
+    });
+    if (!viewer) return { status: "not_found" } as const;
+
+    const existing = await tx.profileUnlock.findUnique({
+      where: { viewerId_targetUserId: { viewerId: session.userId, targetUserId } },
+    });
+    const now = new Date();
+    if (existing && existing.expiresAt > now) {
+      return { status: "owned", expiresAt: existing.expiresAt } as const;
+    }
+
+    const debit = await tx.user.updateMany({
+      where: { id: session.userId, coins: { gte: PROFILE_UNLOCK_COST } },
+      data: { coins: { decrement: PROFILE_UNLOCK_COST } },
+    });
+    if (debit.count !== 1) return { status: "insufficient" } as const;
+
+    const expiresAt = new Date(
+      now.getTime() + PROFILE_UNLOCK_HOURS * 60 * 60 * 1000,
+    );
+    await tx.profileUnlock.upsert({
+      where: { viewerId_targetUserId: { viewerId: session.userId, targetUserId } },
+      update: { expiresAt, createdAt: now },
+      create: { viewerId: session.userId, targetUserId, expiresAt },
+    });
+    return { status: "purchased", expiresAt } as const;
+  });
+
+  if (result.status === "not_found") {
+    return NextResponse.json({ error: "کاربر یافت نشد" }, { status: 404 });
+  }
+  if (result.status === "insufficient") {
     return NextResponse.json({ error: "سکه کافی نیست" }, { status: 400 });
   }
-
-  const expiresAt = new Date(Date.now() + PROFILE_UNLOCK_HOURS * 60 * 60 * 1000); // ۱ ساعت
-
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: session.userId }, data: { coins: { decrement: PROFILE_UNLOCK_COST } } }),
-    prisma.profileUnlock.upsert({
-      where: { viewerId_targetUserId: { viewerId: session.userId, targetUserId } },
-      update: { expiresAt, createdAt: new Date() },
-      create: { viewerId: session.userId, targetUserId, expiresAt },
-    }),
-  ]);
-
-  return NextResponse.json({ message: "لاگ مطالعه باز شد", expiresAt });
+  return NextResponse.json({
+    message: result.status === "owned" ? "قبلاً باز شده" : "لاگ مطالعه باز شد",
+    expiresAt: result.expiresAt,
+  });
 }

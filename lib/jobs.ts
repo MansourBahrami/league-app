@@ -3,6 +3,12 @@ import { processUserMissions } from "@/lib/mission";
 import { settleEndedTournaments } from "@/lib/tournament";
 import { detectRankDrops } from "@/lib/notifications";
 import { runScheduledRules } from "@/lib/notification-engine";
+import { mapWithConcurrency } from "@/lib/concurrency";
+import { withDistributedLock } from "@/lib/distributed-lock";
+import { runBusinessInvariantAudit } from "@/lib/invariants";
+import { flushAnalyticsOutbox } from "@/lib/analytics-server";
+import { runRetentionCleanup } from "@/lib/retention";
+import { settleExpiredStudySessions } from "@/lib/stale-study-sessions";
 
 /**
  * پردازش سراسری ماموریت‌ها برای همه کاربرانی که ماموریت در حال انجام یا در انتظار دارند:
@@ -26,9 +32,7 @@ export async function expireAndProcessMissions(): Promise<{ usersProcessed: numb
     distinct: ["userId"],
   });
 
-  for (const { userId } of rows) {
-    await processUserMissions(userId);
-  }
+  await mapWithConcurrency(rows, 10, ({ userId }) => processUserMissions(userId));
 
   return { usersProcessed: rows.length };
 }
@@ -40,17 +44,28 @@ export async function expireAndProcessMissions(): Promise<{ usersProcessed: numb
  *    (تریگرهای scheduled/relative؛ پنجره‌ی ۱۵ دقیقه).
  *  - `ranks` (مثلاً ساعتی): تشخیص افت رتبه‌ی هفتگی و شلیک رویداد rank_drop.
  */
-export type JobTask = "missions" | "tournaments" | "notifRules" | "ranks";
+export type JobTask = "studySessions" | "missions" | "tournaments" | "notifRules" | "ranks" | "invariants" | "analytics" | "retention";
 
 export async function runScheduledJobs(
-  tasks: JobTask[] = ["missions", "tournaments", "notifRules"]
+  tasks: JobTask[] = ["studySessions", "missions", "tournaments", "notifRules", "invariants", "analytics"]
 ): Promise<Record<string, unknown>> {
   const result: Record<string, unknown> = { ranAt: new Date().toISOString() };
 
-  if (tasks.includes("missions")) result.missions = await expireAndProcessMissions();
-  if (tasks.includes("tournaments")) result.tournaments = await settleEndedTournaments();
-  if (tasks.includes("notifRules")) result.notifRules = await runScheduledRules(15);
-  if (tasks.includes("ranks")) result.ranks = await detectRankDrops();
+  const runners: Record<JobTask, () => Promise<unknown>> = {
+    studySessions: settleExpiredStudySessions,
+    missions: expireAndProcessMissions,
+    tournaments: settleEndedTournaments,
+    notifRules: () => runScheduledRules(15),
+    ranks: detectRankDrops,
+    invariants: runBusinessInvariantAudit,
+    analytics: flushAnalyticsOutbox,
+    retention: runRetentionCleanup,
+  };
+
+  for (const task of tasks) {
+    const locked = await withDistributedLock(`cron:${task}`, runners[task]);
+    result[task] = locked.acquired ? locked.value : { skipped: "already_running" };
+  }
 
   return result;
 }

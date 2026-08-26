@@ -31,6 +31,7 @@ export default function LeaderboardList({ entries }: Props) {
   useEffect(() => {
     const box = boxRef.current;
     if (!box) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     centeredRef.current = false;
     let ticking = false;
 
@@ -39,7 +40,7 @@ export default function LeaderboardList({ entries }: Props) {
       const scrollable = box.scrollHeight > box.clientHeight + 4;
       setRolling(scrollable);
 
-      if (!scrollable) {
+      if (!scrollable || reduceMotion) {
         // لیست کوتاه: همه‌چیز صاف و شفاف
         for (const el of rowsRef.current) {
           if (!el) continue;
@@ -71,9 +72,10 @@ export default function LeaderboardList({ entries }: Props) {
         const norm = Math.max(-1.2, Math.min(1.2, (rowCenter - center) / radius));
         const absn = Math.min(1, Math.abs(norm));
 
-        const rotateX = -norm * 50; // چرخش دور محور افقی (اثر استوانه)
-        const scale = 1 - absn * 0.14;
-        const opacity = 1 - absn * 0.85;
+        // عمق بصری ملایم است تا رتبه‌های کناری همچنان قابل اسکن و خواندن بمانند.
+        const rotateX = -norm * 12;
+        const scale = 1 - absn * 0.04;
+        const opacity = 1 - absn * 0.28;
 
         el.style.transform = `perspective(640px) rotateX(${rotateX.toFixed(2)}deg) scale(${scale.toFixed(3)})`;
         el.style.opacity = opacity.toFixed(3);
@@ -106,8 +108,8 @@ export default function LeaderboardList({ entries }: Props) {
         ref={boxRef}
         className="max-h-[336px] overflow-y-auto overscroll-y-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         style={rolling ? {
-          WebkitMaskImage: "linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%)",
-          maskImage: "linear-gradient(to bottom, transparent 0%, #000 20%, #000 80%, transparent 100%)",
+          WebkitMaskImage: "linear-gradient(to bottom, rgba(0,0,0,.35) 0%, #000 12%, #000 88%, rgba(0,0,0,.35) 100%)",
+          maskImage: "linear-gradient(to bottom, rgba(0,0,0,.35) 0%, #000 12%, #000 88%, rgba(0,0,0,.35) 100%)",
         } : undefined}
       >
         {/* در حالت غلتکی، فاصله‌ی بالا/پایین تا نفر اول و آخر هم به مرکزِ باکس برسند */}

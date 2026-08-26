@@ -39,7 +39,7 @@ export default async function AdminLeaderboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {boards.map((b) => (
-          <div key={b.level} className="bg-white rounded-2xl p-5 border border-outline-variant/30">
+          <div key={b.level} className="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant/30">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-[16px] font-bold text-primary">{b.level}</h2>
               <span className="text-[12px] text-outline">{b.count.toLocaleString("fa-IR")} کاربر</span>

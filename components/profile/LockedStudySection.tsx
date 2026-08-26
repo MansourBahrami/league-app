@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { captureClientError } from "@/lib/analytics-client";
 
 interface Props {
   targetUserId: string;
@@ -29,7 +30,8 @@ export default function LockedStudySection({ targetUserId, cost, userCoins, dura
         return;
       }
       router.refresh();
-    } catch {
+    } catch (caught) {
+      captureClientError("profile.study_unlock", caught, { target_user_id: targetUserId });
       setError("خطا در ارتباط با سرور");
     } finally {
       setLoading(false);

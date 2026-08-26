@@ -61,9 +61,35 @@ npm run test:levels
 npm run test:onboarding
 npm run test:timer
 npm run test:auth
+npm run test:study-concurrency
+npm run test:economy-concurrency
+npm run test:distributed-lock
+npm run test:sse-replicas # نیازمند دو replica در پورت‌های ۳۰۰۰ و ۳۰۰۱
+npm run test:stale-sessions # تست ایزولهٔ تسویه running/paused رهاشده
+npm run test:invariants     # read-only؛ روی violation با exit code 1 تمام می‌شود
+npm run maintenance:stale-sessions # پیش‌نمایش read-only سشن‌های قابل تسویه
+npm run test:load:500 # فقط development/staging و همراه production build محلی
 ```
 
 `test:gamification` یک تست صرفاً واحد نیست؛ روی دیتابیس تنظیم‌شده رکورد آزمایشی ایجاد و در پایان پاک می‌کند. فقط روی دیتابیس توسعه اجرا شود.
+
+برای تست بار، build را با حالت جلوگیری از ارسال analytics آزمایشی اجرا کنید؛ این
+حالت فقط همراه header داخلی خود اسکریپت اثر دارد و رویدادها را با وضعیت
+`suppressed` در outbox موقت نگه می‌دارد تا در پایان پاک شوند:
+
+```bash
+npm run build
+GCAMP_LOAD_TEST_MODE=1 npm run start
+npm run test:load:500
+```
+
+تسویهٔ سشن‌های تاریخی به‌صورت پیش‌فرض فقط پیش‌نمایش است. اعمال تغییر فقط روی
+دیتابیس localhost و با دو تأیید صریح ممکن است:
+
+```bash
+npm run maintenance:stale-sessions
+DEV_SETTLE_STALE_CONFIRM=1 npm run maintenance:stale-sessions -- --apply
+```
 
 ## مستندات
 

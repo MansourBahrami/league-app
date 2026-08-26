@@ -1,6 +1,7 @@
 "use client";
 
 import type { PostHog } from "posthog-js";
+import * as Sentry from "@sentry/nextjs";
 
 let posthogPromise: Promise<PostHog | null> | null = null;
 
@@ -17,10 +18,21 @@ function loadPostHog(): Promise<PostHog | null> {
       capture_pageview: "history_change",
       capture_pageleave: true,
       disable_session_recording: true,
+      disable_surveys: true,
+      disable_product_tours: true,
+      disable_web_experiments: true,
+      disable_external_dependency_loading: true,
+      advanced_disable_flags: true,
       person_profiles: "identified_only",
     });
     return posthog;
-  }).catch(() => null);
+  }).catch((caught) => {
+    Sentry.withScope((scope) => {
+      scope.setTag("operation", "analytics.posthog_load");
+      Sentry.captureException(caught instanceof Error ? caught : new Error(String(caught)));
+    });
+    return null;
+  });
 
   return posthogPromise;
 }

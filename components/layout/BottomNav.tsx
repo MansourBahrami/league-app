@@ -4,10 +4,9 @@ import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
-  { href: "/mission-rooms", icon: "meeting_room", label: "مأموریت‌ها", tour: "nav-rooms" },
-  { href: "/videos", icon: "school", label: "آموزش‌ها", tour: "nav-videos" },
-  { href: "/dashboard", icon: "center_focus_strong", label: "مطالعه", tour: "nav-dashboard" },
-  { href: "/leaderboard", icon: "leaderboard", label: "رده‌بندی", tour: "nav-leaderboard" },
+  { href: "/dashboard", icon: "center_focus_strong", label: "تمرکز", tour: "nav-dashboard" },
+  { href: "/feed", icon: "dynamic_feed", label: "بورد زنده", tour: "nav-feed" },
+  { href: "/leaderboard", icon: "leaderboard", label: "جدول‌برتر", tour: "nav-leaderboard" },
   { href: "/profile", icon: "person", label: "پروفایل", tour: "nav-profile" },
 ];
 
@@ -42,7 +41,7 @@ function NavItemContent({
       >
         {icon}
       </span>
-      <span className="text-[11px] font-semibold leading-none whitespace-nowrap">{label}</span>
+      <span className="text-[12px] font-semibold leading-none whitespace-nowrap">{label}</span>
       <span
         aria-hidden="true"
         className={`bottom-nav-pending-dot absolute top-1.5 h-1.5 w-1.5 rounded-full bg-current ${pending ? "is-pending" : ""}`}

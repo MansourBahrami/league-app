@@ -3,17 +3,23 @@ import { redis } from "@/lib/redis";
 import { sendOtpSms } from "@/lib/sms";
 import { normalizePhone } from "@/lib/phone";
 import { deleteOtp, generateOtp, rateLimitIdentity, storeOtp, takeRateLimit } from "@/lib/otp";
+import { recordAuthAttempt } from "@/lib/auth-attempt";
+import { captureCaughtError } from "@/lib/observability";
 
 function isValidIranPhone(phone: string): boolean {
   return /^09[0-9]{9}$/.test(phone);
 }
 
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
+  let identityHash = rateLimitIdentity("unknown");
   try {
     const { phone } = await req.json().catch(() => ({}));
     // ارقام فارسی/عربی پشتیبانی می‌شوند: اول نرمال‌سازی، بعد اعتبارسنجی
     const normalized = normalizePhone(String(phone ?? ""));
+    identityHash = rateLimitIdentity(normalized || String(phone ?? "invalid"));
     if (!normalized || !isValidIranPhone(normalized)) {
+      await recordAuthAttempt({ identityHash, action: "otp_request", status: "failed", errorCode: "invalid_phone", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
       return NextResponse.json({ error: "شماره موبایل نامعتبر است" }, { status: 400 });
     }
 
@@ -22,6 +28,7 @@ export async function POST(req: NextRequest) {
     const cooldownKey = `otp_cd:${normalized}`;
     const cooldownTaken = await redis.set(cooldownKey, "1", "EX", 60, "NX");
     if (!cooldownTaken) {
+      await recordAuthAttempt({ identityHash, action: "otp_request", status: "rate_limited", errorCode: "cooldown", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
       return NextResponse.json({ error: "کمی صبر کن و دوباره تلاش کن" }, { status: 429 });
     }
 
@@ -32,6 +39,7 @@ export async function POST(req: NextRequest) {
       takeRateLimit(`otp_ip_rl:${rateLimitIdentity(clientIp)}`, 20, 3600),
     ]);
     if (!phoneAllowed || !ipAllowed) {
+      await recordAuthAttempt({ identityHash, action: "otp_request", status: "rate_limited", errorCode: phoneAllowed ? "ip_limit" : "phone_limit", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
       return NextResponse.json({ error: "تعداد درخواست زیاد است؛ یک ساعت دیگر تلاش کن" }, { status: 429 });
     }
 
@@ -41,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     // در محیط dev کد را مستقیم برمی‌گردانیم (بدون مصرف پیامک)
     if (process.env.NODE_ENV !== "production") {
-      console.log(`OTP for ${normalized}: ${otp}`);
+      await recordAuthAttempt({ identityHash, action: "otp_request", status: "succeeded", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
       return NextResponse.json({ message: "کد ارسال شد", _dev_otp: otp });
     }
 
@@ -49,15 +57,18 @@ export async function POST(req: NextRequest) {
     const sent = await sendOtpSms(normalized, otp);
     if (!sent) {
       await deleteOtp(normalized);
+      await recordAuthAttempt({ identityHash, action: "otp_request", status: "failed", errorCode: "provider_failed", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
       return NextResponse.json(
         { error: "ارسال پیامک با مشکل مواجه شد، لطفاً کمی بعد دوباره تلاش کنید" },
         { status: 502 }
       );
     }
 
+    await recordAuthAttempt({ identityHash, action: "otp_request", status: "succeeded", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
     return NextResponse.json({ message: "کد تأیید به شماره موبایل شما ارسال شد" });
   } catch (err) {
-    console.error("send-otp error:", err);
+    captureCaughtError("auth.send_otp", err, { requestId: req.headers.get("x-request-id") });
+    await recordAuthAttempt({ identityHash, action: "otp_request", status: "failed", errorCode: "internal_error", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
     return NextResponse.json({ error: "خطای سرور" }, { status: 500 });
   }
 }

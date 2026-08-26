@@ -30,7 +30,7 @@ export default function AdminVideoRow({ video }: { video: Video }) {
   }
 
   return (
-    <div className="bg-white rounded-xl p-3 flex items-center gap-3 border border-outline-variant/30">
+    <div className="bg-surface-container-lowest rounded-xl p-3 flex items-center gap-3 border border-outline-variant/30">
       <div className="w-10 h-10 rounded-lg bg-primary-fixed flex items-center justify-center shrink-0">
         <span className="material-symbols-outlined text-primary text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>play_circle</span>
       </div>

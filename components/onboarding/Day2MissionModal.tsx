@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { captureClientError } from "@/lib/analytics-client";
 
 interface Props {
   onDismiss: () => void;
@@ -25,7 +26,10 @@ export default function Day2MissionModal({ onDismiss }: Props) {
   const guideReady = position !== null;
 
   const recordHandled = useCallback(async (): Promise<boolean> => {
-    const response = await fetch("/api/onboarding/mission-prompt", { method: "POST" }).catch(() => null);
+    const response = await fetch("/api/onboarding/mission-prompt", { method: "POST" }).catch((caught) => {
+      captureClientError("onboarding.mission_prompt", caught);
+      return null;
+    });
     if (response?.ok) return true;
     setError("پاسخت ثبت نشد؛ دوباره تلاش کن.");
     return false;

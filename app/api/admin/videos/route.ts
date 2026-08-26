@@ -1,17 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
-import { parseVideoBody } from "@/lib/video-admin";
+import { parseVideoBody, validateVideoBody } from "@/lib/video-admin";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 export async function POST(req: NextRequest) {
   const admin = await getAdminSession();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const data = parseVideoBody(await req.json());
-  if (!data.title || !data.hlsUrl) {
-    return NextResponse.json({ error: "عنوان و آدرس ویدیو الزامی است" }, { status: 400 });
-  }
+  const validationError = validateVideoBody(data);
+  if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
   const video = await prisma.video.create({ data });
+  await recordAdminAudit({ adminUserId: admin.userId, action: "video.create", request: req, targetType: "video", targetId: video.id });
   return NextResponse.json(video, { status: 201 });
 }

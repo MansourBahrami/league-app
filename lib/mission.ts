@@ -1,7 +1,10 @@
+import type { ActivityLog } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/db";
 import { calcLevel, type MedalCount, DAILY_MISSION_TABLE, MISSION_TABLE } from "@/lib/gamification";
 import { broadcastActivity } from "@/lib/feed-broadcast";
 import { fireEvent } from "@/lib/notification-engine";
+import { withUserLock } from "@/lib/user-lock";
+import { captureServerEvent } from "@/lib/analytics-server";
 
 /** شمارش مدال‌های کاربر بر اساس ساعت هدف */
 export async function getUserMedalCounts(userId: string): Promise<MedalCount[]> {
@@ -20,36 +23,64 @@ export async function getUserMedalCounts(userId: string): Promise<MedalCount[]> 
  * محاسبه مجدد سطح کاربر و ذخیره در صورت تغییر.
  * هنگام ارتقای سطح، رویداد level_up در فید ثبت می‌شود.
  */
-export async function recalcUserLevel(userId: string): Promise<{ level: string; stars: number; leveledUp: boolean }> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { xp: true, level: true, stars: true, name: true, avatarUrl: true },
-  });
-  if (!user) return { level: "تازه‌نفس", stars: 1, leveledUp: false };
-
-  const medals = await getUserMedalCounts(userId);
-  const { level, stars } = calcLevel(user.xp, medals);
-
-  const leveledUp = level !== user.level || stars !== user.stars;
-  // فقط ارتقا (نه تنزل) را به‌عنوان level_up در نظر می‌گیریم
-  const isUpgrade =
-    leveledUp &&
-    (rankOf(level, stars) > rankOf(user.level, user.stars));
-
-  if (leveledUp) {
-    await prisma.user.update({ where: { id: userId }, data: { level, stars } });
-  }
-
-  if (isUpgrade) {
-    const log = await prisma.activityLog.create({
-      data: { userId, type: "level_up", metadata: { level, stars } },
+export async function recalcUserLevel(
+  userId: string,
+  options: { emitSideEffects?: boolean; activityAt?: Date } = {},
+): Promise<{ level: string; stars: number; leveledUp: boolean }> {
+  const emitSideEffects = options.emitSideEffects ?? true;
+  const result = await withUserLock(userId, async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { xp: true, level: true, stars: true, name: true, avatarUrl: true },
     });
-    broadcastActivity({ ...log, user: { name: user.name, avatarUrl: user.avatarUrl } });
-    // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به ارتقای سطح
-    await fireEvent("level_up", userId, { level, stars });
-  }
+    if (!user) return null;
 
-  return { level, stars, leveledUp: isUpgrade };
+    const userMedals = await tx.userMedal.findMany({
+      where: { userId },
+      include: { medal: true },
+    });
+    const medalMap = new Map<number, number>();
+    for (const userMedal of userMedals) {
+      medalMap.set(
+        userMedal.medal.targetHours,
+        (medalMap.get(userMedal.medal.targetHours) ?? 0) + 1,
+      );
+    }
+    const medals = Array.from(medalMap.entries()).map(([targetHours, count]) => ({
+      targetHours,
+      count,
+    }));
+    const { level, stars } = calcLevel(user.xp, medals);
+    const changed = level !== user.level || stars !== user.stars;
+    const isUpgrade =
+      changed && rankOf(level, stars) > rankOf(user.level, user.stars);
+
+    if (changed) {
+      await tx.user.update({ where: { id: userId }, data: { level, stars } });
+    }
+    const log = isUpgrade
+      ? await tx.activityLog.create({
+          data: {
+            userId,
+            type: "level_up",
+            metadata: { level, stars },
+            dedupeKey: `level-up:${userId}:${level}:${stars}`,
+            ...(options.activityAt ? { createdAt: options.activityAt } : {}),
+          },
+        })
+      : null;
+    return { level, stars, isUpgrade, log, user };
+  });
+
+  if (!result) return { level: "تازه‌نفس", stars: 1, leveledUp: false };
+  if (emitSideEffects && result.isUpgrade && result.log) {
+    broadcastActivity({
+      ...result.log,
+      user: { name: result.user.name, avatarUrl: result.user.avatarUrl },
+    });
+    await fireEvent("level_up", userId, { level: result.level, stars: result.stars });
+  }
+  return { level: result.level, stars: result.stars, leveledUp: result.isUpgrade };
 }
 
 /** رتبه عددی یک سطح/ستاره برای مقایسه ارتقا/تنزل */
@@ -59,19 +90,6 @@ function rankOf(level: string, stars: number): number {
   return (idx < 0 ? 0 : idx) * 10 + stars;
 }
 
-/** اعطای مدال به کاربر (تکرارپذیر) + ثبت در فید */
-async function awardMedal(userId: string, targetHours: number, userInfo: { name: string | null; avatarUrl: string | null }) {
-  const medal = await prisma.medal.findUnique({ where: { targetHours } });
-  if (!medal) return;
-  await prisma.userMedal.create({ data: { userId, medalId: medal.id } });
-  const log = await prisma.activityLog.create({
-    data: { userId, type: "medal_earn", metadata: { targetHours } },
-  });
-  broadcastActivity({ ...log, user: userInfo });
-  // تریگر رویدادی: قانون‌های نوتیفیکیشن مربوط به کسب مدال
-  await fireEvent("medal_earn", userId, { targetHours, medalName: medal.name });
-}
-
 /**
  * پردازش کامل ماموریت‌های یک کاربر:
  *  - فعال‌سازی ماموریت‌های pending که زمان فعال‌سازی‌شان رسیده
@@ -79,74 +97,146 @@ async function awardMedal(userId: string, targetHours: number, userInfo: { name:
  *  - منقضی کردن ماموریت‌های active که مهلتشان گذشته (سکه سوخته است)
  * این تابع idempotent است و می‌تواند هربار صفحه/جلسه فراخوانی شود (lazy) یا در cron.
  */
-export async function processUserMissions(userId: string): Promise<void> {
+export async function processUserMissions(
+  userId: string,
+  options: { emitSideEffects?: boolean; activityAt?: Date } = {},
+): Promise<void> {
   const now = new Date();
+  const emitSideEffects = options.emitSideEffects ?? true;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { name: true, avatarUrl: true },
-  });
-  if (!user) return;
-
-  // ۱) فعال‌سازی pendingهایی که زمانشان رسیده
-  await prisma.userMission.updateMany({
-    where: { userId, status: "pending", activatesAt: { lte: now } },
-    data: { status: "active" },
-  });
-
-  // ۲) بررسی ماموریت‌های فعال
-  const activeMissions = await prisma.userMission.findMany({
-    where: { userId, status: "active" },
-    include: { mission: true },
-  });
-
-  for (const um of activeMissions) {
-    // مجموع دقایق مطالعه در بازه معتبر ماموریت
-    const windowEnd = new Date(Math.min(now.getTime(), um.expiresAt.getTime()));
-    const agg = await prisma.studySession.aggregate({
-      where: { userId, startTime: { gte: um.activatesAt, lt: windowEnd } },
-      _sum: { durationMin: true },
+  const result = await withUserLock(userId, async (tx) => {
+    const user = await tx.user.findUnique({
+      where: { id: userId },
+      select: { name: true, avatarUrl: true },
     });
-    const studiedMin = agg._sum.durationMin ?? 0;
-    const targetMin = um.mission.targetHours * 60;
+    if (!user) return null;
 
-    if (studiedMin >= targetMin) {
-      if (um.mission.kind === "daily") {
-        // ماموریت روزانه → جایزه سکه (بدون XP/مدال)
-        await prisma.$transaction([
-          prisma.userMission.update({
-            where: { id: um.id },
-            data: { status: "completed", completedAt: now },
-          }),
-          prisma.user.update({
+    await tx.userMission.updateMany({
+      where: { userId, status: "pending", activatesAt: { lte: now } },
+      data: { status: "active" },
+    });
+
+    const activeMissions = await tx.userMission.findMany({
+      where: { userId, status: "active" },
+      include: { mission: true },
+    });
+    const medalEvents: Array<{
+      log: ActivityLog;
+      targetHours: number;
+      medalName: string;
+    }> = [];
+    let needsLevelRecalc = false;
+    const completedEvents: Array<{ id: string; kind: string; targetHours: number }> = [];
+    const failedEvents: Array<{ id: string; kind: string; targetHours: number }> = [];
+
+    for (const userMission of activeMissions) {
+      const windowEnd = new Date(
+        Math.min(now.getTime(), userMission.expiresAt.getTime()),
+      );
+      const aggregate = await tx.studySession.aggregate({
+        where: {
+          userId,
+          startTime: { gte: userMission.activatesAt, lt: windowEnd },
+        },
+        _sum: { durationMin: true },
+      });
+      const studiedMin = aggregate._sum.durationMin ?? 0;
+      const targetMin = userMission.mission.targetHours * 60;
+
+      if (studiedMin >= targetMin) {
+        const claimed = await tx.userMission.updateMany({
+          where: { id: userMission.id, status: "active" },
+          data: { status: "completed", completedAt: options.activityAt ?? now },
+        });
+        if (claimed.count !== 1) continue;
+        completedEvents.push({
+          id: userMission.id,
+          kind: userMission.mission.kind,
+          targetHours: userMission.mission.targetHours,
+        });
+
+        if (userMission.mission.kind === "daily") {
+          await tx.user.update({
             where: { id: userId },
-            data: { coins: { increment: um.mission.coinReward } },
-          }),
-        ]);
-      } else {
-        // ماموریت هفتگی → جایزه XP + مدال + بازمحاسبه سطح
-        await prisma.$transaction([
-          prisma.userMission.update({
-            where: { id: um.id },
-            data: { status: "completed", completedAt: now },
-          }),
-          prisma.user.update({
-            where: { id: userId },
-            data: { xp: { increment: um.mission.xpReward } },
-          }),
-        ]);
-        // اعطای مدال اختصاصی ماموریت (تکرارپذیر)
-        await awardMedal(userId, um.mission.targetHours, user);
-        await recalcUserLevel(userId);
+            data: { coins: { increment: userMission.mission.coinReward } },
+          });
+          continue;
+        }
+
+        await tx.user.update({
+          where: { id: userId },
+          data: { xp: { increment: userMission.mission.xpReward } },
+        });
+        const medal = await tx.medal.findUnique({
+          where: { targetHours: userMission.mission.targetHours },
+        });
+        if (medal) {
+          await tx.userMedal.create({
+            data: {
+              userId,
+              medalId: medal.id,
+              sourceUserMissionId: userMission.id,
+            },
+          });
+          const log = await tx.activityLog.create({
+            data: {
+              userId,
+              type: "medal_earn",
+              metadata: { targetHours: userMission.mission.targetHours },
+              dedupeKey: `mission-medal:${userMission.id}`,
+              ...(options.activityAt ? { createdAt: options.activityAt } : {}),
+            },
+          });
+          medalEvents.push({
+            log,
+            targetHours: userMission.mission.targetHours,
+            medalName: medal.name,
+          });
+        }
+        needsLevelRecalc = true;
+      } else if (userMission.expiresAt < now) {
+        const failed = await tx.userMission.updateMany({
+          where: { id: userMission.id, status: "active" },
+          data: { status: "failed" },
+        });
+        if (failed.count === 1) {
+          failedEvents.push({
+            id: userMission.id,
+            kind: userMission.mission.kind,
+            targetHours: userMission.mission.targetHours,
+          });
+        }
       }
-    } else if (um.expiresAt < now) {
-      // مهلت تمام شد و انجام نشد → سکه سوخته، شکست
-      await prisma.userMission.update({
-        where: { id: um.id },
-        data: { status: "failed" },
+    }
+
+    return { user, medalEvents, needsLevelRecalc, completedEvents, failedEvents };
+  });
+
+  if (!result) return;
+  if (emitSideEffects) {
+    for (const event of result.medalEvents) {
+      broadcastActivity({ ...event.log, user: result.user });
+      await fireEvent("medal_earn", userId, {
+        targetHours: event.targetHours,
+        medalName: event.medalName,
       });
     }
+    await Promise.all([
+      ...result.completedEvents.map((event) => captureServerEvent({
+        distinctId: userId,
+        event: "mission_completed",
+        properties: { mission_kind: event.kind, target_hours: event.targetHours },
+        insertId: `mission-completed:${event.id}`,
+      })),
+      ...result.failedEvents.map((event) => captureServerEvent({
+        distinctId: userId,
+        event: "mission_failed",
+        properties: { mission_kind: event.kind, target_hours: event.targetHours },
+        insertId: `mission-failed:${event.id}`,
+      })),
+    ]);
   }
+  if (result.needsLevelRecalc) await recalcUserLevel(userId, options);
 }
 
 const MEDAL_HOURS = [20, 25, 30, 35, 40, 45, 50, 53, 56, 60, 63, 66, 70];
@@ -214,4 +304,3 @@ export async function ensureDefaultMissions(): Promise<void> {
     }
   }
 }
-

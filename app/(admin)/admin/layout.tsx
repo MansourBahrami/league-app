@@ -13,12 +13,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <div className="min-h-screen bg-surface flex flex-col" dir="rtl">
       <PushRegister />
       {/* Admin header */}
-      <header className="bg-on-surface text-white px-5 py-3 flex items-center justify-between sticky top-0 z-40 shadow-lg">
+      <header className="bg-inverse-surface text-inverse-on-surface px-5 py-3 flex items-center justify-between sticky top-0 z-40 shadow-lg">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-secondary-container" style={{ fontVariationSettings: "'FILL' 1" }}>admin_panel_settings</span>
           <span className="font-bold text-[16px]">پنل مدیریت</span>
         </div>
-        <nav className="flex items-center gap-4 text-[14px]">
+        <nav className="flex max-w-[75vw] items-center gap-4 overflow-x-auto whitespace-nowrap text-[14px]">
           <Link href="/admin" className="hover:text-secondary-container transition-colors">داشبورد</Link>
           <Link href="/admin/leads" className="hover:text-secondary-container transition-colors">لیدها</Link>
           <Link href="/admin/leaderboard" className="hover:text-secondary-container transition-colors">لیدربورد</Link>
@@ -26,7 +26,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/tournaments" className="hover:text-secondary-container transition-colors">تورنومنت</Link>
           <Link href="/admin/notifications" className="hover:text-secondary-container transition-colors">نوتیفیکیشن</Link>
           <Link href="/admin/analytics" className="hover:text-secondary-container transition-colors">A/B تست</Link>
-          <Link href="/dashboard" className="text-outline-variant hover:text-white transition-colors flex items-center gap-1">
+          <Link href="/admin/reports" className="hover:text-secondary-container transition-colors">گزارش‌ها</Link>
+          <Link href="/dashboard" className="text-outline-variant hover:text-inverse-on-surface transition-colors flex items-center gap-1">
             <span className="material-symbols-outlined text-[16px]">exit_to_app</span>
             خروج
           </Link>

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { gradeRequiresField, STUDENT_GRADES, STUDY_FIELDS } from "@/lib/student-profile";
+import { captureClientError } from "@/lib/analytics-client";
 
 interface Props {
   onComplete: () => void;
@@ -78,7 +79,8 @@ export default function LeadCaptureModal({ onComplete }: Props) {
         return;
       }
       onComplete();
-    } catch {
+    } catch (caught) {
+      captureClientError("onboarding.lead_capture", caught);
       setError("ذخیره اطلاعات انجام نشد؛ دوباره تلاش کن.");
     } finally {
       setLoading(false);

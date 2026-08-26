@@ -8,6 +8,8 @@ import {
   isStudentProfileComplete,
   isStudyField,
 } from "@/lib/student-profile";
+import { after } from "next/server";
+import { captureServerEvent } from "@/lib/analytics-server";
 
 export async function GET() {
   const session = await getSession();
@@ -66,7 +68,7 @@ export async function PATCH(req: NextRequest) {
   // شماره هنگام ورود تأیید شده؛ رشته فقط برای دهم تا پشت‌کنکور لازم است.
   const current = await prisma.user.findUnique({
     where: { id: session.userId },
-    select: { grade: true, field: true, phone: true },
+    select: { grade: true, field: true, phone: true, isLeadComplete: true },
   });
   const mergedGrade = grade ?? current?.grade;
   const mergedField = grade !== undefined && !gradeRequiresField(grade)
@@ -83,6 +85,14 @@ export async function PATCH(req: NextRequest) {
     data: updateData,
     select: { id: true, name: true, grade: true, field: true, isLeadComplete: true, nextStudyTarget: true },
   });
+
+  if (!current?.isLeadComplete && user.isLeadComplete) {
+    after(() => captureServerEvent({
+      distinctId: session.userId,
+      event: "lead_completed",
+      insertId: `lead-completed:${session.userId}`,
+    }));
+  }
 
   return NextResponse.json(user);
 }

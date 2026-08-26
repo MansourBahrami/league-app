@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { captureClientError } from "@/lib/analytics-client";
 
 interface Props {
   appUrl: string;
@@ -23,7 +24,12 @@ export default function InviteFriends({ appUrl }: Props) {
       .then((data) => {
         if (data?.referralCode) setReferralCode(data.referralCode);
       })
-      .catch(() => null);
+      .catch((caught) => {
+        if ((caught as { name?: string })?.name !== "AbortError") {
+          captureClientError("referral.load", caught);
+        }
+        return null;
+      });
     return () => controller.abort();
   }, []);
 
@@ -32,7 +38,8 @@ export default function InviteFriends({ appUrl }: Props) {
     try {
       await navigator.clipboard.writeText(inviteLink);
       setMsg({ text: "لینک دعوت کپی شد!", ok: true });
-    } catch {
+    } catch (caught) {
+      captureClientError("referral.copy", caught);
       setMsg({ text: inviteLink, ok: true });
     }
   }
@@ -41,7 +48,12 @@ export default function InviteFriends({ appUrl }: Props) {
     if (!inviteLink) return;
     const text = `بیا با هم توی اپ مطالعه رقابت کنیم! با این لینک عضو شو تا رتبه همدیگه رو ببینیم:\n${inviteLink}`;
     if (navigator.share) {
-      navigator.share({ text }).catch(() => {});
+      navigator.share({ text }).catch((caught) => {
+        if ((caught as { name?: string })?.name !== "AbortError") {
+          captureClientError("referral.share", caught);
+          void copyLink();
+        }
+      });
     } else {
       copyLink();
     }
@@ -51,19 +63,25 @@ export default function InviteFriends({ appUrl }: Props) {
     if (!code.trim()) return;
     setBusy(true);
     setMsg(null);
-    const res = await fetch("/api/friends", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: code.trim() }),
-    });
-    const data = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (res.ok) {
-      setMsg({ text: `${data.friendName ?? "دوستت"} اضافه شد!`, ok: true });
-      setCode("");
-      router.refresh();
-    } else {
-      setMsg({ text: data.error ?? "خطا", ok: false });
+    try {
+      const res = await fetch("/api/friends", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: code.trim() }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setMsg({ text: `${data.friendName ?? "دوستت"} اضافه شد!`, ok: true });
+        setCode("");
+        router.refresh();
+      } else {
+        setMsg({ text: data.error ?? "خطا", ok: false });
+      }
+    } catch (caught) {
+      captureClientError("friend.add", caught);
+      setMsg({ text: "ارتباط برقرار نشد؛ دوباره تلاش کن.", ok: false });
+    } finally {
+      setBusy(false);
     }
   }
 

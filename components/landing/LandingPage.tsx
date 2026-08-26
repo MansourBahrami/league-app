@@ -159,10 +159,10 @@ export default function LandingPage({ isLoggedIn = false }: LandingPageProps) {
                     <span className="text-[12px] font-medium text-primary-fixed-dim mb-1">
                       جلسهٔ مطالعهٔ ۹۰ دقیقه‌ای
                     </span>
-                    <span className="text-[34px] font-black tracking-wider font-display text-white">
+                    <span className="text-[34px] font-black tracking-wider font-display text-on-primary">
                       ۰۱:۲۴:۴۵
                     </span>
-                    <div className="flex items-center gap-1 mt-1 text-[11px] text-tertiary-fixed font-bold bg-white/10 px-3 py-1 rounded-full">
+                    <div className="flex items-center gap-1 mt-1 text-[11px] text-tertiary-fixed font-bold bg-on-primary/10 px-3 py-1 rounded-full">
                       <span className="material-symbols-outlined text-[14px]">bolt</span>
                       <span>+۵ XP و +۵ سکه ذخیره‌شده</span>
                     </div>
@@ -384,7 +384,7 @@ export default function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             {/* سطح ۴ */}
             <div className="p-4 sm:p-5 rounded-3xl bg-surface-container border border-outline-variant/60 text-center flex flex-col items-center">
               <div className="w-12 h-12 rounded-2xl bg-primary-container text-on-primary flex items-center justify-center font-black mb-3">
-                ⭐
+                <span className="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
               </div>
               <h4 className="font-bold text-[16px] text-primary mb-1">سرآمد</h4>
               <span className="text-[11px] font-semibold text-on-surface-variant">عبور از مأموریت‌های سخت</span>
@@ -392,10 +392,10 @@ export default function LandingPage({ isLoggedIn = false }: LandingPageProps) {
 
             {/* سطح ۵ */}
             <div className="col-span-2 sm:col-span-1 p-4 sm:p-5 rounded-3xl bg-secondary text-on-secondary text-center flex flex-col items-center shadow-md">
-              <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center font-black mb-3 text-white">
-                👑
+              <div className="w-12 h-12 rounded-2xl bg-on-secondary/20 flex items-center justify-center font-black mb-3 text-on-secondary">
+                <span className="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
               </div>
-              <h4 className="font-bold text-[16px] text-white mb-1">الگو</h4>
+              <h4 className="font-bold text-[16px] text-on-secondary mb-1">الگو</h4>
               <span className="text-[11px] font-semibold text-secondary-fixed">بالاترین سطح جی‌کمپ</span>
             </div>
 
@@ -465,7 +465,7 @@ export default function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             <div className="absolute -left-16 -bottom-16 w-64 h-64 rounded-full bg-secondary/30 blur-2xl pointer-events-none" />
 
             <div className="flex flex-col text-center md:text-right max-w-xl">
-              <h3 className="text-[22px] sm:text-[28px] font-extrabold text-white mb-2 font-display">
+              <h3 className="text-[22px] sm:text-[28px] font-extrabold text-on-primary mb-2 font-display">
                 تنهایی شروع‌کردن سخته؛ باهم شروع کنیم
               </h3>
               <p className="text-primary-fixed-dim text-[14px] sm:text-[16px] leading-relaxed">

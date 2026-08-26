@@ -2,6 +2,8 @@
  * ماژول مدیریت اعلان‌های زنده تایمر مطالعه در پنل نوتیفیکیشن موبایل/مرورگر
  */
 
+import { captureClientError } from "@/lib/analytics-client";
+
 export const MOTIVATIONAL_QUOTES = [
   "تمرکز امروزت، رتبه و آینده فردات رو می‌سازه ✨",
   "قدم‌های کوچیک و پیوسته، نتایج بزرگ می‌سازن 🎯",
@@ -64,7 +66,9 @@ export async function requestStudyNotificationPermission(): Promise<boolean> {
 
   // ثبت سرویس ورکر در اولین فرصت
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").catch(() => {});
+    navigator.serviceWorker.register("/sw.js").catch((caught) => {
+      captureClientError("timer_notification.service_worker_register", caught);
+    });
   }
 
   if (!("Notification" in window)) {
@@ -82,7 +86,8 @@ export async function requestStudyNotificationPermission(): Promise<boolean> {
   try {
     const result = await Notification.requestPermission();
     return result === "granted";
-  } catch {
+  } catch (caught) {
+    captureClientError("timer_notification.permission", caught);
     return false;
   }
 }
@@ -147,7 +152,9 @@ export async function showOrUpdateStudyNotification({
         options: fullOptions,
       });
     }
-  } catch {}
+  } catch (caught) {
+    captureClientError("timer_notification.service_worker_message", caught);
+  }
 
   // ۲. فراخوانی روی ServiceWorkerRegistration
   if ("serviceWorker" in navigator) {
@@ -158,11 +165,17 @@ export async function showOrUpdateStudyNotification({
           await reg.showNotification(title, fullOptions);
           return;
         } catch {
-          await reg.showNotification(title, simpleOptions);
-          return;
+          try {
+            await reg.showNotification(title, simpleOptions);
+            return;
+          } catch (caught) {
+            captureClientError("timer_notification.service_worker_show", caught);
+          }
         }
       }
-    } catch {}
+    } catch (caught) {
+      captureClientError("timer_notification.service_worker_ready", caught);
+    }
   }
 
   // ۳. فال‌بک اعلان استاندارد
@@ -171,7 +184,9 @@ export async function showOrUpdateStudyNotification({
   } catch {
     try {
       new Notification(title, simpleOptions);
-    } catch {}
+    } catch (caught) {
+      captureClientError("timer_notification.fallback_show", caught);
+    }
   }
 }
 
@@ -233,6 +248,6 @@ export async function closeStudyNotification(): Promise<void> {
       }
     }
   } catch (err) {
-    console.error("Failed to close study timer notification:", err);
+    captureClientError("timer_notification.close", err);
   }
 }

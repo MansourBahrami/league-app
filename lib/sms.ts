@@ -9,6 +9,8 @@
  * کاوه‌نگار از ایران (سرور لیارا) کاملاً در دسترس است.
  */
 
+import { captureCaughtError, logOperationalEvent } from "@/lib/observability";
+
 const KAVENEGAR_BASE = "https://api.kavenegar.com/v1";
 
 interface KavenegarResponse {
@@ -22,7 +24,7 @@ export async function sendOtpSms(phone: string, code: string): Promise<boolean> 
   const sender = process.env.KAVENEGAR_SENDER;
 
   if (!apiKey) {
-    console.error("[sms] KAVENEGAR_API_KEY تنظیم نشده است");
+    logOperationalEvent("sms.not_configured");
     return false;
   }
 
@@ -36,12 +38,12 @@ export async function sendOtpSms(phone: string, code: string): Promise<boolean> 
     const res = await fetch(url, { method: "GET" });
     const data = (await res.json()) as KavenegarResponse;
     if (data.return?.status !== 200) {
-      console.error("[sms] ارسال کاوه‌نگار ناموفق:", data.return);
+      logOperationalEvent("sms.provider_rejected", { providerStatus: data.return?.status ?? null });
       return false;
     }
     return true;
   } catch (err) {
-    console.error("[sms] خطا در ارتباط با کاوه‌نگار:", err);
+    captureCaughtError("sms.network", err);
     return false;
   }
 }

@@ -12,6 +12,8 @@ import StudyReportCard from "@/components/dashboard/StudyReportCard";
 import LockedStudySection from "@/components/profile/LockedStudySection";
 import PublicProfileStats from "@/components/profile/PublicProfileStats";
 import StarBadge from "@/components/ui/StarBadge";
+import { isBlockedBetween } from "@/lib/privacy";
+import PublicProfileSafetyActions from "@/components/profile/PublicProfileSafetyActions";
 
 export const dynamic = "force-dynamic";
 
@@ -33,6 +35,7 @@ export default async function PublicProfilePage({ params }: Props) {
       select: {
         id: true, name: true, avatarUrl: true, xp: true, level: true, stars: true,
         grade: true, field: true, coins: true, streak: true, lastStudyDate: true,
+        profilePublic: true,
       },
     }),
     prisma.user.findUnique({ where: { id: session.userId }, select: { coins: true } }),
@@ -40,7 +43,7 @@ export default async function PublicProfilePage({ params }: Props) {
     prisma.user.count(),
   ]);
 
-  if (!target) notFound();
+  if (!target || !target.profilePublic || await isBlockedBetween(session.userId, id)) notFound();
 
   const targetRank = await prisma.user.count({ where: { xp: { gt: target.xp } } });
 
@@ -180,6 +183,7 @@ export default async function PublicProfilePage({ params }: Props) {
         title="مدال‌ها"
         medals={userMedals.map((um) => ({ id: um.id, name: um.medal.name, targetHours: um.medal.targetHours, earnedAt: um.earnedAt }))}
       />
+      <PublicProfileSafetyActions targetUserId={id} />
     </div>
   );
 }

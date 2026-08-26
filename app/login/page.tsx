@@ -4,6 +4,8 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { normalizeDigits, normalizePhone } from "@/lib/phone";
+import { captureClientError, captureProductEvent } from "@/lib/analytics-client";
+import { toPersianDigits } from "@/lib/format";
 
 type Step = "phone" | "otp";
 
@@ -54,14 +56,18 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        captureProductEvent("otp_failed", { stage: "request", status: response.status });
         setError(data.error || "ارسال کد با خطا مواجه شد.");
         return;
       }
 
       if (data._dev_otp) setOtp(data._dev_otp);
+      captureProductEvent("otp_requested", { resend: step === "otp" });
       setStep("otp");
       setResendTimer(60);
-    } catch {
+    } catch (caught) {
+      captureProductEvent("otp_failed", { stage: "request", status: 0 });
+      captureClientError("auth.otp_request", caught);
       setError("خطا در ارتباط با سرور. لطفاً اتصال اینترنت را بررسی کن.");
     } finally {
       setLoading(false);
@@ -73,7 +79,7 @@ export default function LoginPage() {
     setError("");
 
     const cleanedCode = normalizeDigits(otp).trim();
-    if (cleanedCode.length < 5) {
+    if (!/^\d{6}$/.test(cleanedCode)) {
       setError("لطفاً کد ۶ رقمی دریافتی را کامل وارد کن.");
       return;
     }
@@ -88,22 +94,31 @@ export default function LoginPage() {
       const data = await response.json();
 
       if (!response.ok) {
+        captureProductEvent("otp_failed", { stage: "verify", status: response.status });
         setError(data.error || "کد تأیید نادرست یا منقضی شده است.");
         return;
       }
 
       const ref = localStorage.getItem("referral_code");
       if (ref) {
-        await fetch("/api/friends", {
+        const referralResponse = await fetch("/api/friends", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ code: ref }),
-        }).catch(() => {});
-        localStorage.removeItem("referral_code");
+        }).catch((caught) => {
+          captureClientError("auth.referral_attach", caught);
+          return null;
+        });
+        // خطای موقت شبکه/سرور باعث از دست‌رفتن کد دعوت نمی‌شود.
+        if (referralResponse?.ok || (referralResponse && referralResponse.status < 500)) {
+          localStorage.removeItem("referral_code");
+        }
       }
 
       router.push("/dashboard");
-    } catch {
+    } catch (caught) {
+      captureProductEvent("otp_failed", { stage: "verify", status: 0 });
+      captureClientError("auth.otp_verify", caught);
       setError("خطا در ارتباط با سرور.");
     } finally {
       setLoading(false);
@@ -194,7 +209,7 @@ export default function LoginPage() {
             ) : (
               <form onSubmit={handleVerifyOtp} className="flex flex-col gap-3" noValidate>
               <p className="text-center text-[12px] text-on-surface-variant">
-                کد ارسال‌شده به <span className="font-bold text-primary" dir="ltr">{phone}</span>
+                کد ارسال‌شده به <span className="font-bold text-primary" dir="ltr">{toPersianDigits(phone)}</span>
               </p>
 
               <div>

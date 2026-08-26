@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
-import { Vazirmatn } from "next/font/google";
 import localFont from "next/font/local";
 import PerformanceMetrics from "@/components/analytics/PerformanceMetrics";
 import "./globals.css";
 
-const vazirmatn = Vazirmatn({
-  subsets: ["arabic"],
-  weight: ["400", "600", "700", "800"],
+const vazirmatn = localFont({
+  src: "./fonts/Vazirmatn-Gcamp.woff2",
+  display: "swap",
+  style: "normal",
+  weight: "100 900",
   variable: "--font-vazirmatn",
 });
 

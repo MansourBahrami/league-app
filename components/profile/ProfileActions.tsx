@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { gradeRequiresField, STUDENT_GRADES, STUDY_FIELDS } from "@/lib/student-profile";
+import { captureClientError } from "@/lib/analytics-client";
 
 interface Props {
   user: {
@@ -88,10 +89,16 @@ export default function ProfileActions({ user }: Props) {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: name.trim(), grade, field: gradeRequiresField(grade) ? field : null }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("profile.update", caught);
+      return null;
+    });
     setSaving(false);
     if (!response?.ok) {
-      const data = await response?.json().catch(() => null) as { error?: string } | null;
+      const data = await response?.json().catch((caught) => {
+        captureClientError("profile.update_response", caught);
+        return null;
+      }) as { error?: string } | null;
       setError(data?.error ?? "تغییرات ذخیره نشد؛ دوباره تلاش کن.");
       return;
     }

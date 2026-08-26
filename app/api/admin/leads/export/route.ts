@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
+import { isHotLead } from "@/lib/leads";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,13 +14,30 @@ export async function GET(req: NextRequest) {
   const hotOnly = req.nextUrl.searchParams.get("hot") === "1";
 
   const users = await prisma.user.findMany({
-    where: { isLeadComplete: true, ...(hotOnly ? { onboardingDay: { gte: 3 } } : {}) },
-    select: { name: true, phone: true, grade: true, field: true, xp: true, level: true, onboardingDay: true, createdAt: true },
+    where: { isLeadComplete: true },
+    select: { id: true, name: true, phone: true, grade: true, field: true, xp: true, level: true, onboardingDay: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });
 
+  const studyByUser = hotOnly
+    ? await prisma.studySession.groupBy({
+        by: ["userId"],
+        where: { userId: { in: users.map((user) => user.id) } },
+        _sum: { durationMin: true },
+      })
+    : [];
+  const studyMap = new Map(
+    studyByUser.map((row) => [row.userId, row._sum.durationMin ?? 0]),
+  );
+  const filteredUsers = hotOnly
+    ? users.filter((user) => isHotLead({
+        onboardingDay: user.onboardingDay,
+        totalStudyMinutes: studyMap.get(user.id) ?? 0,
+      }))
+    : users;
+
   const header = ["نام", "موبایل", "پایه", "رشته", "XP", "سطح", "روز آنبوردینگ", "تاریخ ثبت‌نام"];
-  const rows = users.map((u) => [
+  const rows = filteredUsers.map((u) => [
     u.name ?? "",
     u.phone ?? "",
     u.grade ?? "",
@@ -30,10 +49,22 @@ export async function GET(req: NextRequest) {
   ]);
 
   // فرار دادن مقادیر CSV
-  const esc = (v: string) => `"${v.replace(/"/g, '""')}"`;
+  const esc = (v: string) => {
+    // جلوگیری از CSV/Formula injection هنگام بازشدن فایل در Excel/Sheets.
+    const safe = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+    return `"${safe.replace(/"/g, '""')}"`;
+  };
   const csv = [header, ...rows].map((r) => r.map(esc).join(",")).join("\n");
   // BOM برای نمایش درست فارسی در Excel
   const body = "﻿" + csv;
+
+  await recordAdminAudit({
+    adminUserId: admin.userId,
+    action: "leads.export_csv",
+    request: req,
+    targetType: "lead",
+    metadata: { hotOnly, rowCount: filteredUsers.length },
+  });
 
   return new NextResponse(body, {
     headers: {

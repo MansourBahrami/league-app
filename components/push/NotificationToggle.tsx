@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { enablePush } from "@/components/push/PushRegister";
+import { captureProductEvent } from "@/lib/analytics-client";
 
 /** دکمه‌ی فعال‌سازی نوتیفیکیشن رقابتی (درخواست صریح اجازه از کاربر). */
 export default function NotificationToggle() {
   const [state, setState] = useState<"unknown" | "granted" | "denied" | "default">("unknown");
   const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!("Notification" in window)) return;
@@ -22,10 +24,20 @@ export default function NotificationToggle() {
 
   async function handle() {
     setBusy(true);
+    setMessage("");
     const res = await enablePush();
+    captureProductEvent("push_permission_result", {
+      result: res.ok ? "granted" : (Notification.permission ?? "unsupported"),
+      configured: res.reason !== "کلید نوتیفیکیشن پیکربندی نشده",
+    });
     setBusy(false);
     if (res.ok) setState("granted");
-    else if (typeof Notification !== "undefined") setState(Notification.permission as "granted" | "denied" | "default");
+    else {
+      setMessage(res.reason ?? "فعال‌سازی نوتیفیکیشن ناموفق بود");
+      if (typeof Notification !== "undefined") {
+        setState(Notification.permission as "granted" | "denied" | "default");
+      }
+    }
   }
 
   // وقتی هنوز وضعیت مشخص نیست یا نوتیف‌ها از قبل فعال‌اند، کارت نمایش داده نمی‌شود
@@ -43,6 +55,7 @@ export default function NotificationToggle() {
             ? "در تنظیمات مرورگر اجازه را فعال کن"
             : "خبردار شو وقتی رقیبت جلو می‌زنه یا زنجیره‌ات در خطره"}
         </p>
+        {message && <p role="alert" className="mt-1 text-[12px] text-error">{message}</p>}
       </div>
       <button
         onClick={handle}

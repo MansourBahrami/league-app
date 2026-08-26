@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { pauseStudySession } from "@/lib/study-session";
 
 /** ثبت pause سمت سرور — زمان pause از مدت جلسه و پاداش کسر می‌شود. */
 export async function POST(req: NextRequest) {
@@ -10,10 +10,17 @@ export async function POST(req: NextRequest) {
   const { sessionId } = await req.json().catch(() => ({}));
   if (!sessionId) return NextResponse.json({ error: "sessionId required" }, { status: 400 });
 
-  await prisma.studySession.updateMany({
-    where: { id: sessionId, userId: session.userId, endTime: null, pausedAt: null },
-    data: { pausedAt: new Date() },
+  const result = await pauseStudySession({
+    userId: session.userId,
+    sessionId,
   });
+  if (result === "not_found") {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: result !== "ended",
+    changed: result === "updated",
+    state: result,
+  }, { status: result === "ended" ? 409 : 200 });
 }

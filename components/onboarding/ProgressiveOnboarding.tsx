@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { enablePush } from "@/components/push/PushRegister";
+import { captureClientError } from "@/lib/analytics-client";
 import {
   ONBOARDING_HINTS,
   type OnboardingHint,
@@ -232,7 +233,10 @@ export default function ProgressiveOnboarding({
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ hints: unique }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("onboarding.hints", caught, { hints_count: unique.length });
+      return null;
+    });
     return !!response?.ok;
   }, [hints]);
 
@@ -264,7 +268,9 @@ export default function ProgressiveOnboarding({
     if (pushGranted) autoHints.push(ONBOARDING_HINTS.PUSH_PROMPTED);
     if (autoHints.length > 0) {
       void (async () => {
-        if (pushGranted) await enablePush().catch(() => null);
+        if (pushGranted) await enablePush().catch((caught) => {
+          captureClientError("onboarding.push_refresh", caught);
+        });
         await markHints(...autoHints);
       })();
     }
@@ -298,7 +304,10 @@ export default function ProgressiveOnboarding({
 
   async function postponeSetup() {
     setBusy("dismiss");
-    const response = await fetch("/api/onboarding/setup-snooze", { method: "POST" }).catch(() => null);
+    const response = await fetch("/api/onboarding/setup-snooze", { method: "POST" }).catch((caught) => {
+      captureClientError("onboarding.setup_snooze", caught);
+      return null;
+    });
     if (!response?.ok) {
       setFeedback("تعویق یادآوری ثبت نشد؛ دوباره تلاش کن.");
       setFeedbackShouldSnooze(true);

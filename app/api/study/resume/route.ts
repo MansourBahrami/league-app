@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
 import { getSession } from "@/lib/auth";
+import { resumeStudySession } from "@/lib/study-session";
 
 /** پایان pause: مدت توقف به pausedSec اضافه و pausedAt پاک می‌شود. */
 export async function POST(req: NextRequest) {
@@ -10,17 +10,17 @@ export async function POST(req: NextRequest) {
   const { sessionId } = await req.json().catch(() => ({}));
   if (!sessionId) return NextResponse.json({ error: "sessionId required" }, { status: 400 });
 
-  const s = await prisma.studySession.findUnique({
-    where: { id: sessionId, userId: session.userId },
-    select: { id: true, pausedAt: true, endTime: true },
+  const result = await resumeStudySession({
+    userId: session.userId,
+    sessionId,
   });
-  if (!s || s.endTime || !s.pausedAt) return NextResponse.json({ ok: true });
+  if (result.status === "not_found") {
+    return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  }
 
-  const pausedSecDelta = Math.max(0, Math.floor((Date.now() - s.pausedAt.getTime()) / 1000));
-  await prisma.studySession.updateMany({
-    where: { id: s.id, pausedAt: s.pausedAt },
-    data: { pausedSec: { increment: pausedSecDelta }, pausedAt: null },
-  });
-
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({
+    ok: result.status !== "ended",
+    changed: result.status === "updated",
+    state: result.status,
+  }, { status: result.status === "ended" ? 409 : 200 });
 }

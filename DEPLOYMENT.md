@@ -28,7 +28,7 @@
 - **مسیر پروژه روی سرور:** `/app/league/`
 - **حافظه مجازی:** ۲ گیگابایت Swap فعال روی `/swapfile`
 - **سرویس‌های در حال اجرا (Docker Compose):**
-  - `app`: کانتینر Next.js 16 (پورت 3000)
+  - `app` و `app-replica`: دو کانتینر Next.js 16 (فقط loopback روی پورت‌های 3000 و 3001)
   - `postgres`: کانتینر `postgres:17-alpine` (دیتابیس `league_db`)
   - `redis`: کانتینر `redis:7-alpine` (کش و سشن با پسورد)
 - **وب‌سرور و Reverse Proxy:** Caddy 2 (پورت‌های 80 و 443 با پشتیبانی HTTP/2 و HTTP/3)
@@ -66,7 +66,7 @@ CDN ابر آروان  (لبهٔ داخل ایران)
 سرور مبدأ (ابرک آروان 194.5.206.14)
    │
    ▼
-Caddy Reverse Proxy  (پورت 80 و 443)
+Caddy Reverse Proxy + least-connection load balancing  (پورت 80 و 443)
    │
    ▼
 کانتینر app:3000  (Next.js — تفکیک خودکار لندینگ و اپلیکیشن بر اساس Host Header)
@@ -85,7 +85,17 @@ Caddy Reverse Proxy  (پورت 80 و 443)
 
 gcamp.ir, www.gcamp.ir, app.gcamp.ir {
     tls internal
-    reverse_proxy 127.0.0.1:3000
+    reverse_proxy 127.0.0.1:3000 127.0.0.1:3001 {
+        lb_policy least_conn
+        lb_try_duration 2s
+        health_uri /api/health
+        health_interval 15s
+        health_timeout 3s
+        health_fails 2
+        health_passes 2
+        fail_duration 30s
+        max_fails 2
+    }
 }
 
 194.5.206.14.sslip.io {
@@ -94,11 +104,11 @@ gcamp.ir, www.gcamp.ir, app.gcamp.ir {
 
 :443 {
     tls internal
-    reverse_proxy 127.0.0.1:3000
+    reverse_proxy 127.0.0.1:3000 127.0.0.1:3001
 }
 
 :80 {
-    reverse_proxy 127.0.0.1:3000
+    reverse_proxy 127.0.0.1:3000 127.0.0.1:3001
 }
 ```
 
@@ -157,8 +167,9 @@ chmod 0755 /app/league/run-cron.sh
 
 زمان‌بندی crontab سرور (`crontab -l`):
 ```
-*/5 * * * * /app/league/run-cron.sh missions,tournaments,notifRules >> /var/log/league-cron.log 2>&1
+*/5 * * * * /app/league/run-cron.sh studySessions,missions,tournaments,notifRules,invariants,analytics >> /var/log/league-cron.log 2>&1
 0   * * * * /app/league/run-cron.sh ranks                            >> /var/log/league-cron.log 2>&1
+20  3 * * * /app/league/run-cron.sh retention                        >> /var/log/league-cron.log 2>&1
 ```
 
 ---
@@ -176,7 +187,7 @@ cd /app/league && sudo docker compose ps
 sudo docker compose logs -f app
 
 # اجرای مجدد و ساخت مجدد کانتینر
-sudo docker compose up -d --force-recreate app
+sudo docker compose up -d --force-recreate app app-replica
 
 # بررسی لاگ‌های کران
 tail -f /var/log/league-cron.log
@@ -184,3 +195,44 @@ tail -f /var/log/league-cron.log
 # وضعیت سرویس Caddy
 sudo systemctl status caddy --no-pager
 ```
+
+---
+
+## ۸. Healthcheck، نسخه و rollback
+
+- readiness: `GET /api/health` اتصال PostgreSQL و Redis را بررسی می‌کند و در خرابی `503` می‌دهد.
+- liveness: `GET /api/health?mode=live` فقط زنده‌بودن process را بررسی می‌کند.
+- هر build علاوه بر `latest` با `sha-<git-sha>` منتشر می‌شود و همان SHA در پاسخ health دیده می‌شود.
+
+انتشار و rollback باید با tag ثابت انجام شود، نه با حدس‌زدن محتوای `latest`:
+
+```bash
+cd /app/league
+export APP_IMAGE="DOCKERHUB_USER/league-app:sha-COMMIT_SHA"
+sudo -E docker compose pull app app-replica
+sudo -E docker compose up -d --no-deps app app-replica
+curl --fail http://127.0.0.1:3000/api/health
+```
+
+برای rollback مقدار `APP_IMAGE` را به SHA سالم قبلی برگردانید و همان سه دستور را تکرار کنید. مایگریشن‌ها forward-only هستند؛ rollback کد نباید migration را خودکار پایین بیاورد.
+
+## ۹. بکاپ و تمرین بازیابی
+
+بکاپ روزانه باید قبل از استقرار و مستقل از volume snapshot گرفته شود. فایل خروجی حاوی داده شخصی است و باید رمزگذاری و با دسترسی محدود نگه‌داری شود.
+
+```bash
+cd /app/league
+mkdir -p /app/backups/league
+sudo docker compose exec -T postgres pg_dump -U league_user -d league_db -Fc > /app/backups/league/league-$(date +%F-%H%M).dump
+find /app/backups/league -type f -name 'league-*.dump' -mtime +14 -delete
+```
+
+ماهانه یک restore drill روی دیتابیس staging خالی انجام دهید و پس از بازیابی، migration status، `/api/health` و تست‌های invariant را بررسی کنید.
+
+## ۱۰. مقیاس چندنمونه‌ای و pool دیتابیس
+
+فید بین replicaها از Redis Pub/Sub عبور می‌کند، ۱۰۰ رخداد اخیر برای reconnect نگه داشته می‌شود و Cron قفل توزیع‌شده دارد. در مقیاس افقی، Caddy/CDN باید SSE را بدون buffering به چند instance سالم توزیع کند. مقدار `DB_POOL_MAX` باید از فرمول زیر تعیین شود:
+
+`DB_POOL_MAX × تعداد replica + ظرفیت jobها < max_connections PostgreSQL - حاشیه مدیریت`
+
+پیش از افزودن replica، تست `npm run test:load:500` را روی staging مشابه production اجرا کنید و CPU، RAM، connectionهای DB و p95 را هم‌زمان ثبت کنید.

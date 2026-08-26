@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
-import { faIR } from "date-fns/locale";
+import { captureClientError } from "@/lib/analytics-client";
+import { formatRelativeTimeFa } from "@/lib/format";
 
 interface InboxItem {
   id: string;
@@ -31,8 +31,8 @@ function renderContent(it: InboxItem): { text: string; icon: string; bg: string;
       return {
         text: `${actorName} با ${String(meta.emoji ?? "🔥")} به فعالیتت واکنش نشون داد`,
         icon: "favorite",
-        bg: "#ffe1e6",
-        color: "#c2185b",
+        bg: "var(--color-secondary-container)",
+        color: "var(--color-secondary)",
         href: it.actor ? `/profile/${it.actor.id}` : "/feed",
       };
     case "reaction_reward":
@@ -60,7 +60,7 @@ function renderContent(it: InboxItem): { text: string; icon: string; bg: string;
         href: it.actor ? `/profile/${it.actor.id}` : "/inbox",
       };
     default:
-      return { text: it.body ?? it.type, icon: "notifications", bg: "#eef0f4", color: "var(--color-on-surface-variant)", href: "/inbox" };
+      return { text: it.body ?? it.type, icon: "notifications", bg: "var(--color-info-container)", color: "var(--color-info)", href: "/inbox" };
   }
 }
 
@@ -72,10 +72,13 @@ export default function InboxClient({ initialItems }: Props) {
     if (!hasUnread) return;
     // علامت‌گذاری خوانده‌شده در پس‌زمینه بدون ایجاد بار اضافه و رندر مجدد سرور
     fetch("/api/inbox/read", { method: "POST" })
-      .then(() => {
+      .then((response) => {
+        if (!response.ok) throw new Error(`http_${response.status}`);
         setItems((prev) => prev.map((item) => ({ ...item, read: true })));
       })
-      .catch(() => {});
+      .catch((caught) => {
+        captureClientError("inbox.mark_read", caught);
+      });
   }, [initialItems]);
 
   if (items.length === 0) {
@@ -109,7 +112,7 @@ export default function InboxClient({ initialItems }: Props) {
               <div className="flex items-center gap-1 mt-1">
                 <span className="material-symbols-outlined text-[13px] text-outline">schedule</span>
                 <span className="text-[11px] text-outline">
-                  {formatDistanceToNow(new Date(it.createdAt), { addSuffix: true, locale: faIR })}
+                  {formatRelativeTimeFa(it.createdAt)}
                 </span>
               </div>
             </div>

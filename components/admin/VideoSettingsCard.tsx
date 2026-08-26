@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { VideoUnlockMode } from "@/lib/settings";
+import { captureClientError } from "@/lib/analytics-client";
 
 interface Props {
   initialMode: VideoUnlockMode;
@@ -27,7 +28,8 @@ export default function VideoSettingsCard({ initialMode }: Props) {
       } else {
         setMessage("خطا در ذخیره تنظیمات.");
       }
-    } catch {
+    } catch (caught) {
+      captureClientError("admin.video_settings", caught, { mode: newMode });
       setMessage("خطا در ارتباط با سرور.");
     } finally {
       setSaving(false);

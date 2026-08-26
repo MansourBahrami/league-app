@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import ContextualSpotlight from "@/components/onboarding/ContextualSpotlight";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import { captureClientError } from "@/lib/analytics-client";
 
 export interface MissionChoice {
   id: string;
@@ -46,7 +47,10 @@ export default function MissionRoomChooser({
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ missionId }),
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("mission.join", caught, { mission_id: missionId });
+      return null;
+    });
     const data = await response?.json().catch(() => ({})) as { error?: string; roomId?: string } | undefined;
     setLoadingId(null);
     if (!response?.ok || !data?.roomId) {

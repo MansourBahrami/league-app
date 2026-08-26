@@ -6,8 +6,26 @@ import { withPostHog } from "@/lib/posthog-client";
 export type ProductEvent =
   | "signed_in"
   | "signed_out"
+  | "otp_requested"
+  | "otp_failed"
   | "study_started"
-  | "study_completed";
+  | "study_start_failed"
+  | "study_paused"
+  | "study_resumed"
+  | "study_sync_failed"
+  | "study_end_failed"
+  | "study_completed"
+  | "mission_joined"
+  | "mission_viewed"
+  | "mission_failed"
+  | "video_opened"
+  | "video_playback_failed"
+  | "video_completed"
+  | "video_progress_failed"
+  | "video_purchase_result"
+  | "leaderboard_viewed"
+  | "reaction_toggled"
+  | "push_permission_result";
 
 type EventProperties = Record<string, string | number | boolean | null>;
 
@@ -27,6 +45,19 @@ export function captureProductEvent(event: ProductEvent, properties?: EventPrope
 
 export function capturePerformanceEvent(event: PerformanceEvent, properties: EventProperties) {
   withPostHog((posthog) => posthog.capture(event, properties));
+}
+
+export function captureClientError(
+  operation: string,
+  error: unknown,
+  properties: EventProperties = {},
+) {
+  const normalized = error instanceof Error ? error : new Error(String(error));
+  Sentry.withScope((scope) => {
+    scope.setTag("operation", operation);
+    scope.setContext("operation_context", properties);
+    Sentry.captureException(normalized);
+  });
 }
 
 export function resetAnalyticsUser() {

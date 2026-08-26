@@ -12,7 +12,10 @@
 | خطاهای مرورگر و سرور | Sentry | فعال و تست‌شده |
 | لاگ اپ، PostgreSQL و Redis | Docker logs | فعال با چرخش خودکار |
 | Session Replay و Heatmap | — | عمداً غیرفعال |
-| آپلود Source Map به Sentry | Sentry CLI | اختیاری و فعلاً غیرفعال |
+| آپلود Source Map به Sentry | Sentry Build Plugin | در CI از BuildKit secret؛ نیازمند `SENTRY_AUTH_TOKEN` |
+| تلاش‌های OTP و نرخ شکست | PostgreSQL (`AuthAttempt`) | فعال، بدون شماره خام |
+| تحویل رویداد سرور | PostgreSQL outbox + PostHog | فعال با retry در Cron |
+| موفق/ناموفق اعلان | PostgreSQL (`NotificationLog`) | فعال با status، latency و error code |
 
 هیچ‌کدام از مسیرهای اصلی بالا برای شروع به Grafana، Google Analytics یا Hotjar
 نیاز ندارند. این ترکیب برای اندازه و تیم فعلی پروژه ساده‌تر است و هزینه و نگهداری
@@ -34,6 +37,12 @@
 | `signed_out` | خروج کاربر | بدون اطلاعات شخصی |
 | `study_started` | ساخت موفق جلسه در سرور | `planned_minutes` |
 | `study_completed` | پایان معتبر جلسه در سرور | `planned_minutes`, `verified_minutes`, `xp_earned`, `coins_earned`, `onboarding_day_completed` |
+| `otp_requested`, `otp_failed` | درخواست/شکست ورود | مرحله و status، بدون شماره |
+| `study_start_failed`, `study_paused`, `study_resumed`, `study_sync_failed` | بازیابی و کنترل تایمر | نوع عملیات و شناسه داخلی session |
+| `onboarding_started`, `onboarding_step_completed`, `onboarding_completed`, `lead_completed` | قیف شروع کار | روز و دقیقه تأییدشده |
+| `mission_viewed`, `mission_joined`, `mission_completed`, `mission_failed` | چرخه مأموریت | نوع و هدف مأموریت |
+| `video_opened`, `video_playback_failed`, `video_progress_failed`, `video_completed`, `video_purchase_result` | چرخه ویدیو | شناسه و نتیجه، بدون عنوان/PII |
+| `leaderboard_viewed`, `reaction_toggled`, `push_permission_result` | تعامل اجتماعی و Push | tab/action/result |
 | `web_vital` | گزارش Core Web Vitals مرورگر | `metric`, `value`, `rating`, `pathname`, `network_type`, `display_mode` |
 | `route_navigation` | اولین paint پس از کلیک روی لینک داخلی | `from_path`, `to_path`, `duration_ms`, `network_type`, `display_mode` |
 
@@ -153,17 +162,27 @@ APP_ENV=production
 مقادیر public زمان build نیز fallback دارد، اما env صریح سرور عیب‌یابی و تغییر
 محیط را ساده‌تر می‌کند.
 
-### Source Map اختیاری
+### Source Map در CI
 
 ```env
 SENTRY_AUTH_TOKEN=sntrys_...
 ```
 
-این توکن محرمانه و اختیاری است و فقط هنگام build برای آپلود Source Map استفاده
-می‌شود. نباید با `NEXT_PUBLIC_` شروع شود، در repository ثبت شود یا داخل image
-باقی بماند. فعلاً توکن ساخته یا به GitHub Actions متصل نشده و Docker build بدون
-آپلود Source Map انجام می‌شود. هنگام فعال‌سازی باید توکن با GitHub Actions secret
-و BuildKit secret به مرحلهٔ build داده شود.
+این توکن محرمانه فقط هنگام build برای آپلود Source Map استفاده می‌شود. Workflow آن
+را از GitHub Actions secret به BuildKit secret می‌دهد؛ داخل build arg، repository
+یا لایه‌های image قرار نمی‌گیرد. نبودن secret باید در چک‌لیست انتشار به‌عنوان
+پیکربندی ناقص گزارش شود.
+
+## داده‌های عملیاتی و نگه‌داری
+
+- رویدادهای سروری PostHog ابتدا در `ProductEventOutbox` ثبت و با `$insert_id` پایدار ارسال می‌شوند؛ Cron وظیفه `analytics` موارد ناموفق را با backoff دوباره می‌فرستد.
+- `AuthAttempt` فقط hash کوتاه هویت، نوع عملیات، نتیجه، latency و request ID را نگه می‌دارد؛ OTP و شماره خام ذخیره نمی‌شوند.
+- وظیفه روزانه `retention` تلاش OTP را پس از ۹۰ روز، لاگ اعلان را پس از ۱۸۰ روز و activity/inbox را پس از ۳۶۵ روز پاک می‌کند. audit ادمین ۷۳۰ روز حفظ می‌شود؛ eventهای تحویل‌شدهٔ outbox پس از ۹۰ روز و eventهای `suppressed` جامانده از تست پس از ۱ روز حذف می‌شوند.
+- وظیفه `invariants` موجودی منفی، session باز قدیمی، session باز تکراری و mismatch پاداش را بررسی و violation را به Sentry می‌فرستد.
+- وظیفه `studySessions` تایمر running عبورکرده از سقف و تایمر paused رهاشده بیش از ۲۴ ساعت را با زمان authoritative تسویه می‌کند. پرداخت با قفل کاربر idempotent است و مدت pause به مطالعه افزوده نمی‌شود. اجرای هم‌زمان آن با `npm run test:stale-sessions` پوشش داده شده است.
+- اجرای دستی `npm run test:invariants` همین کنترل‌ها را روی دیتابیس development/staging انجام می‌دهد و در صورت violation با exit code ناموفق تمام می‌شود.
+- `npm run test:sse-replicas` تحویل واقعی Redis Pub/Sub میان دو process مستقل را کنترل می‌کند و `npm run test:distributed-lock` تضمین تک‌اجرایی job را زیر ۱۰۰ تلاش هم‌زمان می‌سنجد.
+- load test باید با `GCAMP_LOAD_TEST_MODE=1` روی سرور اجرا شود. فقط درخواست دارای header داخلی تست در این حالت رویدادهایش را با status برابر `suppressed` در outbox می‌نویسد؛ بنابراین performance نوشتن outbox سنجیده می‌شود ولی داده آزمایشی به PostHog تحویل نمی‌شود.
 
 ## چک‌لیست انتشار
 

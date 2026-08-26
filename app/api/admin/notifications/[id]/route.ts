@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 import { parseRuleBody, validateRule } from "@/lib/notification-admin";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -21,6 +22,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
       where: { id },
       data: { enabled: Boolean(raw.enabled) },
     });
+    await recordAdminAudit({ adminUserId: admin.userId, action: "notification_rule.toggle", request: req, targetType: "notification_rule", targetId: id, metadata: { enabled: rule.enabled } });
     return NextResponse.json(rule);
   }
 
@@ -29,14 +31,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (err) return NextResponse.json({ error: err }, { status: 400 });
 
   const rule = await prisma.notificationRule.update({ where: { id }, data });
+  await recordAdminAudit({ adminUserId: admin.userId, action: "notification_rule.update", request: req, targetType: "notification_rule", targetId: id });
   return NextResponse.json(rule);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const admin = await getAdminSession();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   await prisma.notificationRule.delete({ where: { id } });
+  await recordAdminAudit({ adminUserId: admin.userId, action: "notification_rule.delete", request: req, targetType: "notification_rule", targetId: id });
   return NextResponse.json({ message: "حذف شد" });
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/auth";
 import { getVideoUnlockMode, setVideoUnlockMode, type VideoUnlockMode } from "@/lib/settings";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 export async function GET() {
   const admin = await getAdminSession();
@@ -22,5 +23,6 @@ export async function PATCH(req: NextRequest) {
   }
 
   const updatedMode = await getVideoUnlockMode();
+  await recordAdminAudit({ adminUserId: admin.userId, action: "settings.video_unlock_mode", request: req, targetType: "setting", targetId: "videoUnlockMode", metadata: { value: updatedMode } });
   return NextResponse.json({ videoUnlockMode: updatedMode });
 }

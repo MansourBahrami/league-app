@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 import { parseTournamentBody, validateTournament } from "@/lib/tournament-admin";
+import { recordAdminAudit } from "@/lib/admin-audit";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -17,14 +18,16 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (err) return NextResponse.json({ error: err }, { status: 400 });
 
   const tournament = await prisma.tournament.update({ where: { id }, data });
+  await recordAdminAudit({ adminUserId: admin.userId, action: "tournament.update", request: req, targetType: "tournament", targetId: id });
   return NextResponse.json(tournament);
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(req: NextRequest, { params }: Params) {
   const admin = await getAdminSession();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { id } = await params;
   await prisma.tournament.delete({ where: { id } });
+  await recordAdminAudit({ adminUserId: admin.userId, action: "tournament.delete", request: req, targetType: "tournament", targetId: id });
   return NextResponse.json({ message: "حذف شد" });
 }

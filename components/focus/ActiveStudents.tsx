@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ActiveFocusSnapshot, ActiveFocusUser } from "@/lib/focus";
+import { captureClientError } from "@/lib/analytics-client";
 
 interface Props {
   initialSnapshot: ActiveFocusSnapshot;
@@ -31,14 +32,19 @@ export default function ActiveStudents({ initialSnapshot, currentUserId }: Props
   const [nowMs, setNowMs] = useState(() => Date.parse(initialSnapshot.updatedAt));
 
   const refresh = useCallback(async () => {
-    const response = await fetch("/api/focus/active", { cache: "no-store" }).catch(() => null);
-    if (!response?.ok) return;
-
-    const data = await response.json().catch(() => null) as (ActiveFocusSnapshot & { count: number }) | null;
-    if (!data || !Array.isArray(data.users) || typeof data.updatedAt !== "string") return;
-
-    setSnapshot({ users: data.users, updatedAt: data.updatedAt });
-    setNowMs(Date.parse(data.updatedAt));
+    try {
+      const response = await fetch("/api/focus/active", { cache: "no-store" });
+      if (!response.ok) {
+        if (response.status >= 500) captureClientError("focus.list", new Error(`http_${response.status}`));
+        return;
+      }
+      const data = await response.json() as ActiveFocusSnapshot & { count: number };
+      if (!Array.isArray(data.users) || typeof data.updatedAt !== "string") return;
+      setSnapshot({ users: data.users, updatedAt: data.updatedAt });
+      setNowMs(Date.parse(data.updatedAt));
+    } catch (caught) {
+      captureClientError("focus.list", caught);
+    }
   }, []);
 
   useEffect(() => {
@@ -65,7 +71,9 @@ export default function ActiveStudents({ initialSnapshot, currentUserId }: Props
         if (activity.type === "timer_start" || activity.type === "session_complete") {
           debouncedRefresh();
         }
-      } catch {}
+      } catch (caught) {
+        captureClientError("active_students.sse_parse", caught);
+      }
     };
 
     return () => {

@@ -83,7 +83,7 @@ export default function DailyMissionCard({ mission, userCoins, isLocked, hasActi
         {loading
           ? "در حال ثبت..."
           : isLocked
-          ? "قفل تا روز ششم"
+          ? "قفل تا پایان آنبوردینگ"
           : hasActiveDaily
           ? "ماموریت روزانه‌ی فعال داری"
           : userCoins < mission.entryCost

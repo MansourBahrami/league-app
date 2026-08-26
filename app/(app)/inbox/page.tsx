@@ -26,7 +26,7 @@ export default async function InboxPage() {
     <div className="flex flex-col items-center w-full px-4">
       <div className="glass-card w-full rounded-2xl px-4 py-2.5 flex items-center gap-2.5 mb-4">
         <div className="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0">
-          <span className="material-symbols-outlined text-white text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>notifications</span>
+          <span className="material-symbols-outlined text-on-secondary text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>notifications</span>
         </div>
         <h2 className="text-[15px] font-bold text-on-surface flex-1 text-right">صندوق</h2>
       </div>

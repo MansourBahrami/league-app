@@ -10,6 +10,7 @@ import ContextualSpotlight from "@/components/onboarding/ContextualSpotlight";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { tehranDayStartDaysAgo } from "@/lib/date";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
+import ProductViewEvent from "@/components/analytics/ProductViewEvent";
 
 export const dynamic = "force-dynamic";
 
@@ -74,40 +75,38 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const sevenDaysAgo = tehranDayStartDaysAgo(7);
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
-  const [hasTournament, poolIds] = await Promise.all([
+  const [hasTournament, friendIds, sameLevelCount] = await Promise.all([
     prisma.tournament.findFirst({
       where: { isActive: true, endAt: { gte: new Date() } },
       select: { id: true },
     }).then(Boolean),
-    (async () => {
-      if (isFriends) {
-        const friendIds = await getFriendIds(session.userId);
-        return [session.userId, ...friendIds];
-      }
-
-      const sameLevel = await prisma.user.findMany({ where: { level: myLevel }, select: { id: true } });
-      // cold start: اگر هم‌سطح‌ها کم بودند، با همه رقابت کن (لیگ آزاد)
-      if (sameLevel.length < MIN_LEAGUE_SIZE) {
-        const all = await prisma.user.findMany({ select: { id: true } });
-        return all.map((user) => user.id);
-      }
-      return sameLevel.map((user) => user.id);
-    })(),
+    isFriends ? getFriendIds(session.userId) : Promise.resolve([]),
+    isFriends ? Promise.resolve(0) : prisma.user.count({ where: { level: myLevel } }),
   ]);
 
-  const [users, weekly] = await Promise.all([
-    prisma.user.findMany({
-      where: { id: { in: poolIds } },
-      select: { id: true, name: true, avatarUrl: true, level: true },
-    }),
-    prisma.studySession.groupBy({
+  const friendsPool = isFriends ? [session.userId, ...friendIds] : null;
+  const openLeague = !isFriends && sameLevelCount < MIN_LEAGUE_SIZE;
+
+  const weekly = await prisma.studySession.groupBy({
       by: ["userId"],
-      where: { userId: { in: poolIds }, startTime: { gte: sevenDaysAgo } },
+      where: {
+        startTime: { gte: sevenDaysAgo },
+        OR: [{ userId: session.userId }, { user: { profilePublic: true } }],
+        ...(friendsPool
+          ? { userId: { in: friendsPool } }
+          : openLeague
+            ? {}
+            : { user: { level: myLevel } }),
+      },
       _sum: { xpEarned: true, durationMin: true },
       orderBy: { _sum: { xpEarned: "desc" } },
       take: 50,
-    }),
-  ]);
+    });
+  const visibleUserIds = [...new Set([session.userId, ...weekly.map((row) => row.userId)])];
+  const users = await prisma.user.findMany({
+    where: { id: { in: visibleUserIds } },
+    select: { id: true, name: true, avatarUrl: true, level: true },
+  });
   const userMap = new Map(users.map((u) => [u.id, u]));
 
   const leaderboard = buildLeaderboard(weekly, userMap, session.userId, myLevel);
@@ -123,6 +122,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
 
   return (
     <div className="flex flex-col gap-5 px-5">
+      <ProductViewEvent event="leaderboard_viewed" properties={{ tab: isFriends ? "friends" : "weekly" }} />
       {/* Header with Info Button */}
       <div className="flex items-center justify-between px-1 mt-2">
         <div className="flex items-center gap-1.5">

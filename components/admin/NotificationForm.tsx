@@ -57,7 +57,7 @@ const WEEKDAYS = [
 const EVENT_ENTRIES = Object.entries(EVENTS) as [string, string][];
 
 const inputCls =
-  "w-full rounded-xl border border-outline-variant bg-white px-4 py-2.5 text-[15px] text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all";
+  "w-full rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-2.5 text-[15px] text-on-surface focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all";
 const labelCls = "text-[13px] font-semibold text-on-surface";
 
 // رندر ساده‌ی پیش‌نمایش با مقادیر نمونه
@@ -225,7 +225,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
   const cfg = form.triggerConfig;
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5 bg-white rounded-2xl p-6 border border-outline-variant/30">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5 bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/30">
       <h1 className="text-[20px] font-extrabold text-on-surface">
         {isEdit ? "ویرایش قانون نوتیفیکیشن" : "قانون نوتیفیکیشن جدید"}
       </h1>
@@ -243,7 +243,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
           {NOTIF_CHANNELS.map((c) => (
             <button key={c} type="button" onClick={() => toggleChannel(c)}
               className={`px-3 py-2 rounded-xl text-[13px] font-semibold border transition-all flex items-center gap-1 ${
-                form.channels.includes(c) ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
+                form.channels.includes(c) ? "bg-primary text-on-primary border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
               }`}>
               {form.channels.includes(c) && <span className="material-symbols-outlined text-[14px]">check</span>}
               {CHANNEL_LABELS[c]}
@@ -260,7 +260,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
               type="button"
               onClick={handleEnablePush}
               disabled={enablingPush}
-              className="px-3 py-1.5 rounded-lg bg-primary text-white text-[12px] font-bold shadow-sm disabled:opacity-60"
+              className="px-3 py-1.5 rounded-lg bg-primary text-on-primary text-[12px] font-bold shadow-sm disabled:opacity-60"
             >
               {enablingPush ? "در حال فعال‌سازی…" : "فعال‌سازی در این مرورگر"}
             </button>
@@ -279,7 +279,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
           ] as const).map(([val, lbl, icon]) => (
             <button key={val} type="button" onClick={() => changeTriggerType(val)}
               className={`py-2.5 rounded-xl text-[13px] font-semibold border transition-all flex items-center justify-center gap-1 ${
-                form.triggerType === val ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
+                form.triggerType === val ? "bg-primary text-on-primary border-primary" : "border-outline-variant text-on-surface-variant hover:bg-primary-fixed"
               }`}>
               <span className="material-symbols-outlined text-[16px]">{icon}</span>
               {lbl}
@@ -310,7 +310,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
                     return (
                       <button key={d.v} type="button"
                         onClick={() => setCfg("weekdays", on ? days.filter((x) => x !== d.v) : [...days, d.v])}
-                        className={`px-2.5 py-1.5 rounded-lg text-[12px] font-semibold border ${on ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant"}`}>
+                        className={`px-2.5 py-1.5 rounded-lg text-[12px] font-semibold border ${on ? "bg-primary text-on-primary border-primary" : "border-outline-variant text-on-surface-variant"}`}>
                         {d.l}
                       </button>
                     );
@@ -401,7 +401,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
       </div>
 
       {/* پیش‌نمایش */}
-      <div className="rounded-xl bg-on-surface text-white p-4">
+      <div className="rounded-xl bg-inverse-surface text-inverse-on-surface p-4">
         <p className="text-[11px] text-secondary-container mb-1 font-semibold">پیش‌نمایش (با مقادیر نمونه)</p>
         <p className="font-bold text-[15px]">{previewText(form.title) || "عنوان…"}</p>
         <p className="text-[13px] text-outline-variant whitespace-pre-wrap mt-1">{previewText(form.body) || "متن پیام…"}</p>
@@ -434,7 +434,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>وضعیت</label>
         <button type="button" onClick={() => set("enabled", !form.enabled)}
-          className={`py-2.5 rounded-xl text-[14px] font-semibold border ${form.enabled ? "bg-[#d4f5e6] text-tertiary border-tertiary/30" : "bg-[#f3f3f3] text-outline border-outline-variant"}`}>
+          className={`py-2.5 rounded-xl text-[14px] font-semibold border ${form.enabled ? "bg-success-container text-on-success-container border-success/30" : "bg-info-container text-info border-outline-variant"}`}>
           {form.enabled ? "فعال" : "غیرفعال"}
         </button>
       </div>
@@ -451,7 +451,7 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
             <span className="material-symbols-outlined text-[18px]">send</span> تست برای من
           </button>
         )}
-        <button type="submit" disabled={saving} className="flex-grow bg-primary text-white font-bold text-[15px] py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
+        <button type="submit" disabled={saving} className="flex-grow bg-primary text-on-primary font-bold text-[15px] py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-60">
           {saving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : isEdit ? "ذخیره تغییرات" : "ایجاد قانون"}
         </button>
       </div>
@@ -504,7 +504,7 @@ function ConditionValue({
             return (
               <button key={o} type="button"
                 onClick={() => onChange(on ? selected.filter((x) => x !== o) : [...selected, o])}
-                className={`px-2 py-1 rounded-lg text-[11px] font-semibold border ${on ? "bg-primary text-white border-primary" : "border-outline-variant text-on-surface-variant"}`}>
+                className={`px-2 py-1 rounded-lg text-[11px] font-semibold border ${on ? "bg-primary text-on-primary border-primary" : "border-outline-variant text-on-surface-variant"}`}>
                 {o}
               </button>
             );

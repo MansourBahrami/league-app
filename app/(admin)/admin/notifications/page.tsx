@@ -23,7 +23,7 @@ export default async function AdminNotificationsPage() {
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <h1 className="text-[22px] font-extrabold text-on-surface">قانون‌های نوتیفیکیشن</h1>
-        <Link href="/admin/notifications/new" className="bg-primary text-white font-bold text-[14px] px-4 py-2 rounded-xl flex items-center gap-1">
+        <Link href="/admin/notifications/new" className="bg-primary text-on-primary font-bold text-[14px] px-4 py-2 rounded-xl flex items-center gap-1">
           <span className="material-symbols-outlined text-[18px]">add</span>
           قانون جدید
         </Link>

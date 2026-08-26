@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/db";
+import { redis } from "@/lib/redis";
+import { captureCaughtError } from "@/lib/observability";
 
 export interface ActiveFocusUser {
   userId: string;
@@ -17,6 +19,7 @@ export interface ActiveFocusSnapshot {
 
 let cachedSnapshot: { data: ActiveFocusSnapshot; expiresAt: number } | null = null;
 const CACHE_TTL_MS = 5000; // 5 ثانیه کش سبک برای جلوگیری از هجوم درخواست‌های همزمان
+const CACHE_KEY = "gcamp:focus:snapshot";
 
 /**
  * کاربرانی که همین حالا یک تایمرِ معتبر و در حال اجرا دارند.
@@ -28,6 +31,24 @@ export async function getActiveFocusSnapshot(now = new Date(), forceRefresh = fa
   const nowMs = now.getTime();
   if (!forceRefresh && cachedSnapshot && cachedSnapshot.expiresAt > nowMs) {
     return cachedSnapshot.data;
+  }
+  if (!forceRefresh) {
+    const shared = await redis.get(CACHE_KEY).catch((caught) => {
+      captureCaughtError("focus.cache_read", caught);
+      return null;
+    });
+    if (shared) {
+      try {
+        const parsed = JSON.parse(shared) as ActiveFocusSnapshot;
+        cachedSnapshot = { data: parsed, expiresAt: nowMs + CACHE_TTL_MS };
+        return parsed;
+      } catch (caught) {
+        captureCaughtError("focus.cache_parse", caught);
+        await redis.del(CACHE_KEY).catch((deleteError) => {
+          captureCaughtError("focus.cache_delete", deleteError);
+        });
+      }
+    }
   }
 
   const maxTimerStart = new Date(nowMs - 24 * 60 * 60 * 1000);
@@ -66,12 +87,25 @@ export async function getActiveFocusSnapshot(now = new Date(), forceRefresh = fa
 
   const result: ActiveFocusSnapshot = { users: [...users.values()], updatedAt: now.toISOString() };
   cachedSnapshot = { data: result, expiresAt: nowMs + CACHE_TTL_MS };
+  await redis.set(CACHE_KEY, JSON.stringify(result), "PX", CACHE_TTL_MS).catch((caught) => {
+    captureCaughtError("focus.cache_write", caught);
+  });
   return result;
 }
 
 export async function getActiveFocusCount(now = new Date()): Promise<number> {
-  const snapshot = await getActiveFocusSnapshot(now);
-  return snapshot.users.length;
+  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const rows = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(DISTINCT "userId")::bigint AS count
+    FROM "StudySession"
+    WHERE "endTime" IS NULL
+      AND "pausedAt" IS NULL
+      AND "startTime" >= ${cutoff}
+      AND "startTime"
+        + (GREATEST("plannedMin", 1) * INTERVAL '1 minute')
+        + ("pausedSec" * INTERVAL '1 second') > ${now}
+  `;
+  return Number(rows[0]?.count ?? 0);
 }
 
 /** آیا کاربر یک تایمر معتبرِ باز دارد؛ شامل تایمر pause‌شده. */

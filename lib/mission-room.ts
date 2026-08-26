@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { getBlockedUserIds } from "@/lib/privacy";
 
 export interface MissionRoomMemberSnapshot {
   userId: string;
@@ -116,7 +117,7 @@ export async function getMissionRoomSnapshot(
     include: {
       members: {
         include: {
-          user: { select: { id: true, name: true, avatarUrl: true, level: true } },
+          user: { select: { id: true, name: true, avatarUrl: true, level: true, profilePublic: true } },
           userMission: { select: { status: true } },
         },
       },
@@ -128,7 +129,7 @@ export async function getMissionRoomSnapshot(
   const nowMs = now.getTime();
   const minActiveStartTime = new Date(Math.max(room.startsAt.getTime(), nowMs - 24 * 60 * 60 * 1000));
 
-  const [studiedRows, openSessions] = await Promise.all([
+  const [studiedRows, openSessions, blockedUserIds] = await Promise.all([
     prisma.studySession.groupBy({
       by: ["userId"],
       where: {
@@ -153,7 +154,9 @@ export async function getMissionRoomSnapshot(
         pausedSec: true,
       },
     }),
+    getBlockedUserIds(viewerId),
   ]);
+  const blockedSet = new Set(blockedUserIds);
 
   const activeUsers = new Map<string, { startedAt: string; plannedMin: number; pausedSec: number }>();
   for (const session of openSessions) {
@@ -172,14 +175,16 @@ export async function getMissionRoomSnapshot(
 
   const ranked = room.members
     .map((member) => {
+      const identityHidden = member.userId !== viewerId
+        && (!member.user.profilePublic || blockedSet.has(member.userId));
       const activeSession = activeUsers.get(member.userId);
       const studiedMin = (studiedMap.get(member.userId) ?? 0) + (activeSession
         ? activeElapsedMinutes(activeSession.startedAt, activeSession.pausedSec, activeSession.plannedMin, now)
         : 0);
       return {
         userId: member.userId,
-        name: member.user.name ?? "دانش‌آموز G-camp",
-        avatarUrl: member.user.avatarUrl,
+        name: identityHidden ? "کاربر خصوصی" : (member.user.name ?? "دانش‌آموز G-camp"),
+        avatarUrl: identityHidden ? null : member.user.avatarUrl,
         level: member.user.level,
         studiedMin,
         progress: goalMin > 0 ? Math.min(100, Math.round((studiedMin / goalMin) * 100)) : 100,

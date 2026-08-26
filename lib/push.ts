@@ -1,5 +1,6 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/db";
+import { captureCaughtError, logOperationalEvent } from "@/lib/observability";
 
 /**
  * Web Push (PWA) — ارسال نوتیفیکیشن پس‌زمینه به مرورگر کاربر.
@@ -27,7 +28,7 @@ function ensureConfigured(): boolean {
     configured = true;
     return true;
   } catch (err) {
-    console.error("[push] Failed to configure VAPID details:", err);
+    captureCaughtError("push.configure", err);
     return false;
   }
 }
@@ -60,12 +61,17 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
       } catch (err: unknown) {
         const status = (err as { statusCode?: number })?.statusCode;
         if (status === 404 || status === 410) {
-          await prisma.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});
+          await prisma.pushSubscription.delete({ where: { id: s.id } }).catch((caught) => {
+            captureCaughtError("push.subscription_cleanup", caught, { status });
+          });
+        } else {
+          captureCaughtError("push.deliver", err, { status: status ?? null });
         }
       }
     })
   );
 
+  logOperationalEvent("push.delivery", { userId, subscriptions: subs.length, sent });
   return sent;
 }
 

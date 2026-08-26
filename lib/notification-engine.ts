@@ -15,6 +15,10 @@ import { sendMessage } from "@/lib/bot";
 import { sendPushToUser } from "@/lib/push";
 import { getOnboardingDailyGoalMinutes } from "@/lib/gamification";
 import { TEHRAN_OFFSET_MIN, tehranDayStart } from "@/lib/date";
+import { captureCaughtError } from "@/lib/observability";
+import { mapWithConcurrency } from "@/lib/concurrency";
+import { withDistributedLock } from "@/lib/distributed-lock";
+import { safeWebUrl } from "@/lib/url-safety";
 import {
   type EnrichedUser,
   type Condition,
@@ -128,7 +132,7 @@ async function canSend(rule: RuleRow, userId: string, now = new Date()): Promise
   if (rule.cooldownHours > 0) {
     const since = new Date(now.getTime() - rule.cooldownHours * 3600_000);
     const recent = await prisma.notificationLog.findFirst({
-      where: { ruleId: rule.id, userId, sentAt: { gte: since } },
+      where: { ruleId: rule.id, userId, status: "sent", sentAt: { gte: since } },
       select: { id: true },
     });
     if (recent) return false;
@@ -137,7 +141,7 @@ async function canSend(rule: RuleRow, userId: string, now = new Date()): Promise
   if (rule.maxPerDay != null && rule.maxPerDay > 0) {
     const dayStart = tehranDayStart(now);
     const count = await prisma.notificationLog.count({
-      where: { ruleId: rule.id, userId, sentAt: { gte: dayStart } },
+      where: { ruleId: rule.id, userId, status: "sent", sentAt: { gte: dayStart } },
     });
     if (count >= rule.maxPerDay) return false;
   }
@@ -147,7 +151,7 @@ async function canSend(rule: RuleRow, userId: string, now = new Date()): Promise
 // ---------------------------------------------------------------------------
 // ارسال به یک کاربر
 // ---------------------------------------------------------------------------
-async function sendToUser(
+async function sendToUserLocked(
   rule: RuleRow,
   u: EnrichedUser,
   ctx: Record<string, string | number>,
@@ -163,40 +167,85 @@ async function sendToUser(
   const body = renderTemplate(rule.body, u, ctx);
   const sent: NotifChannel[] = [];
 
+  async function deliver(
+    channel: NotifChannel,
+    sender: () => Promise<{ ok: boolean; errorCode?: string }>,
+  ) {
+    const startedAt = Date.now();
+    let result: { ok: boolean; errorCode?: string };
+    try {
+      result = await sender();
+    } catch (error) {
+      captureCaughtError("notification.deliver", error, { ruleId: rule.id, channel });
+      result = { ok: false, errorCode: "exception" };
+    }
+    await prisma.notificationLog.create({
+      data: {
+        ruleId: rule.id,
+        userId: u.id,
+        channel,
+        status: result.ok ? "sent" : "failed",
+        errorCode: result.ok ? null : (result.errorCode ?? "delivery_failed"),
+        durationMs: Date.now() - startedAt,
+      },
+    });
+    if (result.ok) sent.push(channel);
+  }
+
   // تبدیل linkUrl نسبتی به نشانی کامل برای پیام‌رسان بله
   const appUrl = (process.env.APP_PUBLIC_URL || process.env.NEXT_PUBLIC_APP_URL || "https://app.gcamp.ir").replace(/\/$/, "");
-  const absoluteLink = rule.linkUrl
-    ? (rule.linkUrl.startsWith("http://") || rule.linkUrl.startsWith("https://")
-        ? rule.linkUrl
-        : `${appUrl}${rule.linkUrl.startsWith("/") ? "" : "/"}${rule.linkUrl}`)
+  const safeLink = safeWebUrl(rule.linkUrl);
+  const absoluteLink = safeLink
+    ? (safeLink.startsWith("https://")
+        ? safeLink
+        : `${appUrl}${safeLink}`)
     : null;
 
   // بله
   if (rule.channels.includes("bale") && u.baleId) {
     const text = `${title}\n\n${body}${absoluteLink ? `\n\n👉 ${absoluteLink}` : ""}`;
-    const res = (await sendMessage("bale", u.baleId, text).catch(() => null)) as { ok?: boolean } | null;
-    if (res?.ok) sent.push("bale");
+    await deliver("bale", async () => {
+      const res = (await sendMessage("bale", u.baleId!, text)) as { ok?: boolean; description?: string };
+      return { ok: res?.ok === true, errorCode: res?.ok ? undefined : "provider_rejected" };
+    });
   }
 
   // تلگرام
   if (rule.channels.includes("telegram") && u.telegramId) {
     const text = `${title}\n\n${body}${absoluteLink ? `\n\n👉 ${absoluteLink}` : ""}`;
-    const res = (await sendMessage("telegram", u.telegramId, text).catch(() => null)) as { ok?: boolean } | null;
-    if (res?.ok) sent.push("telegram");
+    await deliver("telegram", async () => {
+      const res = (await sendMessage("telegram", u.telegramId!, text)) as { ok?: boolean; description?: string };
+      return { ok: res?.ok === true, errorCode: res?.ok ? undefined : "provider_rejected" };
+    });
   }
 
   // Web Push
   if (rule.channels.includes("push") && u.hasPush) {
-    const count = await sendPushToUser(u.id, { title, body, url: rule.linkUrl ?? undefined, tag: `rule-${rule.id}` })
-      .catch(() => 0);
-    if (count > 0) sent.push("push");
-  }
-
-  // ثبت لاگ (یک رکورد به ازای هر کانال موفق)
-  for (const ch of sent) {
-    await prisma.notificationLog.create({ data: { ruleId: rule.id, userId: u.id, channel: ch } });
+    await deliver("push", async () => {
+      const count = await sendPushToUser(u.id, {
+        title,
+        body,
+        url: safeLink ?? undefined,
+        tag: `rule-${rule.id}`,
+      });
+      return { ok: count > 0, errorCode: count > 0 ? undefined : "no_delivery" };
+    });
   }
   return sent;
+}
+
+async function sendToUser(
+  rule: RuleRow,
+  user: EnrichedUser,
+  ctx: Record<string, string | number>,
+  opts: { skipSafety?: boolean } = {},
+): Promise<NotifChannel[]> {
+  const locked = await withDistributedLock(
+    `notification:${rule.id}:${user.id}`,
+    () => sendToUserLocked(rule, user, ctx, opts),
+    60_000,
+  );
+  return locked.acquired ? locked.value : [];
 }
 
 // ---------------------------------------------------------------------------
@@ -209,14 +258,16 @@ async function runRuleOnUsers(
   opts: { skipSafety?: boolean; skipConditions?: boolean } = {}
 ): Promise<{ matched: number; sent: number }> {
   const conditions = (Array.isArray(rule.conditions) ? rule.conditions : []) as Condition[];
-  let matched = 0;
-  let sent = 0;
-  for (const u of users) {
-    if (!opts.skipConditions && !userMatches(u, rule.segment, conditions)) continue;
-    matched++;
-    const channels = await sendToUser(rule, u, ctxFor(u), opts);
-    if (channels.length) sent++;
-  }
+  const matchingUsers = users.filter(
+    (user) => opts.skipConditions || userMatches(user, rule.segment, conditions),
+  );
+  const matched = matchingUsers.length;
+  const outcomes = await mapWithConcurrency(
+    matchingUsers,
+    10,
+    async (user) => (await sendToUser(rule, user, ctxFor(user), opts)).length > 0,
+  );
+  const sent = outcomes.filter(Boolean).length;
   if (sent > 0) {
     await prisma.notificationRule.update({
       where: { id: rule.id },
@@ -324,7 +375,7 @@ export async function fireEvent(
       await runRuleOnUsers(rule, [u], () => ctx);
     }
   } catch (err) {
-    console.error("[notif] fireEvent error:", err);
+    captureCaughtError("notification.fire_event", err, { event, userId });
   }
 }
 

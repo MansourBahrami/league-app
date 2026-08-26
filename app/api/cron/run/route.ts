@@ -3,7 +3,7 @@ import { runScheduledJobs, type JobTask } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
 
-const ALL_TASKS: JobTask[] = ["missions", "tournaments", "notifRules", "ranks"];
+const ALL_TASKS: JobTask[] = ["studySessions", "missions", "tournaments", "notifRules", "ranks", "invariants", "analytics", "retention"];
 
 /**
  * نقطه‌ی فراخوانی کارهای زمان‌بندی‌شده.
@@ -27,7 +27,8 @@ export async function POST(req: NextRequest) {
     const result = await runScheduledJobs(tasks);
     return NextResponse.json({ ok: true, ...result });
   } catch (err) {
-    console.error("cron run error:", err);
+    const { captureCaughtError } = await import("@/lib/observability");
+    captureCaughtError("cron.run", err, { requestId: req.headers.get("x-request-id") });
     return NextResponse.json({ error: "خطا در اجرای کارها" }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { handleBotUpdate } from "@/lib/bot-handler";
 import { isBotWebhookAuthorized } from "@/lib/bot-webhook";
+import { captureCaughtError } from "@/lib/observability";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export async function POST(req: NextRequest) {
     await handleBotUpdate("telegram", update);
     return NextResponse.json({ ok: true });
   } catch (err) {
-    console.error("[webhook/telegram]", err);
+    captureCaughtError("webhook.telegram", err, { requestId: req.headers.get("x-request-id") });
     return NextResponse.json({ ok: false }, { status: 500 });
   }
 }

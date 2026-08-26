@@ -13,11 +13,12 @@ import {
   showOrUpdateStudyNotification,
   closeStudyNotification,
 } from "@/lib/timer-notification";
+import { captureClientError, captureProductEvent } from "@/lib/analytics-client";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
 
-type TimerState = "idle" | "starting" | "running" | "paused" | "done";
+type TimerState = "idle" | "starting" | "running" | "paused" | "finishing" | "done";
 
 export type FocusMission =
   | {
@@ -49,6 +50,15 @@ interface SessionResult {
   remainingMinutes: number;
   needsLeadCapture: boolean;
   rewardVideo: { id: string; title: string } | null;
+}
+
+interface ActiveSessionSnapshot {
+  sessionId: string;
+  plannedMin: number;
+  state: "running" | "paused";
+  secondsLeft: number;
+  elapsedSeconds: number;
+  serverNow: number;
 }
 
 interface Props {
@@ -215,6 +225,8 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startTimeRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
+  const startRequestIdRef = useRef<string | null>(null);
+  const selectedMinutesRef = useRef(60);
   const quoteRef = useRef<string>(getRandomMotivationalQuote());
   const storageKey = `study_session:${userId}`;
 
@@ -234,28 +246,97 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   }
 
   function setTimer(minutes: number) {
-    if (timerState === "running" || timerState === "paused") return;
+    if (timerState === "running" || timerState === "paused" || timerState === "finishing") return;
     if (intervalRef.current) clearInterval(intervalRef.current);
+    selectedMinutesRef.current = minutes;
     setSelectedMinutes(minutes);
     setSecondsLeft(minutes * 60);
     setTimerState("idle");
     setSessionId(null);
+    startRequestIdRef.current = null;
     setError("");
   }
 
-  const endSession = useCallback(async (id: string) => {
-    const response = await fetch("/api/study/end", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId: id }),
-    }).catch(() => null);
-    if (!response) return;
-    const data: SessionResult = await response.json().catch(() => null);
-    if (!data) return;
-    setSessionResult(data);
-    localStorage.removeItem(storageKey);
-    setShowGoalSetting(true);
+  const endSession = useCallback(async (
+    id: string,
+  ): Promise<"ended" | "already_ended" | "failed"> => {
+    try {
+      const response = await fetch("/api/study/end", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId: id }),
+      });
+      const data = await response.json().catch((caught) => {
+        captureClientError("study.active_response", caught);
+        return null;
+      });
+
+      if (response.status === 409 && data?.alreadyEnded) {
+        localStorage.removeItem(storageKey);
+        setError("این جلسه قبلاً روی سرور ثبت شده و پاداشش محفوظ است.");
+        return "already_ended";
+      }
+      if (!response.ok || !data || typeof data.xpEarned !== "number") {
+        throw new Error("end_failed");
+      }
+
+      setSessionResult(data as SessionResult);
+      localStorage.removeItem(storageKey);
+      setShowGoalSetting(true);
+      setError("");
+      return "ended";
+    } catch (caught) {
+      captureProductEvent("study_end_failed", { session_id: id });
+      captureClientError("study.end", caught, { session_id: id });
+      setError("ثبت پایان جلسه انجام نشد؛ جلسه محفوظ است و می‌توانی دوباره تلاش کنی.");
+      return "failed";
+    }
   }, [storageKey]);
+
+  const applyActiveSession = useCallback((active: ActiveSessionSnapshot) => {
+    const totalSecs = active.plannedMin * 60;
+    const effectiveStartTime = Date.now() - active.elapsedSeconds * 1000;
+    const nextState = active.secondsLeft <= 0 ? "finishing" : active.state;
+
+    setSessionId(active.sessionId);
+    selectedMinutesRef.current = active.plannedMin;
+    setSelectedMinutes(active.plannedMin);
+    setSecondsLeft(active.secondsLeft);
+    setTimerState(nextState);
+    startTimeRef.current = effectiveStartTime;
+    lastTickRef.current =
+      Date.now() - (active.elapsedSeconds % TICK_INTERVAL) * 1000;
+
+    const storedSession: StoredStudyTimerSession = {
+      version: 1,
+      sid: active.sessionId,
+      startTime: effectiveStartTime,
+      totalSecs,
+      state: active.state,
+      ...(active.state === "paused" ? { secondsLeft: active.secondsLeft } : {}),
+    };
+    localStorage.setItem(storageKey, JSON.stringify(storedSession));
+    return nextState;
+  }, [storageKey]);
+
+  const syncActiveSession = useCallback(async (): Promise<ActiveSessionSnapshot | null> => {
+    const response = await fetch("/api/study/active", { cache: "no-store" });
+    if (!response.ok) throw new Error("sync_failed");
+    const data = await response.json() as { activeSession?: ActiveSessionSnapshot | null };
+    const active = data.activeSession ?? null;
+
+    if (!active) {
+      localStorage.removeItem(storageKey);
+      setSessionId(null);
+      setTimerState("idle");
+      setSecondsLeft(selectedMinutesRef.current * 60);
+      startTimeRef.current = null;
+      return null;
+    }
+
+    applyActiveSession(active);
+    return active;
+  }, [applyActiveSession, storageKey]);
 
   const tick = useCallback(async () => {
     const now = Date.now();
@@ -275,18 +356,27 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     }
 
     if (sessionId && now - lastTickRef.current >= TICK_INTERVAL * 1000) {
-      lastTickRef.current = now;
-      const response = await fetch("/api/study/tick", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      }).then((result) => result.json()).catch(() => null);
-      if (response?.granted > 0) showFloat();
+      try {
+        const tickResponse = await fetch("/api/study/tick", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+        if (!tickResponse.ok) throw new Error(`tick_${tickResponse.status}`);
+        const tickData = await tickResponse.json();
+        lastTickRef.current = now;
+        if (tickData?.granted > 0) showFloat();
+      } catch (caught) {
+        // آخرین tick فقط پس از تأیید سرور جلو می‌رود تا با برگشت شبکه سریعاً retry شود.
+        captureProductEvent("study_sync_failed", { operation: "tick", session_id: sessionId });
+        captureClientError("study.tick", caught, { session_id: sessionId });
+        setError("ثبت پاداش میان‌جلسه عقب افتاد؛ با اتصال اینترنت خودکار دوباره تلاش می‌کنیم.");
+      }
     }
 
     if (newSecondsLeft <= 0) {
       if (intervalRef.current) clearInterval(intervalRef.current);
-      setTimerState("done");
+      setTimerState("finishing");
       void showOrUpdateStudyNotification({
         secondsLeft: 0,
         totalSeconds,
@@ -294,7 +384,10 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         quote: quoteRef.current,
         isInitial: true,
       });
-      if (sessionId) await endSession(sessionId);
+      if (sessionId) {
+        const outcome = await endSession(sessionId);
+        setTimerState(outcome === "failed" ? "finishing" : "done");
+      }
     }
   }, [endSession, totalSeconds, sessionId]);
 
@@ -324,43 +417,79 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   }, [timerState, secondsLeft, totalSeconds]);
 
   useEffect(() => {
-    const restore = window.setTimeout(() => {
-      const saved = localStorage.getItem(storageKey);
-      if (!saved) {
+    const restore = window.setTimeout(async () => {
+      try {
+        const active = await syncActiveSession();
+        if (active) {
+          void showOrUpdateStudyNotification({
+            secondsLeft: active.secondsLeft,
+            totalSeconds: active.plannedMin * 60,
+            state: active.state,
+            quote: quoteRef.current,
+            isInitial: false,
+          });
+          if (active.secondsLeft <= 0) {
+            const outcome = await endSession(active.sessionId);
+            setTimerState(outcome === "failed" ? "finishing" : "done");
+          }
+        }
+      } catch (caught) {
+        captureProductEvent("study_sync_failed", { operation: "restore" });
+        captureClientError("study.restore", caught);
+        const saved = localStorage.getItem(storageKey);
+        const restoredSession = saved ? restoreStudyTimerSession(saved) : null;
+        if (restoredSession) {
+          setSessionId(restoredSession.sid);
+          setSecondsLeft(restoredSession.secondsLeft);
+          setSelectedMinutes(Math.round(restoredSession.totalSecs / 60));
+          setTimerState(restoredSession.state);
+          startTimeRef.current = restoredSession.startTime;
+          lastTickRef.current = restoredSession.startTime;
+          setError("ارتباط با سرور برقرار نشد؛ وضعیت محلی نمایش داده می‌شود.");
+        } else if (saved) {
+          localStorage.removeItem(storageKey);
+        }
+      } finally {
         setRestored(true);
-        return;
-      }
-      const restoredSession = restoreStudyTimerSession(saved);
-      if (!restoredSession) {
-        localStorage.removeItem(storageKey);
-        setRestored(true);
-        return;
-      }
-      setSessionId(restoredSession.sid);
-      setSecondsLeft(restoredSession.secondsLeft);
-      setSelectedMinutes(Math.round(restoredSession.totalSecs / 60));
-      setTimerState(restoredSession.state);
-      startTimeRef.current = restoredSession.startTime;
-      lastTickRef.current = restoredSession.startTime;
-      setRestored(true);
-
-      if (restoredSession.state === "running" || restoredSession.state === "paused") {
-        void showOrUpdateStudyNotification({
-          secondsLeft: restoredSession.secondsLeft,
-          totalSeconds: restoredSession.totalSecs,
-          state: restoredSession.state,
-          quote: quoteRef.current,
-          isInitial: false,
-        });
       }
     }, 0);
 
     return () => window.clearTimeout(restore);
-  }, [storageKey]);
+  }, [endSession, storageKey, syncActiveSession]);
 
   useEffect(() => {
     if (!restored) return;
-    reportStudyState(timerState === "starting" || timerState === "running" || timerState === "paused" || showGoalSetting);
+
+    const reconcile = () => {
+      void syncActiveSession()
+        .then(async (active) => {
+          setError("");
+          if (active && active.secondsLeft <= 0) {
+            const outcome = await endSession(active.sessionId);
+            setTimerState(outcome === "failed" ? "finishing" : "done");
+          }
+        })
+        .catch((caught) => {
+          captureProductEvent("study_sync_failed", { operation: "reconcile" });
+          captureClientError("study.reconcile", caught);
+          setError("همگام‌سازی تایمر انجام نشد؛ با اتصال اینترنت دوباره تلاش می‌کنیم.");
+        });
+    };
+    const handleVisibility = () => {
+      if (!document.hidden) reconcile();
+    };
+
+    window.addEventListener("online", reconcile);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("online", reconcile);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [endSession, restored, syncActiveSession]);
+
+  useEffect(() => {
+    if (!restored) return;
+    reportStudyState(timerState === "starting" || timerState === "running" || timerState === "paused" || timerState === "finishing" || showGoalSetting);
   }, [reportStudyState, restored, showGoalSetting, timerState]);
 
   async function handleToggle() {
@@ -370,17 +499,30 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
       setTimerState("starting");
 
       try {
+        const requestId = startRequestIdRef.current ??
+          globalThis.crypto?.randomUUID?.() ??
+          `study-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        startRequestIdRef.current = requestId;
         const response = await fetch("/api/study/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ durationMin: selectedMinutes }),
+          body: JSON.stringify({ durationMin: selectedMinutes, requestId }),
         });
+        if (response.status === 409) {
+          startRequestIdRef.current = null;
+          const active = await syncActiveSession();
+          if (active) {
+            setError("جلسه فعال از سرور بازیابی شد.");
+            return;
+          }
+        }
         if (!response.ok) throw new Error();
         const data = await response.json();
         const id = data.sessionId as string;
-        const now = Date.now();
+        const now = typeof data.startTime === "number" ? data.startTime : Date.now();
         const newQuote = getRandomMotivationalQuote();
         quoteRef.current = newQuote;
+        startRequestIdRef.current = null;
 
         setSessionId(id);
         startTimeRef.current = now;
@@ -407,7 +549,9 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             isInitial: true,
           });
         }
-      } catch {
+      } catch (caught) {
+        captureProductEvent("study_start_failed", { planned_minutes: selectedMinutes });
+        captureClientError("study.start", caught, { planned_minutes: selectedMinutes });
         setTimerState("idle");
         setError("شروع تایمر انجام نشد؛ دوباره تلاش کن.");
       } finally {
@@ -421,43 +565,51 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         setError("اطلاعات جلسه کامل نیست؛ صفحه را تازه‌سازی کن.");
         return;
       }
-      // مکث آنی در رابط کاربری (Optimistic Pause)
-      const pausedAt = Date.now();
-      const pausedSecondsLeft = Math.max(
-        0,
-        totalSeconds - Math.floor((pausedAt - startTimeRef.current) / 1000),
-      );
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      setSecondsLeft(pausedSecondsLeft);
-      setTimerState("paused");
-      const storedSession: StoredStudyTimerSession = {
-        version: 1,
-        sid: sessionId,
-        startTime: startTimeRef.current,
-        totalSecs: totalSeconds,
-        state: "paused",
-        secondsLeft: pausedSecondsLeft,
-      };
-      localStorage.setItem(storageKey, JSON.stringify(storedSession));
-      window.dispatchEvent(new Event("focus-session-changed"));
+      setIsSubmitting(true);
+      try {
+        const response = await fetch("/api/study/pause", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+        if (response.status === 409) {
+          await syncActiveSession();
+          setError("این جلسه قبلاً پایان یافته؛ وضعیت تایمر به‌روز شد.");
+          return;
+        }
+        if (!response.ok) throw new Error();
 
-      void showOrUpdateStudyNotification({
-        secondsLeft: pausedSecondsLeft,
-        totalSeconds,
-        state: "paused",
-        quote: quoteRef.current,
-        isInitial: false,
-      });
-
-      fetch("/api/study/pause", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      }).then((res) => {
-        if (!res.ok) setError("مکث تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
-      }).catch(() => {
+        const pausedAt = Date.now();
+        const pausedSecondsLeft = Math.max(
+          0,
+          totalSeconds - Math.floor((pausedAt - startTimeRef.current) / 1000),
+        );
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setSecondsLeft(pausedSecondsLeft);
+        setTimerState("paused");
+        captureProductEvent("study_paused", { session_id: sessionId });
+        localStorage.setItem(storageKey, JSON.stringify({
+          version: 1,
+          sid: sessionId,
+          startTime: startTimeRef.current,
+          totalSecs: totalSeconds,
+          state: "paused",
+          secondsLeft: pausedSecondsLeft,
+        } satisfies StoredStudyTimerSession));
+        window.dispatchEvent(new Event("focus-session-changed"));
+        void showOrUpdateStudyNotification({
+          secondsLeft: pausedSecondsLeft,
+          totalSeconds,
+          state: "paused",
+          quote: quoteRef.current,
+          isInitial: false,
+        });
+      } catch (caught) {
+        captureClientError("study.pause", caught, { session_id: sessionId });
         setError("مکث تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
-      });
+      } finally {
+        setIsSubmitting(false);
+      }
       return;
     }
 
@@ -466,39 +618,52 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         setError("اطلاعات جلسه کامل نیست؛ صفحه را تازه‌سازی کن.");
         return;
       }
-      // ادامه آنی در رابط کاربری (Optimistic Resume)
-      const resumedAt = Date.now();
-      const effectiveStartTime = resumedAt - (totalSeconds - secondsLeft) * 1000;
-      startTimeRef.current = effectiveStartTime;
-      lastTickRef.current = resumedAt - ((totalSeconds - secondsLeft) % TICK_INTERVAL) * 1000;
-      const storedSession: StoredStudyTimerSession = {
-        version: 1,
-        sid: sessionId,
-        startTime: effectiveStartTime,
-        totalSecs: totalSeconds,
-        state: "running",
-      };
-      localStorage.setItem(storageKey, JSON.stringify(storedSession));
-      setTimerState("running");
-      window.dispatchEvent(new Event("focus-session-changed"));
+      setIsSubmitting(true);
+      try {
+        const response = await fetch("/api/study/resume", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId }),
+        });
+        if (response.status === 409) {
+          await syncActiveSession();
+          setError("این جلسه قبلاً پایان یافته؛ وضعیت تایمر به‌روز شد.");
+          return;
+        }
+        if (!response.ok) throw new Error();
 
-      void showOrUpdateStudyNotification({
-        secondsLeft,
-        totalSeconds,
-        state: "running",
-        quote: quoteRef.current,
-        isInitial: false,
-      });
-
-      fetch("/api/study/resume", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      }).then((res) => {
-        if (!res.ok) setError("ادامه تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
-      }).catch(() => {
+        const resumedAt = Date.now();
+        const effectiveStartTime = resumedAt - (totalSeconds - secondsLeft) * 1000;
+        startTimeRef.current = effectiveStartTime;
+        lastTickRef.current = resumedAt - ((totalSeconds - secondsLeft) % TICK_INTERVAL) * 1000;
+        localStorage.setItem(storageKey, JSON.stringify({
+          version: 1,
+          sid: sessionId,
+          startTime: effectiveStartTime,
+          totalSecs: totalSeconds,
+          state: "running",
+        } satisfies StoredStudyTimerSession));
+        setTimerState("running");
+        captureProductEvent("study_resumed", { session_id: sessionId });
+        window.dispatchEvent(new Event("focus-session-changed"));
+        void showOrUpdateStudyNotification({
+          secondsLeft,
+          totalSeconds,
+          state: "running",
+          quote: quoteRef.current,
+          isInitial: false,
+        });
+      } catch (caught) {
+        captureClientError("study.resume", caught, { session_id: sessionId });
         setError("ادامه تایمر در سرور ثبت نشد؛ ارتباط اینترنت را بررسی کن.");
-      });
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    if (timerState === "finishing") {
+      await handleStop();
       return;
     }
 
@@ -511,15 +676,27 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
 
   async function handleStop() {
     if (intervalRef.current) clearInterval(intervalRef.current);
-    void closeStudyNotification();
+    const previousState = timerState;
     setIsSubmitting(true);
+    setTimerState("finishing");
     try {
-      if (sessionId) await endSession(sessionId);
-    } finally {
-      setIsSubmitting(false);
+      const outcome = sessionId ? await endSession(sessionId) : "already_ended";
+      if (outcome === "failed") {
+        setTimerState(
+          previousState === "running" || previousState === "paused"
+            ? previousState
+            : "finishing",
+        );
+        return;
+      }
+      void closeStudyNotification();
       setTimerState("idle");
       setSecondsLeft(selectedMinutes * 60);
       setSessionId(null);
+      startTimeRef.current = null;
+      window.dispatchEvent(new Event("focus-session-changed"));
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -528,9 +705,11 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     starting: { icon: "progress_activity", label: "در حال آماده‌سازی…", cls: "bg-primary text-on-primary" },
     running: { icon: "pause", label: "مکث", cls: "bg-tertiary-fixed-dim text-on-tertiary-fixed" },
     paused: { icon: "play_arrow", label: "ادامه مطالعه", cls: "bg-primary text-on-primary" },
+    finishing: { icon: "sync", label: "تلاش دوباره برای ثبت", cls: "bg-secondary text-on-secondary" },
     done: { icon: "replay", label: "دوباره شروع کن", cls: "bg-primary text-on-primary" },
   }[timerState];
-  const isSessionActive = timerState === "running" || timerState === "paused";
+  const isSessionActive = timerState === "running" || timerState === "paused" || timerState === "finishing";
+  const canStopSession = timerState === "running" || timerState === "paused";
   const isInteractionLocked = timerState === "starting" || isSessionActive;
   const needsStartHint = !hasHint(ONBOARDING_HINTS.TIMER_STARTED);
   const showsStartHint = needsStartHint && timerState === "idle";
@@ -573,6 +752,8 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
                 ? "در حال ثبت شروع مطالعه…"
                 : timerState === "paused"
                 ? "تایمر متوقف شده"
+                : timerState === "finishing"
+                ? "در انتظار ثبت نهایی روی سرور"
                 : "تمرکز عمیق، پیشرفت واقعی"}
             </p>
           </div>
@@ -635,7 +816,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
 
           {error && <p role="alert" className="text-[12px] text-error text-center mt-2">{error}</p>}
 
-          {isSessionActive && (
+          {canStopSession && (
             <button
               type="button"
               onClick={handleStop}

@@ -1,0 +1,35 @@
+{
+    auto_https disable_redirects
+}
+
+(gcamp_app) {
+    reverse_proxy 127.0.0.1:3000 127.0.0.1:3001 {
+        lb_policy least_conn
+        lb_try_duration 2s
+        health_uri /api/health
+        health_interval 15s
+        health_timeout 3s
+        health_fails 2
+        health_passes 2
+        fail_duration 30s
+        max_fails 2
+    }
+}
+
+gcamp.ir, www.gcamp.ir, app.gcamp.ir {
+    tls internal
+    import gcamp_app
+}
+
+194.5.206.14.sslip.io {
+    redir https://app.gcamp.ir{uri} permanent
+}
+
+:443 {
+    tls internal
+    import gcamp_app
+}
+
+:80 {
+    import gcamp_app
+}

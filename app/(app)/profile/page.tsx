@@ -13,6 +13,7 @@ import LevelInfoButton from "@/components/profile/LevelInfoButton";
 import MessengerConnections from "@/components/profile/MessengerConnections";
 import StudyReportCard from "@/components/dashboard/StudyReportCard";
 import LogoutButton from "@/components/profile/LogoutButton";
+import PrivacySettings from "@/components/profile/PrivacySettings";
 
 export const dynamic = "force-dynamic";
 
@@ -52,7 +53,7 @@ export default async function ProfilePage() {
   const [user, totalStudyAgg, totalUsers] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.userId },
-      select: { name: true, avatarUrl: true, xp: true, coins: true, level: true, stars: true, phone: true, grade: true, field: true, role: true, streak: true, lastStudyDate: true, telegramId: true, baleId: true },
+      select: { name: true, avatarUrl: true, xp: true, coins: true, level: true, stars: true, phone: true, grade: true, field: true, role: true, streak: true, lastStudyDate: true, telegramId: true, baleId: true, profilePublic: true, activityPublic: true },
     }),
     prisma.studySession.aggregate({
       where: { userId: session.userId },
@@ -165,6 +166,11 @@ export default async function ProfilePage() {
         </div>
 
         <NotificationToggle />
+
+        <PrivacySettings
+          initialProfilePublic={user.profilePublic}
+          initialActivityPublic={user.activityPublic}
+        />
 
         <MessengerConnections
           connected={{ telegram: !!user.telegramId, bale: !!user.baleId }}

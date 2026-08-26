@@ -4,24 +4,25 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { formatDistanceToNow } from "date-fns";
-import { faIR } from "date-fns/locale";
+import { formatRelativeTimeFa } from "@/lib/format";
+import { captureClientError } from "@/lib/analytics-client";
 
 // مجموعه‌ی واکنش‌های مجاز — باید با lib/reaction.ts هماهنگ بماند
 const REACTION_EMOJIS = ["🔥", "👏", "💪", "❤️", "🎯"];
+const EMPTY_USER_IDS: string[] = [];
 
 // هر نوع فعالیت: آیکون + رنگ آیکون + رنگ پس‌زمینه‌ی نشان + رنگ نوار کناری (تمایز بصری)
 const TYPE_CONFIG: Record<string, { icon: string; color: string; bg: string; accent: string }> = {
   timer_start: { icon: "timer", color: "var(--color-primary)", bg: "var(--color-primary-fixed)", accent: "var(--color-primary)" },
-  session_complete: { icon: "menu_book", color: "var(--color-secondary)", bg: "#d4f5e6", accent: "var(--color-secondary)" },
+  session_complete: { icon: "menu_book", color: "var(--color-success)", bg: "var(--color-success-container)", accent: "var(--color-success)" },
   mission_buy: { icon: "shopping_cart", color: "var(--color-tertiary)", bg: "var(--color-tertiary-fixed)", accent: "var(--color-tertiary-fixed-dim)" },
-  medal_earn: { icon: "workspace_premium", color: "#b45309", bg: "#fff7eb", accent: "var(--color-tertiary-fixed-dim)" },
+  medal_earn: { icon: "workspace_premium", color: "var(--color-warning)", bg: "var(--color-warning-container)", accent: "var(--color-tertiary-fixed-dim)" },
   level_up: { icon: "trending_up", color: "var(--color-primary)", bg: "var(--color-surface-container-high)", accent: "var(--color-primary-container)" },
-  streak: { icon: "local_fire_department", color: "#c2410c", bg: "#ffedd5", accent: "#fb923c" },
-  video_complete: { icon: "smart_display", color: "var(--color-secondary)", bg: "#d4f5e6", accent: "var(--color-secondary)" },
+  streak: { icon: "local_fire_department", color: "var(--color-warning)", bg: "var(--color-warning-container)", accent: "var(--color-warning)" },
+  video_complete: { icon: "smart_display", color: "var(--color-success)", bg: "var(--color-success-container)", accent: "var(--color-success)" },
   video_buy: { icon: "play_circle", color: "var(--color-tertiary)", bg: "var(--color-tertiary-fixed)", accent: "var(--color-tertiary-fixed-dim)" },
 };
-const DEFAULT_CONFIG = { icon: "bolt", color: "var(--color-on-surface-variant)", bg: "#eef0f4", accent: "var(--color-outline-variant)" };
+const DEFAULT_CONFIG = { icon: "bolt", color: "var(--color-info)", bg: "var(--color-info-container)", accent: "var(--color-outline-variant)" };
 
 function faNum(v: unknown): string {
   return Number(v ?? 0).toLocaleString("fa-IR");
@@ -59,6 +60,7 @@ interface Props {
   initialCursor?: string | null;
   allowedUserIds?: string[];
   emptyLabel?: string;
+  blockedUserIds?: string[];
   onActivity?: (activity: Activity) => void;
 }
 
@@ -71,6 +73,7 @@ export default function LiveFeed({
   initialCursor = null,
   allowedUserIds,
   emptyLabel = "هنوز فعالیتی ثبت نشده. اول شروع کن!",
+  blockedUserIds = EMPTY_USER_IDS,
   onActivity,
 }: Props) {
   const router = useRouter();
@@ -89,14 +92,17 @@ export default function LiveFeed({
       try {
         const activity: Activity = JSON.parse(event.data);
         if (allowedUserIds && !allowedUserIds.includes(activity.userId)) return;
+        if (blockedUserIds.includes(activity.userId)) return;
         const metadata = (activity.metadata ?? {}) as Record<string, unknown>;
         if (activity.type === "session_complete" && Number(metadata.durationMin ?? 0) <= 0) return;
         setActivities((prev) => [activity, ...prev].slice(0, 100));
         onActivity?.(activity);
-      } catch {}
+      } catch (caught) {
+        captureClientError("live_feed.sse_parse", caught);
+      }
     };
     return () => es.close();
-  }, [allowedUserIds, onActivity]);
+  }, [allowedUserIds, blockedUserIds, onActivity]);
 
   useEffect(() => {
     if (!toast) return;
@@ -109,9 +115,15 @@ export default function LiveFeed({
     setLoadingMore(true);
     const response = await fetch(`/api/feed/history?cursor=${encodeURIComponent(cursor)}`, {
       cache: "no-store",
-    }).catch(() => null);
+    }).catch((caught) => {
+      captureClientError("live_feed.history_load", caught);
+      return null;
+    });
     const data = response?.ok
-      ? await response.json().catch(() => null) as {
+      ? await response.json().catch((caught) => {
+          captureClientError("live_feed.history_response", caught);
+          return null;
+        }) as {
           activities: Activity[];
           counts: CountsMap;
           mine: MineMap;
@@ -239,7 +251,7 @@ export default function LiveFeed({
                   </div>
                 )}
                 <span
-                  className="absolute -bottom-0.5 -left-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white"
+                  className="absolute -bottom-0.5 -left-0.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-surface-container-lowest"
                   style={{ backgroundColor: config.bg }}
                 >
                   <span className="material-symbols-outlined text-[12px]" style={{ color: config.color, fontVariationSettings: "'FILL' 1" }}>
@@ -258,7 +270,7 @@ export default function LiveFeed({
                   <div className="flex items-center gap-1 shrink-0">
                     <span className="material-symbols-outlined text-[12px] text-outline">schedule</span>
                     <span className="text-[11px] text-outline">
-                      {formatDistanceToNow(new Date(a.createdAt), { addSuffix: true, locale: faIR })}
+                      {formatRelativeTimeFa(a.createdAt)}
                     </span>
                   </div>
 

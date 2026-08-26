@@ -10,7 +10,7 @@
 
 یک وب‌اپلیکیشن **PWA** فارسی و راست‌چین برای **گیمیفیکیشن مطالعه دانش‌آموزان دبیرستانی** (کنکوری‌ها و پایه‌های دهم تا دوازدهم).
 
-ایده اصلی: تبدیل ساعت مطالعه به یک بازی با **XP، سکه، سطح، مدال، ماموریت هفتگی و لیدربورد**. کاربر با تایمر مطالعه می‌کند، امتیاز جمع می‌کند، با دیگران رقابت می‌کند و در یک مسیر آنبوردینگ ۶ روزه آموزش می‌بیند.
+ایده اصلی: تبدیل ساعت مطالعه به یک بازی با **XP، سکه، سطح، مدال، ماموریت هفتگی و لیدربورد**. کاربر با تایمر مطالعه می‌کند، امتیاز جمع می‌کند، با دیگران رقابت می‌کند و با یک هدف مطالعهٔ روز اول وارد حلقه اصلی محصول می‌شود.
 
 ---
 
@@ -97,7 +97,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | `coins` | Int | سکه |
 | `level` | String | سطح فعلی (تازه‌نفس، ثابت‌قدم، ...) |
 | `stars` | Int | ستاره داخل سطح (۱ تا ۳) |
-| `onboardingDay` | Int | روزهای **تکمیل‌شده** مسیر ۶ روزه (۰ تا ۶) |
+| `onboardingDay` | Int | وضعیت تکمیل آنبوردینگ یک‌روزه (۰ یا ۱ برای کاربران جدید) |
 | `onboardingStepMinutes` | Int | دقایق انباشته روز جاری (روز با رسیدن به هدف تایید می‌شود) |
 | `nextStudyTarget` | DateTime? | هدف زمان مطالعه فردا |
 | `isLeadComplete` | Boolean | آیا پایه و رشتهٔ شرطی ثبت شده‌اند (شماره قبلاً هنگام ورود تأیید شده است) |
@@ -208,7 +208,7 @@ OTP فقط به‌صورت هش‌شده و کوتاه‌عمر در Redis نگ�
 - `getUserMedalCounts(userId)` → شمارش مدال‌ها برای `calcLevel`.
 
 ### آنبوردینگ و مدل A/B ویدیو (`lib/onboarding.ts` + `lib/ab.ts`)
-- `getOnboardingTotalDays()` → طول مسیر = بیشترین `day` ویدیوهای فعال (پیش‌فرض ۶).
+- `getOnboardingTotalDays()` → طول مسیر فعال = یک روز؛ ویدیو پاداش اختیاری است.
 - `getOnboardingState(userId)` → هدف دقیقه، ویدیوی روز، گروه A/B، قیمت/خرید و موجودی.
 - `tryCompleteOnboardingDay(userId)` → تکمیل روز فقط با دقیقه‌های مطالعه؛ ویدیوی روز جایزه‌ای اختیاری است.
 - گروه `free` ویدیوی روز جاری را رایگان می‌بیند؛ گروه `paid` آن را با سکه می‌خرد. قیمت با شمارهٔ روز افزایش می‌یابد.
@@ -242,7 +242,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
   │  upsert کاربر + ست شدن کوکی JWT (league_session، httpOnly، انقضای لغزان ۳۰ روزه)
   ▼
 داشبورد (/dashboard)
-  ├─ مسیر آنبوردینگ با طول منعطف (پیش‌فرض ۶ روز)
+  ├─ مسیر آنبوردینگ یک‌روزه با هدف مطالعه و ویدیوی پاداش اختیاری
   ├─ تایمر مطالعه (۳۰/۶۰/۹۰/۱۲۰ دقیقه)
   │    ├─ شروع → POST /api/study/start (ثبت startTime + localStorage)
   │    ├─ هر ۱۵ دقیقه → POST /api/study/tick (۱ XP + ۱ سکه فوری)
@@ -363,7 +363,7 @@ league_proj_new/
 └── .env / .env.local
 ```
 
-> بورد زنده با SSE و `LiveFeed` کار می‌کند؛ پیاده‌سازی قدیمی Socket.io از کدبیس حذف شده است.
+> بورد زنده با SSE و `LiveFeed` کار می‌کند؛ Redis Pub/Sub رخدادها را بین replicaها پخش می‌کند و reconnect کوتاه با `Last-Event-ID` replay می‌شود. پیاده‌سازی قدیمی Socket.io حذف شده است.
 
 ---
 
@@ -377,7 +377,7 @@ league_proj_new/
 | GET | `/api/profile` | — | اطلاعات کامل کاربر |
 | PATCH | `/api/profile` | `{ name?, grade?, field?, nextStudyTarget?, hasSeenIntro?, pastAvgStudyHours? }` | به‌روزرسانی + محاسبهٔ `isLeadComplete` از پایه و رشتهٔ شرطی؛ با `pastAvgStudyHours` هدف روز اول snapshot می‌شود |
 | POST | `/api/profile/[id]/unlock` | — | باز کردن بخش مطالعه کاربر (۲۰ سکه، ۱ ساعت) |
-| POST | `/api/study/start` | `{ durationMin }` | شروع جلسه (بستن جلسات باز قبلی) + رویداد `timer_start` → `{ sessionId }` |
+| POST | `/api/study/start` | `{ durationMin, clientRequestId }` | شروع idempotent؛ اگر جلسه‌ای باز باشد همان وضعیت authoritative برمی‌گردد و جلسهٔ دیگری ساخته/بسته نمی‌شود → `{ sessionId }` |
 | POST | `/api/study/tick` | `{ sessionId }` | پاداش هر ۱۵ دقیقه — **اعتبارسنجی سرور**: زمان واقعی منهای pause، سقف `plannedMin`، فقط مابه‌التفاوت → `{ granted }` |
 | POST | `/api/study/pause` | `{ sessionId }` | ثبت شروع pause سمت سرور |
 | POST | `/api/study/resume` | `{ sessionId }` | پایان pause → افزودن مدت به `pausedSec` |
@@ -443,8 +443,8 @@ league_proj_new/
 ## ۱۱. بدهی فنی و نکات نگهداری
 
 - **تست سطح‌ها**: آستانهٔ «تازه‌نفس ۲» از ۸ XP است و تست‌های مرزی با `LEVEL_TABLE` همسو شده‌اند.
-- **ویدیوی anti-seek**: کنترل جلو زدن در کلاینت است؛ endpoint پیشرفت باید در آینده اعتبارسنجی سخت‌گیرانه‌تر سمت سرور داشته باشد.
-- **SSE درون‌حافظه‌ای**: برای یک process مناسب است؛ در چند replica به Redis Pub/Sub یا زیرساخت مشترک نیاز دارد.
+- **ویدیوی anti-seek**: کنترل UX در کلاینت و محدودسازی heartbeat/زمان واقعی در endpoint سرور انجام می‌شود.
+- **SSE چندنمونه‌ای**: subscriberهای هر process محلی‌اند، اما broadcast و replay کوتاه روی Redis مشترک است.
 - **تب «لیگ آزاد» (cold start)**: وقتی پایگاه کاربر بزرگ شد، آستانه `MIN_LEAGUE_SIZE` در `leaderboard/page.tsx` بازبینی شود.
 - **هماهنگی env**: `.env` و `.env.local` باید همگام باشند (`.env.local` اولویت دارد). اسکریپت‌های مستقیم `tsx` ممکن است `.env` را بخوانند.
 - **`app/generated/prisma/`** بهتر است در `.gitignore` باشد و در CI با `prisma generate` ساخته شود.

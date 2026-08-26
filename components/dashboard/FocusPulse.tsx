@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { formatDistanceToNow } from "date-fns";
-import { faIR } from "date-fns/locale";
+import { formatRelativeTimeFa } from "@/lib/format";
+import { captureClientError } from "@/lib/analytics-client";
 
 export interface FocusPulseActivity {
   id: string;
@@ -93,10 +93,17 @@ export default function FocusPulse({
     let refreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
     async function refreshActiveCount() {
-      const response = await fetch("/api/focus/active", { cache: "no-store" }).catch(() => null);
-      if (!response?.ok) return;
-      const data = await response.json().catch(() => null);
-      if (!cancelled && typeof data?.count === "number") setActiveCount(data.count);
+      try {
+        const response = await fetch("/api/focus/active?summary=1", { cache: "no-store" });
+        if (!response.ok) {
+          if (response.status >= 500) captureClientError("focus.summary", new Error(`http_${response.status}`));
+          return;
+        }
+        const data = await response.json();
+        if (!cancelled && typeof data?.count === "number") setActiveCount(data.count);
+      } catch (caught) {
+        captureClientError("focus.summary", caught);
+      }
     }
 
     function debouncedRefresh() {
@@ -126,7 +133,9 @@ export default function FocusPulse({
         ) return;
         knownIdsRef.current.add(activity.id);
         queuedRef.current.push({ ...activity, createdAt: String(activity.createdAt) });
-      } catch {}
+      } catch (caught) {
+        captureClientError("focus_pulse.sse_parse", caught);
+      }
     };
 
     return () => {
@@ -169,7 +178,7 @@ export default function FocusPulse({
                     {activityLabel(current)}
                   </p>
                   <p className="text-[11px] text-outline mt-1">
-                    {formatDistanceToNow(new Date(current.createdAt), { addSuffix: true, locale: faIR })}
+                    {formatRelativeTimeFa(current.createdAt)}
                   </p>
                 </>
               ) : (

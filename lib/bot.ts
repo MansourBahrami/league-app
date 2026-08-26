@@ -6,6 +6,8 @@
  * تلگرام endpoint: https://api.telegram.org/bot{token}/
  */
 
+import { captureCaughtError, logOperationalEvent } from "@/lib/observability";
+
 type Messenger = "telegram" | "bale";
 
 const BASE: Record<Messenger, string> = {
@@ -41,12 +43,12 @@ async function callBot(messenger: Messenger, method: string, body: object): Prom
     });
     const data = (await res.json()) as BotResponse;
     if (!data.ok) {
-      console.error(`[bot/${messenger}] ${method} failed:`, data.description);
+      logOperationalEvent("bot.provider_rejected", { messenger, method });
     }
     return data;
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    console.error(`[bot/${messenger}] ${method} network error:`, msg);
+    captureCaughtError("bot.network", err, { messenger, method });
     return { ok: false, description: msg };
   }
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import ExportLeadsButton from "@/components/admin/ExportLeadsButton";
+import { HOT_LEAD_STUDY_MINUTES, isHotLead } from "@/lib/leads";
 
 export const dynamic = "force-dynamic";
 
@@ -11,9 +12,19 @@ export default async function AdminLeadsPage() {
     take: 200,
   });
 
-  // لید داغ: پروفایل کامل + پیشروی در آنبوردینگ (روز ۳ به بعد) = نشانه تعهد
-  const isHot = (onboardingDay: number) => onboardingDay >= 3;
-  const hotCount = users.filter((u) => isHot(u.onboardingDay)).length;
+  const studyByUser = await prisma.studySession.groupBy({
+    by: ["userId"],
+    where: { userId: { in: users.map((user) => user.id) } },
+    _sum: { durationMin: true },
+  });
+  const studyMap = new Map(
+    studyByUser.map((row) => [row.userId, row._sum.durationMin ?? 0]),
+  );
+  const isHot = (user: (typeof users)[number]) => isHotLead({
+    onboardingDay: user.onboardingDay,
+    totalStudyMinutes: studyMap.get(user.id) ?? 0,
+  });
+  const hotCount = users.filter(isHot).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -28,7 +39,7 @@ export default async function AdminLeadsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-outline-variant/30 overflow-x-auto">
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/30 overflow-x-auto">
         <table className="w-full text-right text-[13px]">
           <thead>
             <tr className="border-b border-outline-variant/30 text-outline">
@@ -56,7 +67,7 @@ export default async function AdminLeadsPage() {
                   <td className="p-3 text-on-surface-variant">{u.level}</td>
                   <td className="p-3 text-on-surface-variant">{u.onboardingDay.toLocaleString("fa-IR")}</td>
                   <td className="p-3">
-                    {isHot(u.onboardingDay) ? (
+                    {isHot(u) ? (
                       <span className="bg-tertiary-fixed/50 text-tertiary-container px-2 py-0.5 rounded-full text-[11px] font-bold">داغ 🔥</span>
                     ) : (
                       <span className="text-outline text-[11px]">عادی</span>
@@ -70,7 +81,7 @@ export default async function AdminLeadsPage() {
       </div>
 
       <p className="text-[12px] text-outline text-center">
-        لید داغ = پروفایل کامل + رسیدن به روز ۳ آنبوردینگ. این لیدها بهترین کاندید تماس تیم مشاوره هستند.
+        لید داغ = پروفایل کامل + پایان آنبوردینگ + حداقل {HOT_LEAD_STUDY_MINUTES.toLocaleString("fa-IR")} دقیقه مطالعهٔ تأییدشده.
       </p>
     </div>
   );
