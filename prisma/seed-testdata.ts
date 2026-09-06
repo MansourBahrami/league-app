@@ -380,6 +380,15 @@ async function main() {
   await prisma.inboxItem.create({
     data: { userId: u11.id, type: "system", body: "به لیگ خوش اومدی! اولین جلسه‌ی مطالعه‌ت رو شروع کن 🎯", createdAt: daysAgo(1) },
   });
+  await prisma.$executeRaw`
+    UPDATE "User" AS u
+    SET "unreadInboxCount" = (
+      SELECT COUNT(*)::INTEGER
+      FROM "InboxItem" AS i
+      WHERE i."userId" = u."id" AND i."read" = false
+    )
+    WHERE u."id" IN (${u1.id}, ${u2.id}, ${u3.id}, ${u4.id}, ${u5.id}, ${u6.id}, ${u8.id}, ${u9.id}, ${u10.id}, ${u11.id}, ${u12.id})
+  `;
   console.log("✅ فید/واکنش/صندوق پیام ساخته شد");
 
   await prisma.studySession.createMany({ data: sessions });

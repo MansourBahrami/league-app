@@ -1,0 +1,60 @@
+{
+  "environment": {
+    "target": "Final Next.js production build on localhost:3000",
+    "database": "local development PostgreSQL",
+    "cache": "local Redis",
+    "date": "2026-08-25"
+  },
+  "workload": {
+    "users": 500,
+    "pattern": "500 concurrent requests per phase",
+    "phases": [
+      "activeBefore",
+      "start",
+      "duplicateStart",
+      "pause",
+      "resume",
+      "end",
+      "duplicateEnd",
+      "activeAfter",
+      "dashboard",
+      "sseConnectAndBroadcast"
+    ],
+    "phaseRequests": 4500,
+    "totalHttpRequestsIncludingSse": 5000,
+    "totalTestMs": 9578,
+    "analyticsMode": "durable outbox rows created as suppressed; no external delivery"
+  },
+  "results": {
+    "activeBefore": { "requests": 500, "errors": 0, "totalMs": 693, "rps": 721.6, "p50Ms": 308, "p95Ms": 661, "p99Ms": 685 },
+    "start": { "requests": 500, "errors": 0, "totalMs": 1065, "rps": 469.3, "p50Ms": 958, "p95Ms": 1035, "p99Ms": 1044 },
+    "duplicateStart": { "requests": 500, "errors": 0, "totalMs": 712, "rps": 702.2, "p50Ms": 603, "p95Ms": 694, "p99Ms": 700 },
+    "pause": { "requests": 500, "errors": 0, "totalMs": 560, "rps": 893.4, "p50Ms": 423, "p95Ms": 539, "p99Ms": 548 },
+    "resume": { "requests": 500, "errors": 0, "totalMs": 548, "rps": 912.2, "p50Ms": 419, "p95Ms": 530, "p99Ms": 538 },
+    "end": { "requests": 500, "errors": 0, "totalMs": 1811, "rps": 276.1, "p50Ms": 1673, "p95Ms": 1756, "p99Ms": 1790 },
+    "duplicateEnd": { "requests": 500, "errors": 0, "totalMs": 665, "rps": 751.8, "p50Ms": 658, "p95Ms": 659, "p99Ms": 659 },
+    "activeAfter": { "requests": 500, "errors": 0, "totalMs": 339, "rps": 1476.3, "p50Ms": 262, "p95Ms": 304, "p99Ms": 321 },
+    "dashboard": { "requests": 500, "errors": 0, "totalMs": 2071, "rps": 241.5, "p50Ms": 1893, "p95Ms": 2042, "p99Ms": 2061 },
+    "sse": { "connected": 500, "connectTotalMs": 351, "broadcastReceived": 500 },
+    "correctness": {
+      "duplicateStartReturnedSameSession": 500,
+      "duplicateEndRejectedWithoutRepayment": 500,
+      "activeSessionsAfterEnd": 0,
+      "zeroMinuteRewards": 0
+    },
+    "cleanup": {
+      "usersDeleted": 500,
+      "outboxEventsDeleted": 1000,
+      "residualDatabaseRows": 0,
+      "residualCacheKeys": 0,
+      "residualReplayEvents": 0
+    }
+  },
+  "conclusion": "The local production build handled 500 simultaneous authenticated users across read, write, idempotency, dashboard SSR and SSE phases with zero request errors and correct lifecycle invariants.",
+  "limitations": [
+    "Each phase generated 500 concurrent requests; the 5000 HTTP operations were not all launched at the same instant.",
+    "This is a single-machine local production-build test, not a certification of the production VPS.",
+    "The real production CPU, RAM, network, PostgreSQL tuning, CDN and multi-replica topology were not reproduced.",
+    "A staging soak test with production-like data volume and mixed sustained traffic remains a release gate."
+  ]
+}

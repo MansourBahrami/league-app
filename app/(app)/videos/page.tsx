@@ -2,22 +2,21 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import VideoCard from "@/components/videos/VideoCard";
-import { gradeFilter } from "@/lib/onboarding";
 import { getVideoPrice } from "@/lib/ab";
 import { getVideoUnlockMode } from "@/lib/settings";
 import { tehranDayDiff } from "@/lib/date";
+import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
+import { getActiveVideoCatalog } from "@/lib/catalog-cache";
 
 export const dynamic = "force-dynamic";
 
 export default async function VideosPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  preloadAppUserSnapshot(session.userId);
 
   const [user, unlockMode] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { onboardingDay: true, grade: true, videoAccess: true, createdAt: true },
-    }),
+    getAppUserSnapshot(session.userId),
     getVideoUnlockMode(),
   ]);
   if (!user) redirect("/login");
@@ -26,10 +25,7 @@ export default async function VideosPage() {
   const daysSinceReg = Math.max(1, tehranDayDiff(new Date(), user.createdAt) + 1);
 
   // ویدیوهای متناسب با پایه؛ وضعیت قفل بر اساس تنظیم ادمین (همه باز یا روزبه‌روز).
-  const videos = await prisma.video.findMany({
-    where: { isActive: true, day: { gte: 1 }, ...gradeFilter(user.grade) },
-    orderBy: { day: "asc" },
-  });
+  const videos = await getActiveVideoCatalog(user.grade);
 
   const progresses = await prisma.videoProgress.findMany({
     where: { userId: session.userId, videoId: { in: videos.map((v) => v.id) } },

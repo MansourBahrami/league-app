@@ -5,12 +5,15 @@ import { broadcastActivity } from "@/lib/feed-broadcast";
 import { after } from "next/server";
 import { captureServerEvent } from "@/lib/analytics-server";
 import { startStudySession } from "@/lib/study-session";
+import { createServerTiming } from "@/lib/server-timing";
 
-const ALLOWED_DURATIONS = [30, 60, 90, 120];
+const ALLOWED_DURATIONS = [15, 30, 60, 90, 120];
 
 export async function POST(req: NextRequest) {
+  const timing = createServerTiming();
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  timing.mark("auth");
 
   const { durationMin, requestId } = await req.json();
   const plannedMin = ALLOWED_DURATIONS.includes(durationMin) ? durationMin : 60;
@@ -22,12 +25,13 @@ export async function POST(req: NextRequest) {
   const now = new Date();
   const isLoadTest = process.env.GCAMP_LOAD_TEST_MODE === "1"
     && req.headers.get("x-gcamp-load-test") === "1";
-  const { studySession, reused } = await startStudySession({
+  const { studySession, reused, user } = await startStudySession({
     userId: session.userId,
     plannedMin,
     clientRequestId,
     now,
   });
+  timing.mark("study_start");
 
   if (studySession.endTime) {
     return NextResponse.json(
@@ -38,14 +42,11 @@ export async function POST(req: NextRequest) {
 
   // رویداد «فلانی تایمر ۹۰ دقیقه‌ای رو شروع کرد» در بورد زنده (طبق PRD)
   if (!reused) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { name: true, avatarUrl: true },
-    });
     const log = await prisma.activityLog.create({
       data: { userId: session.userId, type: "timer_start", metadata: { durationMin: plannedMin } },
     });
     broadcastActivity({ ...log, user });
+    timing.mark("feed_log");
 
     after(() => captureServerEvent({
       distinctId: session.userId,
@@ -56,10 +57,13 @@ export async function POST(req: NextRequest) {
     }));
   }
 
-  return NextResponse.json({
-    sessionId: studySession.id,
-    startTime: studySession.startTime.getTime(),
-    plannedMin: studySession.plannedMin,
-    reused,
-  });
+  return NextResponse.json(
+    {
+      sessionId: studySession.id,
+      startTime: studySession.startTime.getTime(),
+      plannedMin: studySession.plannedMin,
+      reused,
+    },
+    { headers: { "Server-Timing": timing.header() } },
+  );
 }

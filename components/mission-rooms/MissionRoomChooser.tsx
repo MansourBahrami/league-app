@@ -1,10 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import ContextualSpotlight from "@/components/onboarding/ContextualSpotlight";
+import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnboarding";
 import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { captureClientError } from "@/lib/analytics-client";
+import type { MissionChoicePresence } from "@/lib/mission-room";
 
 export interface MissionChoice {
   id: string;
@@ -14,6 +17,7 @@ export interface MissionChoice {
   xpReward: number;
   coinReward: number;
   recommended: boolean;
+  presence: MissionChoicePresence;
 }
 
 interface Props {
@@ -34,11 +38,20 @@ export default function MissionRoomChooser({
   weeklyStartsLabel,
 }: Props) {
   const router = useRouter();
+  const { hasHint, markHints } = useProgressiveOnboarding();
   const [tab, setTab] = useState<"daily" | "weekly">("daily");
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [introBusy, setIntroBusy] = useState(false);
   const [error, setError] = useState("");
   const choices = tab === "daily" ? daily : weekly;
   const spotlightMissionId = choices.find((mission) => mission.recommended)?.id ?? choices[0]?.id;
+  const showMissionIntro = !onboardingLocked && !hasHint(ONBOARDING_HINTS.MISSION_ROOMS_EXPLAINED);
+
+  async function dismissMissionIntro() {
+    setIntroBusy(true);
+    await markHints(ONBOARDING_HINTS.MISSION_ROOMS_EXPLAINED);
+    setIntroBusy(false);
+  }
 
   async function join(missionId: string) {
     setLoadingId(missionId);
@@ -91,6 +104,30 @@ export default function MissionRoomChooser({
         })}
       </div>
 
+      {showMissionIntro && (
+        <div role="note" className="mb-4 rounded-2xl border border-tertiary/35 bg-tertiary-fixed/45 p-3.5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-tertiary text-on-tertiary">
+              <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>target</span>
+            </span>
+            <div className="min-w-0 flex-1 text-right">
+              <p className="text-[13.5px] font-extrabold text-on-surface">ماموریت امروزت را انتخاب کن</p>
+              <p className="mt-1 text-[11.5px] leading-5 text-on-surface-variant">
+                برای امروز یک ماموریت بردار و کنار کسانی درس بخون که همین هدف را دارند. افراد فعال هر کمپ را پایین همان ماموریت می‌بینی.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={dismissMissionIntro}
+            disabled={introBusy}
+            className="mt-3 w-full rounded-xl border border-tertiary/45 py-2 text-[12px] font-bold text-tertiary disabled:opacity-50"
+          >
+            {introBusy ? "در حال ثبت…" : "متوجه شدم"}
+          </button>
+        </div>
+      )}
+
       {tab === "weekly" && (
         <div className={`mb-3 rounded-xl px-3 py-2.5 text-[12px] ${weeklyEnrollmentOpen ? "bg-secondary-container text-on-secondary-container" : "bg-surface-container text-on-surface-variant"}`}>
           {weeklyEnrollmentOpen
@@ -102,8 +139,8 @@ export default function MissionRoomChooser({
       {onboardingLocked ? (
         <div className="rounded-2xl bg-primary-fixed/70 p-4 text-center">
           <span className="material-symbols-outlined text-[28px] text-primary">lock_clock</span>
-          <p className="mt-1 text-[13px] font-bold text-primary">کمپ مأموریت بعد از روز اول باز می‌شود</p>
-          <p className="mt-1 text-[11.5px] text-on-surface-variant">فعلاً هدف ۱ ساعته امروزت را در صفحه مطالعه کامل کن.</p>
+          <p className="mt-1 text-[13px] font-bold text-primary">کمپ مأموریت بعد از اولین ۱۵ دقیقه باز می‌شود</p>
+          <p className="mt-1 text-[11.5px] text-on-surface-variant">فعلاً تایمر ۱۵ دقیقه‌ای شروع را در صفحه مطالعه کامل کن.</p>
         </div>
       ) : choices.length === 0 ? (
         <div className="rounded-2xl bg-surface-container/60 p-6 text-center">
@@ -149,19 +186,61 @@ export default function MissionRoomChooser({
                     {loadingId === mission.id ? "در حال ورود…" : insufficient ? "سکه کم است" : isWeeklyClosed ? "جمعه" : "ورود به کمپ"}
                   </button>
                 </div>
+
+                <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-surface-container/65 px-3 py-2.5">
+                  {mission.presence.members.length > 0 ? (
+                    <div
+                      className="flex shrink-0 -space-x-2 space-x-reverse"
+                      aria-label={mission.presence.members.map((member) => member.name).join("، ")}
+                    >
+                      {mission.presence.members.map((member) => (
+                        <span key={member.userId} className="relative" title={member.name}>
+                          {member.avatarUrl ? (
+                            <Image
+                              src={member.avatarUrl}
+                              alt=""
+                              width={30}
+                              height={30}
+                              unoptimized
+                              className="h-8 w-8 rounded-full border-2 border-surface-container object-cover"
+                            />
+                          ) : (
+                            <span className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-surface-container bg-primary-fixed text-[10px] font-extrabold text-primary">
+                              {member.name[0]}
+                            </span>
+                          )}
+                          {member.isStudying && (
+                            <span className="absolute bottom-0 left-0 h-2.5 w-2.5 rounded-full border-2 border-surface-container bg-secondary" />
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-primary">
+                      <span className="material-symbols-outlined text-[18px]">person_add</span>
+                    </span>
+                  )}
+                  <div className="min-w-0 flex-1 text-right">
+                    {mission.presence.memberCount > 0 ? (
+                      <>
+                        <p className="text-[11.5px] font-bold text-on-surface">
+                          هم‌کمپی‌های این هدف
+                        </p>
+                        <p className={`mt-0.5 text-[10.5px] ${mission.presence.studyingCount > 0 ? "text-secondary" : "text-on-surface-variant"}`}>
+                          {mission.presence.studyingCount > 0
+                            ? `${mission.presence.studyingCount.toLocaleString("fa-IR")} نفر همین الان در حال مطالعه‌اند`
+                            : "با روشن‌شدن تایمر، وضعیت فعال همین‌جا دیده می‌شود"}
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-[11.5px] font-semibold text-on-surface-variant">هم‌کمپی‌های این هدف بعد از ورود اینجا نمایش داده می‌شوند.</p>
+                    )}
+                  </div>
+                </div>
               </article>
             );
           })}
         </div>
-      )}
-
-      {!onboardingLocked && tab === "daily" && spotlightMissionId && (
-        <ContextualSpotlight
-          hint={ONBOARDING_HINTS.MISSION_ROOMS_EXPLAINED}
-          title="مأموریت پیشنهادی تو"
-          description="این مأموریت از همین امروز حساب می‌شه. کاملش کن تا سکه بگیری و کنار هم‌هدف‌هات درس بخونی."
-          targetElementSelector='[data-onboarding="recommended-daily-mission"]'
-        />
       )}
 
       {!onboardingLocked && tab === "weekly" && spotlightMissionId && (

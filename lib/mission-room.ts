@@ -31,6 +31,19 @@ export interface MissionRoomSnapshot {
   members: MissionRoomMemberSnapshot[];
 }
 
+export interface MissionChoiceMemberPreview {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  isStudying: boolean;
+}
+
+export interface MissionChoicePresence {
+  memberCount: number;
+  studyingCount: number;
+  members: MissionChoiceMemberPreview[];
+}
+
 /** اتاقی که تب اصلی باید باز کند: فعال قبل از pending و روزانه قبل از هفتگی. */
 export function pickMissionRoomToOpen(rooms: MissionRoomSnapshot[]): MissionRoomSnapshot | null {
   return [...rooms].sort((a, b) => {
@@ -105,6 +118,110 @@ function activeElapsedMinutes(
 ): number {
   const elapsed = Math.floor((now.getTime() - Date.parse(startedAt)) / 60000 - pausedSec / 60);
   return Math.min(plannedMin, Math.max(0, elapsed));
+}
+
+/**
+ * پیش‌نمایش سبک اعضای اتاق‌ها برای صفحهٔ انتخاب مأموریت.
+ * همهٔ اتاق‌ها و تایمرهای باز در دو کوئری خوانده می‌شوند تا برای هر کارت N+1 نسازیم.
+ */
+export async function getMissionChoicePresences(params: {
+  viewerId: string;
+  dailyMissionIds: string[];
+  weeklyMissionIds: string[];
+  dailyStartsAt: Date;
+  weeklyStartsAt: Date;
+  now?: Date;
+}): Promise<Map<string, MissionChoicePresence>> {
+  const now = params.now ?? new Date();
+  const roomFilters = [
+    ...(params.dailyMissionIds.length > 0
+      ? [{ missionId: { in: params.dailyMissionIds }, startsAt: params.dailyStartsAt }]
+      : []),
+    ...(params.weeklyMissionIds.length > 0
+      ? [{ missionId: { in: params.weeklyMissionIds }, startsAt: params.weeklyStartsAt }]
+      : []),
+  ];
+  if (roomFilters.length === 0) return new Map();
+
+  const rooms = await prisma.missionRoom.findMany({
+    where: { OR: roomFilters },
+    select: {
+      missionId: true,
+      startsAt: true,
+      endsAt: true,
+      members: {
+        where: { userMission: { status: { in: ["pending", "active", "completed"] } } },
+        orderBy: { joinedAt: "asc" },
+        select: {
+          userId: true,
+          user: {
+            select: {
+              name: true,
+              avatarUrl: true,
+              profilePublic: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const userIds = [...new Set(rooms.flatMap((room) => room.members.map((member) => member.userId)))];
+  const [openSessions, blockedUserIds] = await Promise.all([
+    userIds.length > 0
+      ? prisma.studySession.findMany({
+          where: {
+            userId: { in: userIds },
+            endTime: null,
+            pausedAt: null,
+            startTime: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+          },
+          orderBy: { startTime: "desc" },
+          select: { userId: true, startTime: true, plannedMin: true, pausedSec: true },
+        })
+      : Promise.resolve([]),
+    getBlockedUserIds(params.viewerId),
+  ]);
+
+  const blockedSet = new Set(blockedUserIds);
+  const activeSessions = new Map<string, (typeof openSessions)[number]>();
+  for (const session of openSessions) {
+    // کوئری نزولی است؛ در وضعیت ناسالمِ چند جلسهٔ باز، جدیدترین جلسه مبنا می‌ماند.
+    if (!activeSessions.has(session.userId)) activeSessions.set(session.userId, session);
+  }
+  const presenceByMissionId = new Map<string, MissionChoicePresence>();
+
+  for (const room of rooms) {
+    const members = room.members.map((member) => {
+      const activeSession = activeSessions.get(member.userId);
+      const plannedMin = activeSession && activeSession.plannedMin > 0 ? activeSession.plannedMin : 120;
+      const finishesAt = activeSession
+        ? activeSession.startTime.getTime() + plannedMin * 60 * 1000 + activeSession.pausedSec * 1000
+        : 0;
+      const isStudying = !!activeSession
+        && activeSession.startTime >= room.startsAt
+        && activeSession.startTime < room.endsAt
+        && finishesAt > now.getTime();
+      const identityHidden = member.userId !== params.viewerId
+        && (!member.user.profilePublic || blockedSet.has(member.userId));
+
+      return {
+        userId: member.userId,
+        name: identityHidden ? "کاربر خصوصی" : (member.user.name ?? "دانش‌آموز G-camp"),
+        avatarUrl: identityHidden ? null : member.user.avatarUrl,
+        isStudying,
+      };
+    });
+    const sortedMembers = [...members].sort((a, b) => Number(b.isStudying) - Number(a.isStudying));
+
+    presenceByMissionId.set(room.missionId, {
+      memberCount: members.length,
+      studyingCount: members.filter((member) => member.isStudying).length,
+      members: sortedMembers.slice(0, 4),
+    });
+  }
+
+  return presenceByMissionId;
 }
 
 export async function getMissionRoomSnapshot(

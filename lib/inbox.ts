@@ -15,20 +15,32 @@ export interface CreateInboxInput {
 }
 
 export async function createInboxItem(input: CreateInboxInput) {
-  return prisma.inboxItem.create({
-    data: {
-      userId: input.userId,
-      type: input.type,
-      actorId: input.actorId ?? null,
-      body: input.body ?? null,
-      metadata: (input.metadata ?? undefined) as object | undefined,
-    },
+  return prisma.$transaction(async (tx) => {
+    // ابتدا ردیف کاربر را قفل می‌کنیم تا create و markAllRead روی شمارنده مسابقه ندهند.
+    await tx.user.update({
+      where: { id: input.userId },
+      data: { unreadInboxCount: { increment: 1 } },
+      select: { id: true },
+    });
+    return tx.inboxItem.create({
+      data: {
+        userId: input.userId,
+        type: input.type,
+        actorId: input.actorId ?? null,
+        body: input.body ?? null,
+        metadata: (input.metadata ?? undefined) as object | undefined,
+      },
+    });
   });
 }
 
 /** تعداد نوتیف‌های نخوانده (برای نشان زنگوله‌ی هدر) */
 export async function getUnreadCount(userId: string): Promise<number> {
-  return prisma.inboxItem.count({ where: { userId, read: false } });
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { unreadInboxCount: true },
+  });
+  return user?.unreadInboxCount ?? 0;
 }
 
 export async function listInbox(userId: string, take = 50) {
@@ -42,9 +54,17 @@ export async function listInbox(userId: string, take = 50) {
 
 /** علامت‌گذاری همه‌ی آیتم‌های نخوانده به‌عنوان خوانده‌شده. تعداد تغییریافته را برمی‌گرداند. */
 export async function markAllRead(userId: string): Promise<number> {
-  const res = await prisma.inboxItem.updateMany({
-    where: { userId, read: false },
-    data: { read: true },
+  return prisma.$transaction(async (tx) => {
+    // update ردیف User قفل سطری می‌گیرد؛ createInboxItem نیز همین ترتیب را دارد.
+    await tx.user.update({
+      where: { id: userId },
+      data: { unreadInboxCount: 0 },
+      select: { id: true },
+    });
+    const res = await tx.inboxItem.updateMany({
+      where: { userId, read: false },
+      data: { read: true },
+    });
+    return res.count;
   });
-  return res.count;
 }

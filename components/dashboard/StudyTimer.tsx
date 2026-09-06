@@ -14,31 +14,13 @@ import {
   closeStudyNotification,
 } from "@/lib/timer-notification";
 import { captureClientError, captureProductEvent } from "@/lib/analytics-client";
+import type { FocusMission } from "@/lib/dashboard-mission";
+import type { ActiveStudySessionSnapshot } from "@/lib/study-session";
 
 const GoalSettingModal = dynamic(() => import("@/components/onboarding/GoalSettingModal"), { ssr: false });
 const LeadCaptureModal = dynamic(() => import("@/components/onboarding/LeadCaptureModal"), { ssr: false });
 
 type TimerState = "idle" | "starting" | "running" | "paused" | "finishing" | "done";
-
-export type FocusMission =
-  | {
-      kind: "onboarding" | "daily";
-      dailyGoalMin: number;
-      dailyStudiedMin: number;
-      coinReward?: number;
-    }
-  | {
-      kind: "weekly";
-      pending: boolean;
-      isRestDay: boolean;
-      targetHours: number;
-      dailyGoalMin: number;
-      dailyStudiedMin: number;
-      weeklyGoalMin: number;
-      weeklyStudiedMin: number;
-      xpReward: number;
-    }
-  | null;
 
 interface SessionResult {
   xpEarned: number;
@@ -52,23 +34,17 @@ interface SessionResult {
   rewardVideo: { id: string; title: string } | null;
 }
 
-interface ActiveSessionSnapshot {
-  sessionId: string;
-  plannedMin: number;
-  state: "running" | "paused";
-  secondsLeft: number;
-  elapsedSeconds: number;
-  serverNow: number;
-}
-
 interface Props {
   mission: FocusMission;
   userId: string;
   hasPhone?: boolean;
+  initialActiveSession: ActiveStudySessionSnapshot | null;
 }
 
-const TIMER_OPTIONS = [30, 60, 90, 120];
+const TIMER_OPTIONS = [15, 30, 60, 90, 120];
 const TICK_INTERVAL = 15 * 60;
+const ACTIVE_STUDENTS_HINT_EVENT = "onboarding-show-active-students";
+const ACTIVE_STUDENTS_HINT_STORAGE_KEY = "gcamp:show-active-students-hint";
 
 interface FloatReward { id: number }
 
@@ -208,12 +184,15 @@ function MissionContext({ mission }: { mission: FocusMission }) {
   );
 }
 
-export default function StudyTimer({ mission, userId, hasPhone = false }: Props) {
+export default function StudyTimer({ mission, userId, hasPhone = false, initialActiveSession }: Props) {
   const router = useRouter();
   const { hasHint, markHints, reportStudyState, suppressSetup, resumeSetup } = useProgressiveOnboarding();
-  const [selectedMinutes, setSelectedMinutes] = useState(60);
+  const isOnboardingMission = mission?.kind === "onboarding";
+  const initialMinutes = isOnboardingMission ? 15 : 60;
+  const timerOptions = isOnboardingMission ? [15] : TIMER_OPTIONS;
+  const [selectedMinutes, setSelectedMinutes] = useState(initialMinutes);
   const [timerState, setTimerState] = useState<TimerState>("idle");
-  const [secondsLeft, setSecondsLeft] = useState(60 * 60);
+  const [secondsLeft, setSecondsLeft] = useState(initialMinutes * 60);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showGoalSetting, setShowGoalSetting] = useState(false);
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -226,7 +205,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   const startTimeRef = useRef<number | null>(null);
   const lastTickRef = useRef<number>(0);
   const startRequestIdRef = useRef<string | null>(null);
-  const selectedMinutesRef = useRef(60);
+  const selectedMinutesRef = useRef(initialMinutes);
   const quoteRef = useRef<string>(getRandomMotivationalQuote());
   const storageKey = `study_session:${userId}`;
 
@@ -293,7 +272,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     }
   }, [storageKey]);
 
-  const applyActiveSession = useCallback((active: ActiveSessionSnapshot) => {
+  const applyActiveSession = useCallback((active: ActiveStudySessionSnapshot) => {
     const totalSecs = active.plannedMin * 60;
     const effectiveStartTime = Date.now() - active.elapsedSeconds * 1000;
     const nextState = active.secondsLeft <= 0 ? "finishing" : active.state;
@@ -319,10 +298,12 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     return nextState;
   }, [storageKey]);
 
-  const syncActiveSession = useCallback(async (): Promise<ActiveSessionSnapshot | null> => {
+  const initialActiveSessionRef = useRef<ActiveStudySessionSnapshot | null | undefined>(initialActiveSession);
+
+  const syncActiveSession = useCallback(async (): Promise<ActiveStudySessionSnapshot | null> => {
     const response = await fetch("/api/study/active", { cache: "no-store" });
     if (!response.ok) throw new Error("sync_failed");
-    const data = await response.json() as { activeSession?: ActiveSessionSnapshot | null };
+    const data = await response.json() as { activeSession?: ActiveStudySessionSnapshot | null };
     const active = data.activeSession ?? null;
 
     if (!active) {
@@ -419,7 +400,31 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
   useEffect(() => {
     const restore = window.setTimeout(async () => {
       try {
-        const active = await syncActiveSession();
+        const prefetched = initialActiveSessionRef.current;
+        initialActiveSessionRef.current = undefined;
+        const saved = localStorage.getItem(storageKey);
+        const hasRestorableLocalSession = saved
+          ? restoreStudyTimerSession(saved) !== null
+          : false;
+        const prefetchedIsStale = !!prefetched
+          && Date.now() - prefetched.serverNow > 5_000;
+        const shouldReconcile = prefetched === undefined
+          || prefetchedIsStale
+          || (prefetched === null && hasRestorableLocalSession);
+        const active = shouldReconcile
+          ? await syncActiveSession()
+          : prefetched;
+        if (!shouldReconcile && prefetched !== undefined) {
+          if (active) {
+            applyActiveSession(active);
+          } else {
+            localStorage.removeItem(storageKey);
+            setSessionId(null);
+            setTimerState("idle");
+            setSecondsLeft(selectedMinutesRef.current * 60);
+            startTimeRef.current = null;
+          }
+        }
         if (active) {
           void showOrUpdateStudyNotification({
             secondsLeft: active.secondsLeft,
@@ -455,7 +460,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
     }, 0);
 
     return () => window.clearTimeout(restore);
-  }, [endSession, storageKey, syncActiveSession]);
+  }, [applyActiveSession, endSession, storageKey, syncActiveSession]);
 
   useEffect(() => {
     if (!restored) return;
@@ -538,6 +543,10 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
         setTimerState("running");
         void markHints(ONBOARDING_HINTS.TIMER_STARTED);
         window.dispatchEvent(new Event("focus-session-changed"));
+        if (!hasHint(ONBOARDING_HINTS.ACTIVE_STUDENTS_EXPLAINED)) {
+          sessionStorage.setItem(ACTIVE_STUDENTS_HINT_STORAGE_KEY, "1");
+          window.dispatchEvent(new Event(ACTIVE_STUDENTS_HINT_EVENT));
+        }
 
         // شروع مطالعه نباید با permission prompt مرورگر قطع شود؛ فقط مجوز قبلی را مصرف کن.
         if ("Notification" in window && Notification.permission === "granted") {
@@ -758,8 +767,12 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
             </p>
           </div>
 
-          <div className="grid grid-cols-4 gap-1.5 mt-4" dir="ltr" aria-label="انتخاب مدت مطالعه">
-            {[...TIMER_OPTIONS].reverse().map((minutes) => (
+          <div
+            className={`grid gap-1.5 mt-4 ${timerOptions.length === 1 ? "grid-cols-1" : "grid-cols-5"}`}
+            dir="ltr"
+            aria-label="انتخاب مدت مطالعه"
+          >
+            {[...timerOptions].reverse().map((minutes) => (
               <button
                 key={minutes}
                 type="button"
@@ -787,7 +800,7 @@ export default function StudyTimer({ mission, userId, hasPhone = false }: Props)
               <div className="min-w-0 flex-1 text-right">
                 <h4 id="timer-start-hint-title" className="text-[14px] font-extrabold text-on-surface">اولین مطالعه‌ات رو شروع کن</h4>
                 <p id="timer-start-hint-description" className="mt-1 text-[12px] leading-5 text-on-surface-variant">
-                  مدت مطالعه رو انتخاب کن و «شروع مطالعه» رو بزن.
+                  الان فقط ۱۵ دقیقه درس بخون؛ بعدش کمپ مأموریت‌ها برات باز می‌شه.
                 </p>
               </div>
               <span className="material-symbols-outlined text-[22px] text-tertiary mt-1 shrink-0">

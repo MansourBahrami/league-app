@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 import { parseVideoBody, validateVideoBody } from "@/lib/video-admin";
 import { recordAdminAudit } from "@/lib/admin-audit";
+import { invalidateVideoCatalog } from "@/lib/catalog-cache";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -18,6 +19,7 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
   const video = await prisma.video.update({ where: { id }, data });
+  await invalidateVideoCatalog();
   await recordAdminAudit({ adminUserId: admin.userId, action: "video.update", request: req, targetType: "video", targetId: id });
   return NextResponse.json(video);
 }
@@ -29,6 +31,7 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   const { id } = await params;
   await prisma.videoProgress.deleteMany({ where: { videoId: id } });
   await prisma.video.delete({ where: { id } });
+  await invalidateVideoCatalog();
   await recordAdminAudit({ adminUserId: admin.userId, action: "video.delete", request: req, targetType: "video", targetId: id });
   return NextResponse.json({ message: "حذف شد" });
 }

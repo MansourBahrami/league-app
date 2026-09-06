@@ -5,7 +5,7 @@ import { isSetupPromptSnoozed } from "../lib/setup-prompt";
 import { wasMissionPromptHandledToday } from "../lib/mission-prompt";
 import { millisecondsUntilNextTehranDay, tehranDayKey } from "../lib/date";
 
-console.log("🧪 تست منطق آنبوردینگ ۱ روزه (هدف ۱ ساعت مطالعه)\n");
+console.log("🧪 تست منطق آنبوردینگ ۱ روزه (هدف ۱۵ دقیقه مطالعه)\n");
 
 console.log("--- ماموریت روز اول ---");
 const avgs = [0.5, 1.5, 3, 5, 7];
@@ -15,11 +15,11 @@ for (const a of avgs) {
   const full = getFullDay1Hours(a);
   const min = getOnboardingDailyGoalMinutes(0, a);
   console.log(`  میانگین ${a}h → هدف روز اول: ${hours}h (${min} دقیقه)`);
-  if (hours !== 1 || full !== 1 || min !== 60) goalOk = false;
+  if (hours !== 0.25 || full !== 0.25 || min !== 15) goalOk = false;
 }
 
-console.log("\n--- بررسی هدف ۱ ساعته ---");
-console.log(goalOk ? "  ✅ هدف روز اول دقیقاً ۱ ساعت (۶۰ دقیقه) است" : "  ❌ خطا در هدف روز اول");
+console.log("\n--- بررسی هدف ۱۵ دقیقه‌ای ---");
+console.log(goalOk ? "  ✅ هدف شروع دقیقاً ۱۵ دقیقه است" : "  ❌ خطا در هدف شروع");
 
 console.log("\n--- بررسی طول مسیر آنبوردینگ ---");
 const totalDays = DEFAULT_ONBOARDING_DAYS;

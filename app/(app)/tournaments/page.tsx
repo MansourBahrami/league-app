@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { eligibleForTournament } from "@/lib/tournament";
+import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 
 export const dynamic = "force-dynamic";
 
@@ -13,8 +14,9 @@ function fmtDate(d: Date): string {
 export default async function TournamentsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  preloadAppUserSnapshot(session.userId);
 
-  const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { level: true } });
+  const me = await getAppUserSnapshot(session.userId);
   if (!me) redirect("/login");
 
   const now = new Date();

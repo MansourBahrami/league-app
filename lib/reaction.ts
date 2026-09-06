@@ -130,7 +130,10 @@ export async function toggleReaction(
         if (!existingReward) {
           await tx.user.update({
             where: { id: actorId },
-            data: { coins: { increment: REACTION_REWARD_COINS } },
+            data: {
+              coins: { increment: REACTION_REWARD_COINS },
+              unreadInboxCount: { increment: 1 },
+            },
           });
           await tx.inboxItem.create({
             data: {

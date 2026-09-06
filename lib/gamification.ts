@@ -90,31 +90,35 @@ export const PROFILE_UNLOCK_COST = 20;
 /** مدت اعتبار آنلاک بخش مطالعه‌ی پروفایل (ساعت) */
 export const PROFILE_UNLOCK_HOURS = 1;
 
-/** هدف روز اول آنبوردینگ: ۱ ساعت مطالعه (۶۰ دقیقه) */
+/** هدف شروع آنبوردینگ: ۱۵ دقیقه مطالعه (اولین بازهٔ پاداش معتبر) */
 export function getFullDay1Hours(_pastAvgHours?: number | null): number {
   void _pastAvgHours;
-  return 1;
+  return 0.25;
 }
 
-/** ماموریت روز اول: ۱ ساعت */
+/** ماموریت شروع: ۱۵ دقیقه */
 export function getDay1MissionHours(_pastAvgHours?: number | null, _hourOfDay?: number): number {
   void _pastAvgHours;
   void _hourOfDay;
-  return 1;
+  return 0.25;
 }
 
 /**
  * هدف مطالعه در مسیر آنبوردینگ (بر حسب دقیقه):
- *  - مسیر ۱ روزه: هدف ثابت ۶۰ دقیقه (۱ ساعت) است.
+ *  - مسیر ۱ روزه: هدف ثابت ۱۵ دقیقه است.
+ *
+ * day1GoalMinutes برای سازگاری داده‌ای نگه داشته شده، اما مقدارهای snapshot
+ * قدیمی نباید کاربران نیمه‌کاره را پشت هدف ۶۰ دقیقه‌ای قبلی نگه دارند.
  */
 export function getOnboardingDailyGoalMinutes(
   _onboardingDay?: number,
   _pastAvgHours?: number | null,
-  day1GoalMinutes?: number | null
+  _day1GoalMinutes?: number | null
 ): number {
   void _onboardingDay;
   void _pastAvgHours;
-  return day1GoalMinutes ?? 60;
+  void _day1GoalMinutes;
+  return 15;
 }
 
 /**

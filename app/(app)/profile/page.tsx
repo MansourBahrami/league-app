@@ -14,6 +14,7 @@ import MessengerConnections from "@/components/profile/MessengerConnections";
 import StudyReportCard from "@/components/dashboard/StudyReportCard";
 import LogoutButton from "@/components/profile/LogoutButton";
 import PrivacySettings from "@/components/profile/PrivacySettings";
+import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 
 export const dynamic = "force-dynamic";
 
@@ -49,12 +50,10 @@ async function ProfileMedals({ userId }: { userId: string }) {
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  preloadAppUserSnapshot(session.userId);
 
   const [user, totalStudyAgg, totalUsers] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { name: true, avatarUrl: true, xp: true, coins: true, level: true, stars: true, phone: true, grade: true, field: true, role: true, streak: true, lastStudyDate: true, telegramId: true, baleId: true, profilePublic: true, activityPublic: true },
-    }),
+    getAppUserSnapshot(session.userId),
     prisma.studySession.aggregate({
       where: { userId: session.userId },
       _sum: { durationMin: true },

@@ -1,5 +1,6 @@
 export const ONBOARDING_HINTS = {
   TIMER_STARTED: "timer_started",
+  ACTIVE_STUDENTS_EXPLAINED: "active_students_explained",
   REWARDS_EXPLAINED: "rewards_explained",
   PUSH_PROMPTED: "push_prompted",
   INSTALL_PROMPTED: "install_prompted",

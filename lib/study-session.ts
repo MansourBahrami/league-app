@@ -10,7 +10,11 @@ export async function startStudySession(params: {
   plannedMin: number;
   clientRequestId?: string;
   now?: Date;
-}): Promise<{ studySession: StudySession; reused: boolean }> {
+}): Promise<{
+  studySession: StudySession;
+  reused: boolean;
+  user: { name: string | null; avatarUrl: string | null } | null;
+}> {
   const now = params.now ?? new Date();
 
   return withUserLock(params.userId, async (tx) => {
@@ -21,7 +25,7 @@ export async function startStudySession(params: {
           clientRequestId: params.clientRequestId,
         },
       });
-      if (existing) return { studySession: existing, reused: true };
+      if (existing) return { studySession: existing, reused: true, user: null };
     }
 
     // درخواست جدید نباید جلسه‌ی درحال‌اجرای دستگاه/تب دیگر را بی‌صدا ببندد.
@@ -30,7 +34,7 @@ export async function startStudySession(params: {
       where: { userId: params.userId, endTime: null },
       orderBy: { startTime: "desc" },
     });
-    if (activeSession) return { studySession: activeSession, reused: true };
+    if (activeSession) return { studySession: activeSession, reused: true, user: null };
 
     const onboardingUser = await tx.user.findUnique({
       where: { id: params.userId },
@@ -39,6 +43,8 @@ export async function startStudySession(params: {
         pastAvgStudyHours: true,
         day1GoalMinutes: true,
         onboardingDay: true,
+        name: true,
+        avatarUrl: true,
       },
     });
     if (!onboardingUser) throw new Error("User not found");
@@ -79,7 +85,11 @@ export async function startStudySession(params: {
         plannedMin: params.plannedMin,
       },
     });
-    return { studySession, reused: false };
+    return {
+      studySession,
+      reused: false,
+      user: { name: onboardingUser.name, avatarUrl: onboardingUser.avatarUrl },
+    };
   });
 }
 
@@ -99,6 +109,13 @@ export async function getActiveStudySessionSnapshot(
   const studySession = await prisma.studySession.findFirst({
     where: { userId, endTime: null },
     orderBy: { startTime: "desc" },
+    select: {
+      id: true,
+      startTime: true,
+      plannedMin: true,
+      pausedSec: true,
+      pausedAt: true,
+    },
   });
   if (!studySession) return null;
 
@@ -244,6 +261,7 @@ export async function endStudySession(params: {
       data: {
         xp: { increment: grantedXp },
         coins: { increment: grantedCoins },
+        ...(durationMin >= 15 ? { hasCompletedStudySession: true } : {}),
         ...(params.inOnboarding
           ? {
               onboardingStepMinutes: params.startsNewTehranDay

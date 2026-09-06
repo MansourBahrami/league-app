@@ -1,7 +1,7 @@
 "use client";
 
 import type { PostHog } from "posthog-js";
-import * as Sentry from "@sentry/nextjs";
+import { captureException, withScope } from "@sentry/nextjs";
 
 let posthogPromise: Promise<PostHog | null> | null = null;
 
@@ -27,9 +27,9 @@ function loadPostHog(): Promise<PostHog | null> {
     });
     return posthog;
   }).catch((caught) => {
-    Sentry.withScope((scope) => {
+    withScope((scope) => {
       scope.setTag("operation", "analytics.posthog_load");
-      Sentry.captureException(caught instanceof Error ? caught : new Error(String(caught)));
+      captureException(caught instanceof Error ? caught : new Error(String(caught)));
     });
     return null;
   });

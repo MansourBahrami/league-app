@@ -11,6 +11,12 @@ import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { tehranDayStartDaysAgo } from "@/lib/date";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 import ProductViewEvent from "@/components/analytics/ProductViewEvent";
+import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
+import {
+  getCachedHasActiveTournament,
+  getCachedLevelCount,
+  getCachedMainLeaderboard,
+} from "@/lib/leaderboard-cache";
 
 export const dynamic = "force-dynamic";
 
@@ -62,13 +68,39 @@ function buildLeaderboard(
   return list;
 }
 
+async function getFriendsLeaderboardData(
+  userId: string,
+  friendIds: string[],
+  since: Date,
+) {
+  const pool = [userId, ...friendIds];
+  const weekly = await prisma.studySession.groupBy({
+    by: ["userId"],
+    where: {
+      startTime: { gte: since },
+      userId: { in: pool },
+      OR: [{ userId }, { user: { profilePublic: true } }],
+    },
+    _sum: { xpEarned: true, durationMin: true },
+    orderBy: { _sum: { xpEarned: "desc" } },
+    take: 50,
+  });
+  const visibleUserIds = [...new Set([userId, ...weekly.map((row) => row.userId)])];
+  const users = await prisma.user.findMany({
+    where: { id: { in: visibleUserIds } },
+    select: { id: true, name: true, avatarUrl: true, level: true },
+  });
+  return { weekly, users };
+}
+
 export default async function LeaderboardPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
+  preloadAppUserSnapshot(session.userId);
   const { tab } = await searchParams;
   const isFriends = tab === "friends";
 
-  const me = await prisma.user.findUnique({ where: { id: session.userId }, select: { level: true } });
+  const me = await getAppUserSnapshot(session.userId);
   if (!me) redirect("/login");
 
   const myLevel = me.level;
@@ -76,37 +108,28 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
 
   const [hasTournament, friendIds, sameLevelCount] = await Promise.all([
-    prisma.tournament.findFirst({
-      where: { isActive: true, endAt: { gte: new Date() } },
-      select: { id: true },
-    }).then(Boolean),
+    getCachedHasActiveTournament(),
     isFriends ? getFriendIds(session.userId) : Promise.resolve([]),
-    isFriends ? Promise.resolve(0) : prisma.user.count({ where: { level: myLevel } }),
+    isFriends ? Promise.resolve(0) : getCachedLevelCount(myLevel),
   ]);
 
-  const friendsPool = isFriends ? [session.userId, ...friendIds] : null;
   const openLeague = !isFriends && sameLevelCount < MIN_LEAGUE_SIZE;
 
-  const weekly = await prisma.studySession.groupBy({
-      by: ["userId"],
-      where: {
-        startTime: { gte: sevenDaysAgo },
-        OR: [{ userId: session.userId }, { user: { profilePublic: true } }],
-        ...(friendsPool
-          ? { userId: { in: friendsPool } }
-          : openLeague
-            ? {}
-            : { user: { level: myLevel } }),
+  const data = isFriends
+    ? await getFriendsLeaderboardData(session.userId, friendIds, sevenDaysAgo)
+    : await getCachedMainLeaderboard({
+      userId: session.userId,
+      level: myLevel,
+      openLeague,
+      since: sevenDaysAgo,
+      currentUser: {
+        id: me.id,
+        name: me.name,
+        avatarUrl: me.avatarUrl,
+        level: me.level,
       },
-      _sum: { xpEarned: true, durationMin: true },
-      orderBy: { _sum: { xpEarned: "desc" } },
-      take: 50,
     });
-  const visibleUserIds = [...new Set([session.userId, ...weekly.map((row) => row.userId)])];
-  const users = await prisma.user.findMany({
-    where: { id: { in: visibleUserIds } },
-    select: { id: true, name: true, avatarUrl: true, level: true },
-  });
+  const { weekly, users } = data;
   const userMap = new Map(users.map((u) => [u.id, u]));
 
   const leaderboard = buildLeaderboard(weekly, userMap, session.userId, myLevel);

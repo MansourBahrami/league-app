@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "کاربر یافت نشد" }, { status: 404 });
   }
   if (joined.status === "onboarding") {
-    return NextResponse.json({ error: "ماموریت‌ها پس از روز اول فعال می‌شوند" }, { status: 403 });
+    return NextResponse.json({ error: "ماموریت‌ها بعد از اولین ۱۵ دقیقه مطالعه فعال می‌شوند" }, { status: 403 });
   }
   if (joined.status === "existing") {
     return NextResponse.json(

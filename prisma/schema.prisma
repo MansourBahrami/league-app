@@ -26,10 +26,12 @@ model User {
   onboardingStepMinutes      Int       @default(0) // دقایق مطالعه انباشته‌شده برای روز جاری آنبوردینگ
   nextStudyTarget            DateTime?
   isLeadComplete             Boolean   @default(false)
+  hasCompletedStudySession   Boolean   @default(false) // read-model برای shell؛ پس از اولین جلسه معتبر true می‌ماند
+  unreadInboxCount           Int       @default(0) // read-model برای نشان هدر؛ همراه InboxItem در تراکنش به‌روز می‌شود
   hasSeenIntro               Boolean   @default(false)
   onboardingHints            String[]  @default([]) // گام‌های راهنمای تدریجی که با اکشن واقعی کاربر کامل شده‌اند
   pastAvgStudyHours          Float?
-  day1GoalMinutes            Int? // هدف روز اول؛ هنگام پاسخ به پرسش میانگین snapshot می‌شود (قانون ساعت ۱۷/۲۱)
+  day1GoalMinutes            Int? // snapshot سازگار هدف شروع؛ مقدار فعال فعلی برای همه ۱۵ دقیقه است
   streak                     Int       @default(0) // زنجیره روزهای متوالی مطالعه
   lastStudyDate              DateTime? // آخرین روزی (00:00) که جلسه‌ای ثبت شده — مبنای streak
   referralCode               String?   @unique // کد دعوت دوستان
@@ -183,7 +185,7 @@ model StudySession {
   startTime   DateTime
   endTime     DateTime?
   durationMin Int       @default(0)
-  plannedMin  Int       @default(0) // مدت انتخابی تایمر (۳۰/۶۰/۹۰/۱۲۰) — سقف پاداش
+  plannedMin  Int       @default(0) // مدت انتخابی تایمر (۱۵/۳۰/۶۰/۹۰/۱۲۰) — سقف پاداش
   tickCount   Int       @default(0) // تعداد پاداش‌های ۱۵دقیقه‌ای پرداخت‌شده (ضد تقلب)
   pausedSec   Int       @default(0) // مجموع ثانیه‌های pause شده (سمت سرور)
   pausedAt    DateTime? // اگر الان pause است، از کی
@@ -237,7 +239,7 @@ model UserMission {
   mission        Mission            @relation(fields: [missionId], references: [id])
   roomMembership MissionRoomMember?
 
-  @@index([userId, status])
+  @@index([userId, status, expiresAt, activatesAt])
 }
 
 // یک نمونه اجتماعی از یک ماموریت در یک بازه مشخص. پیشرفت و پاداش همچنان روی

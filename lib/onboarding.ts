@@ -4,6 +4,7 @@ import { getVideoPrice, type VideoAccess } from "@/lib/ab";
 import { tehranDayDiff } from "@/lib/date";
 import { DEFAULT_ONBOARDING_DAYS } from "@/lib/onboarding-config";
 import { withUserLock } from "@/lib/user-lock";
+import type { AppUserSnapshot } from "@/lib/app-user";
 
 /**
  * منطق مسیر یک‌روزهٔ آنبوردینگ: هدف مطالعه + ویدیوی پاداش اختیاری.
@@ -52,20 +53,37 @@ export interface OnboardingState {
 }
 
 /** وضعیت کامل روز جاری آنبوردینگ کاربر (دقیقه‌ها + ویدیو) */
-export async function getOnboardingState(userId: string): Promise<OnboardingState | null> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      onboardingDay: true,
-      onboardingStepMinutes: true,
-      pastAvgStudyHours: true,
-      day1GoalMinutes: true,
-      grade: true,
-      coins: true,
-      videoAccess: true,
-      lastStudyDate: true,
-    },
-  });
+type OnboardingUserSnapshot = Pick<
+  AppUserSnapshot,
+  | "onboardingDay"
+  | "onboardingStepMinutes"
+  | "pastAvgStudyHours"
+  | "day1GoalMinutes"
+  | "grade"
+  | "coins"
+  | "videoAccess"
+  | "lastStudyDate"
+>;
+
+export async function getOnboardingState(
+  userId: string,
+  prefetchedUser?: OnboardingUserSnapshot | null,
+): Promise<OnboardingState | null> {
+  const user = prefetchedUser === undefined
+    ? await prisma.user.findUnique({
+        where: { id: userId },
+        select: {
+          onboardingDay: true,
+          onboardingStepMinutes: true,
+          pastAvgStudyHours: true,
+          day1GoalMinutes: true,
+          grade: true,
+          coins: true,
+          videoAccess: true,
+          lastStudyDate: true,
+        },
+      })
+    : prefetchedUser;
   if (!user) return null;
 
   const variant: VideoAccess = user.videoAccess === "paid" ? "paid" : "free";

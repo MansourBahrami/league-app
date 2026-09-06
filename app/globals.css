@@ -337,6 +337,10 @@ html[data-performance="low"] .focus-timer-spark {
   transition: none;
 }
 
+html[data-performance="low"] .app-grid-background {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bottom-nav-pending-dot.is-pending {
     opacity: 0.75;

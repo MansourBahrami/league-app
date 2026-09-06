@@ -6,3 +6,5 @@ node_modules
 app/generated
 .DS_Store
 npm-debug.log*
+audit-output
+review

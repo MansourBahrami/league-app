@@ -4,15 +4,12 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { formatRelativeTimeFa } from "@/lib/format";
 import { captureClientError } from "@/lib/analytics-client";
+import ContextualSpotlight from "@/components/onboarding/ContextualSpotlight";
+import { useProgressiveOnboarding } from "@/components/onboarding/ProgressiveOnboarding";
+import { ONBOARDING_HINTS } from "@/lib/onboarding-hints";
+import type { FocusPulseActivity } from "@/lib/focus-pulse";
 
-export interface FocusPulseActivity {
-  id: string;
-  userId: string;
-  type: string;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
-  user: { name: string | null; avatarUrl: string | null };
-}
+export type { FocusPulseActivity } from "@/lib/focus-pulse";
 
 interface Props {
   initialActivities: FocusPulseActivity[];
@@ -20,6 +17,8 @@ interface Props {
 }
 
 const ALLOWED_TYPES = new Set(["session_complete", "medal_earn", "level_up", "streak"]);
+const ACTIVE_STUDENTS_HINT_EVENT = "onboarding-show-active-students";
+const ACTIVE_STUDENTS_HINT_STORAGE_KEY = "gcamp:show-active-students-hint";
 
 const TYPE_CONFIG: Record<string, { icon: string; accent: string; iconBg: string }> = {
   session_complete: { icon: "menu_book", accent: "text-secondary", iconBg: "bg-secondary-container" },
@@ -61,12 +60,43 @@ export default function FocusPulse({
   initialActivities,
   initialActiveCount,
 }: Props) {
+  const { hasHint } = useProgressiveOnboarding();
   const [current, setCurrent] = useState<FocusPulseActivity | null>(initialActivities[0] ?? null);
   const [activeCount, setActiveCount] = useState(initialActiveCount);
+  const [showActiveStudentsHint, setShowActiveStudentsHint] = useState(false);
   const currentRef = useRef<FocusPulseActivity | null>(initialActivities[0] ?? null);
   const rotationRef = useRef<FocusPulseActivity[]>(initialActivities.slice(1));
   const queuedRef = useRef<FocusPulseActivity[]>([]);
   const knownIdsRef = useRef(new Set(initialActivities.map((activity) => activity.id)));
+
+  useEffect(() => {
+    let showTimer: number | null = null;
+
+    const revealActiveStudents = () => {
+      if (hasHint(ONBOARDING_HINTS.ACTIVE_STUDENTS_EXPLAINED)) {
+        sessionStorage.removeItem(ACTIVE_STUDENTS_HINT_STORAGE_KEY);
+        return;
+      }
+      const target = document.querySelector<HTMLElement>('[data-onboarding="active-students"]');
+      if (!target) return;
+      const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      target.scrollIntoView({ behavior: reducedMotion ? "auto" : "smooth", block: "center" });
+      showTimer = window.setTimeout(() => {
+        sessionStorage.removeItem(ACTIVE_STUDENTS_HINT_STORAGE_KEY);
+        setShowActiveStudentsHint(true);
+      }, reducedMotion ? 0 : 450);
+    };
+
+    window.addEventListener(ACTIVE_STUDENTS_HINT_EVENT, revealActiveStudents);
+    if (sessionStorage.getItem(ACTIVE_STUDENTS_HINT_STORAGE_KEY) === "1") {
+      revealActiveStudents();
+    }
+
+    return () => {
+      if (showTimer) window.clearTimeout(showTimer);
+      window.removeEventListener(ACTIVE_STUDENTS_HINT_EVENT, revealActiveStudents);
+    };
+  }, [hasHint]);
 
   useEffect(() => {
     const rotate = window.setInterval(() => {
@@ -196,6 +226,7 @@ export default function FocusPulse({
 
       <Link
         href="/studying"
+        data-onboarding="active-students"
         className="flex items-center justify-center gap-2 min-h-7 rounded-full px-3 text-[12.5px] text-on-surface-variant transition-colors hover:bg-surface-container-low active:bg-surface-container"
         aria-label="دیدن افراد در حال مطالعه"
       >
@@ -207,6 +238,16 @@ export default function FocusPulse({
         </span>
         <span className="material-symbols-outlined text-[16px] text-outline">chevron_left</span>
       </Link>
+
+      {showActiveStudentsHint && (
+        <ContextualSpotlight
+          hint={ONBOARDING_HINTS.ACTIVE_STUDENTS_EXPLAINED}
+          title="تنهایی درس نمی‌خونی"
+          description="از اینجا می‌تونی بقیه دانش‌آموزهایی رو ببینی که همین الان تایمرشون روشنه و دارن درس می‌خونن."
+          targetElementSelector='[data-onboarding="active-students"]'
+          actionText="دیدم"
+        />
+      )}
     </div>
   );
 }

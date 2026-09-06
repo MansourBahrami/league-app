@@ -1,76 +1,14 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/db";
 import { getOnboardingState } from "@/lib/onboarding";
-import { getWeeklyMissionState } from "@/lib/weekly-mission";
 import { getActiveFocusCount } from "@/lib/focus";
-import StudyTimer, { type FocusMission } from "@/components/dashboard/StudyTimer";
-import FocusPulse, { type FocusPulseActivity } from "@/components/dashboard/FocusPulse";
-
-export const dynamic = "force-dynamic";
-
-const PULSE_TYPES = ["session_complete", "medal_earn", "level_up", "streak"];
-
-function hasUsefulPulseMetadata(activity: FocusPulseActivity): boolean {
-  const metadata = activity.metadata ?? {};
-  if (activity.type === "session_complete") return Number(metadata.durationMin ?? 0) > 0;
-  if (activity.type === "medal_earn") return Number(metadata.targetHours ?? 0) > 0;
-  if (activity.type === "streak") return Number(metadata.streak ?? 0) > 0;
-  if (activity.type === "level_up") return String(metadata.level ?? "").trim().length > 0;
-  return false;
-}
-
-async function getPulseActivities(userIds?: string[]): Promise<FocusPulseActivity[]> {
-  const activities = await prisma.activityLog.findMany({
-    where: {
-      type: { in: PULSE_TYPES },
-      user: { activityPublic: true },
-      ...(userIds && userIds.length > 0 ? { userId: { in: userIds } } : {}),
-    },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    include: { user: { select: { name: true, avatarUrl: true } } },
-  });
-
-  return activities
-    .map((activity) => ({
-      id: activity.id,
-      userId: activity.userId,
-      type: activity.type,
-      metadata: (activity.metadata ?? null) as Record<string, unknown> | null,
-      createdAt: activity.createdAt.toISOString(),
-      user: activity.user,
-    }))
-    .filter(hasUsefulPulseMetadata)
-    .slice(0, 15);
-}
-
-async function getActiveDailyMission(userId: string, now = new Date()) {
-  const daily = await prisma.userMission.findFirst({
-    where: {
-      userId,
-      status: "active",
-      mission: { kind: "daily" },
-      activatesAt: { lte: now },
-      expiresAt: { gt: now },
-    },
-    include: { mission: true },
-    orderBy: { activatesAt: "desc" },
-  });
-  if (!daily) return null;
-
-  const aggregate = await prisma.studySession.aggregate({
-    where: { userId, startTime: { gte: daily.activatesAt, lt: daily.expiresAt } },
-    _sum: { durationMin: true },
-  });
-
-  return {
-    goalMin: daily.mission.targetHours * 60,
-    studiedMin: aggregate._sum.durationMin ?? 0,
-    coinReward: daily.mission.coinReward,
-  };
-}
+import { getFocusPulseActivities } from "@/lib/focus-pulse";
+import { getActiveStudySessionSnapshot } from "@/lib/study-session";
+import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
+import { getDashboardMission, type FocusMission } from "@/lib/dashboard-mission";
+import StudyTimer from "@/components/dashboard/StudyTimer";
+import FocusPulse from "@/components/dashboard/FocusPulse";
 
 function StudyTimerFallback() {
   return (
@@ -85,55 +23,43 @@ function FocusPulseFallback() {
 }
 
 async function DashboardStudy({ userId }: { userId: string }) {
-  const [onboarding, user, activeDaily, weekly] = await Promise.all([
-    getOnboardingState(userId),
-    prisma.user.findUnique({ where: { id: userId }, select: { phone: true } }),
-    getActiveDailyMission(userId),
-    getWeeklyMissionState(userId),
+  const [user, initialActiveSession] = await Promise.all([
+    getAppUserSnapshot(userId),
+    getActiveStudySessionSnapshot(userId),
   ]);
+  if (!user) redirect("/login");
 
-  const inOnboarding = onboarding?.inOnboarding ?? false;
+  const inOnboarding = user.onboardingDay < 1;
+  const onboarding = inOnboarding
+    ? await getOnboardingState(userId, user)
+    : null;
 
-  let mission: FocusMission = null;
+  let mission: FocusMission;
   if (inOnboarding && onboarding) {
     mission = {
       kind: "onboarding",
       dailyGoalMin: onboarding.goalMinutes,
       dailyStudiedMin: onboarding.stepMinutes,
     };
-  } else if (activeDaily) {
-    // ماموریت روزانه کوتاه‌مدت‌تر است؛ اگر روزانه و هفتگی هم‌زمان فعال باشند،
-    // هدف فوری امروز در صفحه مطالعه اولویت دارد و جزئیات هفتگی در کمپ مأموریت می‌ماند.
-    mission = {
-      kind: "daily",
-      dailyGoalMin: activeDaily.goalMin,
-      dailyStudiedMin: activeDaily.studiedMin,
-      coinReward: activeDaily.coinReward,
-    };
-  } else if (weekly) {
-    mission = {
-      kind: "weekly",
-      pending: weekly.pending,
-      isRestDay: weekly.isRestDay,
-      targetHours: weekly.targetHours,
-      dailyGoalMin: weekly.dailyGoalMin,
-      dailyStudiedMin: weekly.dailyStudiedMin,
-      weeklyGoalMin: weekly.weeklyGoalMin,
-      weeklyStudiedMin: weekly.weeklyStudiedMin,
-      xpReward: weekly.xpReward,
-    };
+  } else {
+    mission = await getDashboardMission(userId);
   }
 
   return (
     <div data-tour="mission">
-      <StudyTimer mission={mission} userId={userId} hasPhone={!!user?.phone} />
+      <StudyTimer
+        mission={mission}
+        userId={userId}
+        hasPhone={!!user.phone}
+        initialActiveSession={initialActiveSession}
+      />
     </div>
   );
 }
 
 async function DashboardPulse() {
   const [activities, activeFocusCount] = await Promise.all([
-    getPulseActivities(),
+    getFocusPulseActivities(),
     getActiveFocusCount(),
   ]);
 
@@ -143,6 +69,7 @@ async function DashboardPulse() {
 export default async function DashboardPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  preloadAppUserSnapshot(session.userId);
 
   return (
     <div className="flex flex-col gap-3 px-4 pb-2">

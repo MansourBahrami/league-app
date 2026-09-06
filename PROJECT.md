@@ -103,7 +103,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 | `isLeadComplete` | Boolean | آیا پایه و رشتهٔ شرطی ثبت شده‌اند (شماره قبلاً هنگام ورود تأیید شده است) |
 | `hasSeenIntro` | Boolean | آیا اسلایدهای welcome دیده شده |
 | `pastAvgStudyHours` | Float? | میانگین ساعت مطالعه گذشته (از پرسش آنبوردینگ) — مبنای هدف روزانه |
-| `day1GoalMinutes` | Int? | **snapshot** هدف روز اول (هنگام پاسخ به پرسش میانگین، طبق قانون ساعت ۱۷/۲۱) تا در طول روز ثابت بماند |
+| `day1GoalMinutes` | Int? | snapshot سازگار هدف شروع؛ هدف فعال برای همهٔ کاربران جدید و نیمه‌کاره ۱۵ دقیقه است |
 | `streak` | Int | زنجیره روزهای متوالی مطالعه |
 | `lastStudyDate` | DateTime? | آخرین روز (۰۰:۰۰) با جلسه — مبنای محاسبه streak |
 | `referralCode` | String? (unique) | کد دعوت دوستان |
@@ -195,8 +195,8 @@ OTP فقط به‌صورت هش‌شده و کوتاه‌عمر در Redis نگ�
 - `getNextLevelRequirement(xp, medals)` → سطح بعدی + XP لازم + مدال‌های کم (برای نوار پیشرفت پروفایل)
 - `suggestMissions(avgHoursPerDay)` → ۳ ماموریت پیشنهادی
 - `getLeaderboardMessage(rank, total, levelName)` → پیام داینامیک بر اساس رتبه بین هم‌سطح‌ها
-- `getFullDay1Hours(pastAvg)` / `getDay1MissionHours(pastAvg, hourOfDay)` → هدف روز اول (قانون ساعت: <۱۷ کامل، ۱۷–۲۱ نصف، >۲۱ یک ساعت)
-- `getOnboardingDailyGoalMinutes(day, pastAvg, day1GoalMinutes)` → هدف روزانه (روز اول از snapshot، بعد +۳۰ دقیقه)
+- `getFullDay1Hours(pastAvg)` / `getDay1MissionHours(pastAvg, hourOfDay)` → هدف شروع ثابت ۱۵ دقیقه‌ای
+- `getOnboardingDailyGoalMinutes(day, pastAvg, day1GoalMinutes)` → هدف فعال آنبوردینگ: ۱۵ دقیقه، مستقل از snapshotهای قدیمی
 - `effectiveStreak(streak, lastStudyDate)` → استریک با احتساب شکست (آخرین مطالعه قبل از دیروز = ۰)
 - `PROFILE_UNLOCK_COST` / `PROFILE_UNLOCK_HOURS` → باز کردن لاگ دیگران با ۲۰ سکه برای ۱ ساعت
 - `DAILY_MISSION_TABLE` → ماموریت‌های روزانهٔ ۳ تا ۱۰ ساعت با جایزهٔ سکه
@@ -242,9 +242,10 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
   │  upsert کاربر + ست شدن کوکی JWT (league_session، httpOnly، انقضای لغزان ۳۰ روزه)
   ▼
 داشبورد (/dashboard)
-  ├─ مسیر آنبوردینگ یک‌روزه با هدف مطالعه و ویدیوی پاداش اختیاری
-  ├─ تایمر مطالعه (۳۰/۶۰/۹۰/۱۲۰ دقیقه)
+  ├─ مسیر آنبوردینگ یک‌روزه با هدف شروع ۱۵ دقیقه‌ای و ویدیوی پاداش اختیاری
+  ├─ تایمر مطالعه (۱۵/۳۰/۶۰/۹۰/۱۲۰ دقیقه؛ در شروع فقط گزینهٔ ۱۵ دقیقه)
   │    ├─ شروع → POST /api/study/start (ثبت startTime + localStorage)
+  │    │          └─ راهنمای یک‌بارهٔ «افراد در حال مطالعه» در همان داشبورد
   │    ├─ هر ۱۵ دقیقه → POST /api/study/tick (۱ XP + ۱ سکه فوری)
   │    └─ پایان → POST /api/study/end (محاسبه نهایی + بررسی سطح + لاگ فعالیت)
   │         │
@@ -254,7 +255,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
   │         └─ سپس → GoalSettingModal (فردا ساعت چند شروع می‌کنی؟)
   ▼
 ناوبری اصلی (BottomNav):
-  /mission-rooms → ورود مستقیم به کمپ جاری؛ فقط در نبود مأموریت جاری، انتخاب هدف روزانه/هفتگی
+  /mission-rooms → پس از ۱۵ دقیقهٔ اول؛ انتخاب هدف روزانه/هفتگی همراه پیش‌نمایش اعضا و افراد در حال مطالعه
   /videos        → آموزش‌های متناسب با پایه
   /dashboard     → مطالعه، ماموریت روز و تایمر
   /leaderboard   → رده‌بندی هفتگی (XP هفت روز اخیر، سکوی تاپ ۳)
@@ -375,7 +376,7 @@ league_proj_new/
 | POST | `/api/auth/verify-otp` | `{ phone, code }` | تأیید + کوکی JWT |
 | POST | `/api/auth/logout` | — | پاک کردن کوکی |
 | GET | `/api/profile` | — | اطلاعات کامل کاربر |
-| PATCH | `/api/profile` | `{ name?, grade?, field?, nextStudyTarget?, hasSeenIntro?, pastAvgStudyHours? }` | به‌روزرسانی + محاسبهٔ `isLeadComplete` از پایه و رشتهٔ شرطی؛ با `pastAvgStudyHours` هدف روز اول snapshot می‌شود |
+| PATCH | `/api/profile` | `{ name?, grade?, field?, nextStudyTarget?, hasSeenIntro?, pastAvgStudyHours? }` | به‌روزرسانی + محاسبهٔ `isLeadComplete` از پایه و رشتهٔ شرطی؛ هدف شروع ۱۵ دقیقه snapshot می‌شود |
 | POST | `/api/profile/[id]/unlock` | — | باز کردن بخش مطالعه کاربر (۲۰ سکه، ۱ ساعت) |
 | POST | `/api/study/start` | `{ durationMin, clientRequestId }` | شروع idempotent؛ اگر جلسه‌ای باز باشد همان وضعیت authoritative برمی‌گردد و جلسهٔ دیگری ساخته/بسته نمی‌شود → `{ sessionId }` |
 | POST | `/api/study/tick` | `{ sessionId }` | پاداش هر ۱۵ دقیقه — **اعتبارسنجی سرور**: زمان واقعی منهای pause، سقف `plannedMin`، فقط مابه‌التفاوت → `{ granted }` |
@@ -428,7 +429,7 @@ league_proj_new/
 - موارد کوچک معوق: فالوآپ زمان‌بندی‌شده ادمین (۱۹.۵)، انیمیشن‌های Framer Motion.
 
 ### خلاصه فازهای ۲۰ تا ۲۷
-- **۲۰**: امنیت `tick`، pause واقعی، قانون ساعت ورود ۱۷/۲۱، رقبای نزدیک و مینی‌لیدربورد بر اساس XP هفتگی هم‌سطح.
+- **۲۰**: امنیت `tick`، pause واقعی، هدف شروع ۱۵ دقیقه‌ای، رقبای نزدیک و مینی‌لیدربورد بر اساس XP هفتگی هم‌سطح.
 - **۲۱**: استریک (`lib/streak.ts`)، رویدادهای جدید فید (`timer_start`, `streak`, `video_complete`)، جایزه لحظه‌ای شناور روی تایمر.
 - **۲۲**: ویدیو در حلقه روزانه (`lib/onboarding.ts`)، سکه ۲× تماشای سریع، طول مسیر منعطف، ویدیوهای قفل، CTA ادمین.
 - **۲۳**: توکن‌های رنگ `@theme`، کانفتی (`components/ui/Confetti.tsx`)، تایمر فشرده، شرط مدال در پیشرفت سطح، safe-area، ساعت دلخواه.

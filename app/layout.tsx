@@ -14,6 +14,9 @@ const vazirmatn = localFont({
 const pinar = localFont({
   src: "./fonts/Pinar-ExtraBold.woff2",
   display: "swap",
+  // فونت نمایشی فقط در لندینگ و ورود مصرف می‌شود؛ در صفحات authenticated نباید
+  // ۴۰KB بی‌استفاده را preload کند.
+  preload: false,
   style: "normal",
   weight: "800",
   variable: "--font-pinar",

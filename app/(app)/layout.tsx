@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { getUnreadCount } from "@/lib/inbox";
+import { getAppUserSnapshot } from "@/lib/app-user";
 import { hasOnboardingHint, ONBOARDING_HINTS } from "@/lib/onboarding-hints";
 import { isMessengerPromptSnoozed } from "@/lib/messenger-prompt";
 import { isSetupPromptSnoozed } from "@/lib/setup-prompt";
@@ -12,17 +11,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const [user, completedSession, unreadCount] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { id: true, name: true, xp: true, coins: true, level: true, stars: true, avatarUrl: true, isLeadComplete: true, onboardingDay: true, onboardingHints: true, phone: true, telegramId: true, baleId: true, setupPromptSnoozedAt: true, messengerPromptDismissedAt: true },
-    }),
-    prisma.studySession.findFirst({
-      where: { userId: session.userId, endTime: { not: null }, durationMin: { gte: 15 } },
-      select: { id: true },
-    }),
-    getUnreadCount(session.userId),
-  ]);
+  const user = await getAppUserSnapshot(session.userId);
 
   if (!user) redirect("/login");
 
@@ -37,7 +26,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const showBotConnect = setupHandled
     && hasAvailableBot
-    && completedSession !== null
+    && user.hasCompletedStudySession
     && !hasMessenger
     && !isMessengerPromptSnoozed(user.messengerPromptDismissedAt);
 
@@ -47,13 +36,23 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <>
       <AnalyticsIdentity userId={user.id} />
       <AppShell
-        user={user}
+        user={{
+          id: user.id,
+          name: user.name,
+          xp: user.xp,
+          coins: user.coins,
+          level: user.level,
+          stars: user.stars,
+          avatarUrl: user.avatarUrl,
+          isLeadComplete: user.isLeadComplete,
+          onboardingDay: user.onboardingDay,
+        }}
         onboardingHints={user.onboardingHints}
-        hasCompletedSession={completedSession !== null}
+        hasCompletedSession={user.hasCompletedStudySession}
         setupPromptSnoozed={isSetupPromptSnoozed(user.setupPromptSnoozedAt)}
         needsLead={needsLead}
         hasPhone={!!user.phone}
-        unreadCount={unreadCount}
+        unreadCount={user.unreadInboxCount}
         showBotConnect={showBotConnect}
         botAvailability={botAvailability}
       >

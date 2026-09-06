@@ -1,12 +1,14 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
-import { getQuickActiveMissionRoomId } from "@/lib/mission-room";
-import { formatJalaliLong, getNextTehranMissionWeek } from "@/lib/date";
+import { getActiveMissionCatalog } from "@/lib/catalog-cache";
+import { getMissionChoicePresences, getQuickActiveMissionRoomId } from "@/lib/mission-room";
+import { formatJalaliLong, getNextTehranMissionWeek, tehranDayStart } from "@/lib/date";
 import { suggestMissions } from "@/lib/gamification";
 import MissionRoomChooser, { type MissionChoice } from "@/components/mission-rooms/MissionRoomChooser";
 import SectionInfoButton from "@/components/ui/SectionInfoButton";
 import ProductViewEvent from "@/components/analytics/ProductViewEvent";
+import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 
 export const dynamic = "force-dynamic";
 
@@ -20,30 +22,38 @@ function selectClosest<T extends { targetHours: number }>(items: T[], target: nu
 export default async function MissionRoomsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
+  preloadAppUserSnapshot(session.userId);
 
   const now = new Date();
   const activeRoomId = await getQuickActiveMissionRoomId(session.userId, now);
   if (activeRoomId) redirect(`/mission-rooms/${activeRoomId}`);
 
-  const [user, allDaily, allWeekly, sessions] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: session.userId },
-      select: { coins: true, onboardingDay: true },
-    }),
-    prisma.mission.findMany({ where: { kind: "daily", isActive: true }, orderBy: { targetHours: "asc" } }),
-    prisma.mission.findMany({ where: { kind: "weekly", isActive: true }, orderBy: { targetHours: "asc" } }),
+  const [user, missionCatalog, sessions] = await Promise.all([
+    getAppUserSnapshot(session.userId),
+    getActiveMissionCatalog(),
     prisma.studySession.aggregate({
       where: { userId: session.userId, startTime: { gte: new Date(now.getTime() - 7 * 86400000) } },
       _sum: { durationMin: true },
     }),
   ]);
   if (!user) redirect("/login");
+  const { daily: allDaily, weekly: allWeekly } = missionCatalog;
 
   const avgHours = ((sessions._sum.durationMin ?? 0) / 60) / 7;
   const dailyRecommended = selectClosest(allDaily, Math.max(3, avgHours), 3);
   const suggestedTargets = suggestMissions(avgHours).map((mission) => mission.targetHours);
   const matchedWeekly = allWeekly.filter((mission) => suggestedTargets.includes(mission.targetHours));
   const weeklyChoices = matchedWeekly.length > 0 ? matchedWeekly : allWeekly.slice(0, 3);
+
+  const weeklyWindow = getNextTehranMissionWeek(now);
+  const presenceByMissionId = await getMissionChoicePresences({
+    viewerId: session.userId,
+    dailyMissionIds: dailyRecommended.map((mission) => mission.id),
+    weeklyMissionIds: weeklyChoices.map((mission) => mission.id),
+    dailyStartsAt: tehranDayStart(now),
+    weeklyStartsAt: weeklyWindow.startsAt,
+    now,
+  });
 
   const toChoice = (mission: typeof allDaily[number], recommendedTarget: number): MissionChoice => ({
     id: mission.id,
@@ -53,6 +63,11 @@ export default async function MissionRoomsPage() {
     xpReward: mission.xpReward,
     coinReward: mission.coinReward,
     recommended: mission.targetHours === recommendedTarget,
+    presence: presenceByMissionId.get(mission.id) ?? {
+      memberCount: 0,
+      studyingCount: 0,
+      members: [],
+    },
   });
   const dailyTarget = dailyRecommended.reduce((best, mission) =>
     Math.abs(mission.targetHours - Math.max(3, avgHours)) < Math.abs(best - Math.max(3, avgHours)) ? mission.targetHours : best,
@@ -61,8 +76,6 @@ export default async function MissionRoomsPage() {
   const weeklyTarget = suggestedTargets[0] ?? weeklyChoices[0]?.targetHours ?? 20;
   const dailyChoices = dailyRecommended.map((mission) => toChoice(mission, dailyTarget));
   const weeklyChoiceRows = weeklyChoices.map((mission) => toChoice(mission, weeklyTarget));
-
-  const weeklyWindow = getNextTehranMissionWeek(now);
 
   return (
     <div className="flex flex-col gap-4 px-4 pb-4">

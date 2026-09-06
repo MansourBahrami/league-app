@@ -33,6 +33,16 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   deploymentId: process.env.APP_VERSION || undefined,
   poweredByHeader: false,
+  experimental: {
+    // صفحه‌های شخصی همچنان روی سرور dynamic می‌مانند؛ این مقدار فقط payload
+    // اخیر را در Router Cache مرورگر نگه می‌دارد تا رفت‌وبرگشت سریع بین تب‌های
+    // پایین دوباره همان RSC را از شبکه نگیرد. mutationها طبق الگوی موجود
+    // router.refresh() می‌کنند.
+    staleTimes: {
+      dynamic: 15,
+      static: 180,
+    },
+  },
   allowedDevOrigins: [
     "10.152.254.175",
     "10.152.254.175:3000",

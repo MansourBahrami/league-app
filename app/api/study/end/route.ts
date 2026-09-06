@@ -11,18 +11,43 @@ import { tehranDayDiff } from "@/lib/date";
 import { after } from "next/server";
 import { captureServerEvent } from "@/lib/analytics-server";
 import { endStudySession } from "@/lib/study-session";
+import { DEFAULT_ONBOARDING_DAYS } from "@/lib/onboarding-config";
+import { createServerTiming } from "@/lib/server-timing";
 
 export async function POST(req: NextRequest) {
+  const timing = createServerTiming();
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  timing.mark("auth");
 
   const { sessionId } = await req.json();
   if (!sessionId) return NextResponse.json({ error: "sessionId required" }, { status: 400 });
 
-  const studySession = await prisma.studySession.findUnique({
-    where: { id: sessionId, userId: session.userId },
-  });
+  const [studySession, userBefore] = await Promise.all([
+    prisma.studySession.findUnique({
+      where: { id: sessionId, userId: session.userId },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.userId },
+      select: {
+        isLeadComplete: true,
+        lastStudyDate: true,
+        onboardingDay: true,
+        onboardingStepMinutes: true,
+        pastAvgStudyHours: true,
+        day1GoalMinutes: true,
+        grade: true,
+        coins: true,
+        videoAccess: true,
+        name: true,
+        avatarUrl: true,
+        streak: true,
+      },
+    }),
+  ]);
+  timing.mark("initial_lookup");
   if (!studySession) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+  if (!userBefore) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   // جلسه‌ای که قبلاً بسته شده دوباره پاداش نمی‌گیرد (ضد تقلب end دوباره)
   if (studySession.endTime) {
@@ -33,15 +58,9 @@ export async function POST(req: NextRequest) {
   const isLoadTest = process.env.GCAMP_LOAD_TEST_MODE === "1"
     && req.headers.get("x-gcamp-load-test") === "1";
 
-  const userBefore = await prisma.user.findUnique({
-    where: { id: session.userId },
-    select: { isLeadComplete: true, lastStudyDate: true, onboardingDay: true, name: true, avatarUrl: true, streak: true },
-  });
-  if (!userBefore) return NextResponse.json({ error: "User not found" }, { status: 404 });
-
-  // وضعیت آنبوردینگ پیش از اعمال این جلسه (برای گزارش هدف/باقیمانده)
-  const stateBefore = await getOnboardingState(session.userId);
-  const inOnboarding = stateBefore?.inOnboarding ?? false;
+  // برای کاربران قدیمی، مسیر کامل آنبوردینگ در پایان هر جلسه دوباره خوانده نمی‌شود.
+  const inOnboarding = userBefore.onboardingDay < DEFAULT_ONBOARDING_DAYS;
+  timing.mark("onboarding_before");
 
   // آیا این اولین جلسه‌ی امروز (به وقت تهران) است؟ هر روزِ آنبوردینگ باید در یک
   // روزِ تقویمی کامل شود؛ پس با شروع روز جدید، دقیقه‌های روزهای قبل سرریز نمی‌شوند
@@ -65,6 +84,7 @@ export async function POST(req: NextRequest) {
       { status: 409 },
     );
   }
+  timing.mark("study_settlement");
 
   const {
     studySession: closedStudySession,
@@ -93,12 +113,19 @@ export async function POST(req: NextRequest) {
   }
 
   // بررسی تکمیل/انقضای ماموریت‌ها + محاسبه مجدد سطح
-  await processUserMissions(session.userId);
-  await recalcUserLevel(session.userId);
+  const missionResult = await processUserMissions(session.userId);
+  if (!missionResult.levelRecalculated) {
+    await recalcUserLevel(session.userId);
+  }
+  timing.mark("gamification");
 
   // وضعیت به‌روز پس از همه تغییرات
-  const stateAfter = await getOnboardingState(session.userId);
-  const newOnboardingDay = stateAfter?.currentDay ? stateAfter.currentDay - 1 : 0;
+  const stateAfter = inOnboarding
+    ? await getOnboardingState(session.userId)
+    : null;
+  const newOnboardingDay = stateAfter?.currentDay
+    ? stateAfter.currentDay - 1
+    : userBefore.onboardingDay;
 
   let dailyGoalMinutes = 0;
   let stepMinutes = 0;
@@ -163,6 +190,7 @@ export async function POST(req: NextRequest) {
       rewardVideo = firstVideo;
     }
   }
+  timing.mark("response_context");
 
   // ویدیو دیگر شرط تکمیل روز نیست؛ صرفاً جایزه‌ی اختیاری است.
   const needsVideo = false;
@@ -233,5 +261,5 @@ export async function POST(req: NextRequest) {
     rewardVideo,
     streak: streakResult.streak,
     streakMilestone: streakResult.milestone,
-  });
+  }, { headers: { "Server-Timing": timing.header() } });
 }

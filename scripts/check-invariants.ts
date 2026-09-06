@@ -13,6 +13,8 @@ async function main() {
     || result.staleSessions > 0
     || result.duplicateOpenSessions > 0
     || result.rewardMismatches > 0
+    || result.inboxCountMismatches > 0
+    || result.completedStudyMismatches > 0
   ) {
     process.exitCode = 1;
   }

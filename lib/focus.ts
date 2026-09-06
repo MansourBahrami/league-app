@@ -94,18 +94,8 @@ export async function getActiveFocusSnapshot(now = new Date(), forceRefresh = fa
 }
 
 export async function getActiveFocusCount(now = new Date()): Promise<number> {
-  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const rows = await prisma.$queryRaw<Array<{ count: bigint }>>`
-    SELECT COUNT(DISTINCT "userId")::bigint AS count
-    FROM "StudySession"
-    WHERE "endTime" IS NULL
-      AND "pausedAt" IS NULL
-      AND "startTime" >= ${cutoff}
-      AND "startTime"
-        + (GREATEST("plannedMin", 1) * INTERVAL '1 minute')
-        + ("pausedSec" * INTERVAL '1 second') > ${now}
-  `;
-  return Number(rows[0]?.count ?? 0);
+  const snapshot = await getActiveFocusSnapshot(now);
+  return snapshot.users.length;
 }
 
 /** آیا کاربر یک تایمر معتبرِ باز دارد؛ شامل تایمر pause‌شده. */

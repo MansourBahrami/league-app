@@ -60,7 +60,7 @@ export async function PATCH(req: NextRequest) {
   if (hasSeenIntro !== undefined) updateData.hasSeenIntro = hasSeenIntro;
   if (pastAvgStudyHours !== undefined) {
     updateData.pastAvgStudyHours = pastAvgStudyHours;
-    // snapshot هدف روز اول بر اساس ساعت ورود (قانون ۱۷/۲۱) تا در طول روز ثابت بماند
+    // snapshot سازگار هدف شروع ثابت ۱۵ دقیقه‌ای
     const hourOfDay = new Date().getHours();
     updateData.day1GoalMinutes = getDay1MissionHours(pastAvgStudyHours, hourOfDay) * 60;
   }

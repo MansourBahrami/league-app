@@ -1,6 +1,6 @@
 "use client";
 
-import * as Sentry from "@sentry/nextjs";
+import { captureException, setUser, withScope } from "@sentry/nextjs";
 import { withPostHog } from "@/lib/posthog-client";
 
 export type ProductEvent =
@@ -36,7 +36,7 @@ export function identifyAnalyticsUser(userId: string) {
 
   // شناسه داخلی دیتابیس پایدار است، اما نام و شماره موبایل هرگز ارسال نمی‌شوند.
   withPostHog((posthog) => posthog.identify(userId));
-  Sentry.setUser({ id: userId });
+  setUser({ id: userId });
 }
 
 export function captureProductEvent(event: ProductEvent, properties?: EventProperties) {
@@ -53,14 +53,14 @@ export function captureClientError(
   properties: EventProperties = {},
 ) {
   const normalized = error instanceof Error ? error : new Error(String(error));
-  Sentry.withScope((scope) => {
+  withScope((scope) => {
     scope.setTag("operation", operation);
     scope.setContext("operation_context", properties);
-    Sentry.captureException(normalized);
+    captureException(normalized);
   });
 }
 
 export function resetAnalyticsUser() {
   withPostHog((posthog) => posthog.reset());
-  Sentry.setUser(null);
+  setUser(null);
 }

@@ -100,7 +100,7 @@ function rankOf(level: string, stars: number): number {
 export async function processUserMissions(
   userId: string,
   options: { emitSideEffects?: boolean; activityAt?: Date } = {},
-): Promise<void> {
+): Promise<{ levelRecalculated: boolean }> {
   const now = new Date();
   const emitSideEffects = options.emitSideEffects ?? true;
 
@@ -212,7 +212,7 @@ export async function processUserMissions(
     return { user, medalEvents, needsLevelRecalc, completedEvents, failedEvents };
   });
 
-  if (!result) return;
+  if (!result) return { levelRecalculated: false };
   if (emitSideEffects) {
     for (const event of result.medalEvents) {
       broadcastActivity({ ...event.log, user: result.user });
@@ -236,7 +236,11 @@ export async function processUserMissions(
       })),
     ]);
   }
-  if (result.needsLevelRecalc) await recalcUserLevel(userId, options);
+  if (result.needsLevelRecalc) {
+    await recalcUserLevel(userId, options);
+    return { levelRecalculated: true };
+  }
+  return { levelRecalculated: false };
 }
 
 const MEDAL_HOURS = [20, 25, 30, 35, 40, 45, 50, 53, 56, 60, 63, 66, 70];

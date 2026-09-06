@@ -1,0 +1,44 @@
+{
+  "environment": {
+    "target": "Next.js production build on localhost:3001",
+    "database": "local development PostgreSQL",
+    "databaseUsers": 50,
+    "dbPoolMax": 10,
+    "date": "2026-08-25"
+  },
+  "results": [
+    {
+      "scenario": "100 mixed authenticated GETs",
+      "concurrency": 25,
+      "status200": 100,
+      "requestsPerSecond": 156.9,
+      "p50Ms": 147,
+      "p95Ms": 349,
+      "p99Ms": 407,
+      "maxMs": 428
+    },
+    {
+      "scenario": "500 simultaneous authenticated dashboard SSR requests",
+      "concurrency": 500,
+      "status200": 500,
+      "requestsPerSecond": 123.7,
+      "p50Ms": 1739,
+      "p95Ms": 2698,
+      "p99Ms": 2706,
+      "maxMs": 4027
+    },
+    {
+      "scenario": "500 simultaneous SSE connections held for 5 seconds",
+      "attempted": 500,
+      "connected": 500,
+      "failed": 0,
+      "connectElapsedMs": 287
+    }
+  ],
+  "limitations": [
+    "This is a single-machine, read-only test and is not a production capacity certification.",
+    "The development database has 50 users and does not represent production data volume.",
+    "Write-heavy timer, reward, video, notification, and cron traffic was intentionally excluded to avoid modifying data.",
+    "The production VPS CPU, RAM, network, disk IOPS, Postgres settings, and CDN behavior were not reproduced."
+  ]
+}
