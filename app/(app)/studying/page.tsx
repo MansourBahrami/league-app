@@ -3,7 +3,6 @@ import { getSession } from "@/lib/auth";
 import { getActiveFocusSnapshot } from "@/lib/focus";
 import ActiveStudents from "@/components/focus/ActiveStudents";
 
-export const dynamic = "force-dynamic";
 
 export default async function StudyingPage() {
   const session = await getSession();

@@ -10,7 +10,6 @@ import SectionInfoButton from "@/components/ui/SectionInfoButton";
 import ProductViewEvent from "@/components/analytics/ProductViewEvent";
 import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 
-export const dynamic = "force-dynamic";
 
 function selectClosest<T extends { targetHours: number }>(items: T[], target: number, take = 3): T[] {
   return [...items]

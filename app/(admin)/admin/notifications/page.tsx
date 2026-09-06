@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db";
 import Link from "next/link";
 import NotificationList, { type RuleListItem } from "@/components/admin/NotificationList";
 
-export const dynamic = "force-dynamic";
 
 export default async function AdminNotificationsPage() {
   const rules = await prisma.notificationRule.findMany({ orderBy: { createdAt: "desc" } });

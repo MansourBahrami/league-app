@@ -24,7 +24,12 @@ async function main() {
   const jwt = await signToken({ userId: "test-user", sessionVersion: 3 });
   assert.equal((await verifyToken(jwt))?.userId, "test-user");
   assert.equal((await verifyToken(jwt))?.sessionVersion, 3);
-  assert.equal(await verifyToken(`${jwt.slice(0, -1)}x`), null);
+  // تغییر کاراکتر آخر base64url همیشه بایت‌های امضا را عوض نمی‌کند (padding bits).
+  // یک کاراکتر میانی امضا را عوض کن تا tamper test قطعی باشد.
+  const [jwtHeader, jwtPayload, jwtSignature] = jwt.split(".");
+  const tamperIndex = Math.floor(jwtSignature.length / 2);
+  const tamperedSignature = `${jwtSignature.slice(0, tamperIndex)}${jwtSignature[tamperIndex] === "A" ? "B" : "A"}${jwtSignature.slice(tamperIndex + 1)}`;
+  assert.equal(await verifyToken(`${jwtHeader}.${jwtPayload}.${tamperedSignature}`), null);
 
   process.env.BOT_WEBHOOK_SECRET = "test-webhook-secret";
   assert.equal(isBotWebhookAuthorized(new NextRequest("https://gcamp.test/api/bot/bale")), false);
@@ -49,6 +54,14 @@ async function main() {
       "sec-fetch-site": "cross-site",
     },
   })), true);
+
+  const { proxy } = await import("../proxy");
+  const protectedResponse = await proxy(new NextRequest("https://app.gcamp.ir/dashboard"));
+  assert.equal(protectedResponse.status, 307);
+  assert.equal(new URL(protectedResponse.headers.get("location") ?? "", "https://app.gcamp.ir").pathname, "/login");
+  const publicResponse = await proxy(new NextRequest("https://gcamp.ir/"));
+  assert.equal(publicResponse.status, 200);
+  assert.equal(publicResponse.headers.get("location"), null);
 
   const suffix = `${process.pid}-${crypto.randomBytes(8).toString("hex")}`;
   const phoneKey = `auth-test-${suffix}`;

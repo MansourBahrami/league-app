@@ -21,6 +21,7 @@ interface OnboardingContextValue {
   reportStudyState: (active: boolean) => void;
   suppressSetup: () => void;
   resumeSetup: () => void;
+  configure: (config: OnboardingConfig) => void;
 }
 
 const OnboardingContext = createContext<OnboardingContextValue | null>(null);
@@ -191,22 +192,42 @@ function SetupPromptDialog({
   );
 }
 
-interface Props {
+export interface OnboardingConfig {
   initialHints: string[];
   hasCompletedSession: boolean;
   initialSetupSnoozed: boolean;
   allowSetupPrompt: boolean;
+}
+
+interface Props {
   children: React.ReactNode;
 }
 
-export default function ProgressiveOnboarding({
+export function ProgressiveOnboardingHydrator({
   initialHints,
   hasCompletedSession,
   initialSetupSnoozed,
   allowSetupPrompt,
-  children,
-}: Props) {
-  const [hints, setHints] = useState(() => new Set(initialHints));
+}: OnboardingConfig) {
+  const { configure } = useProgressiveOnboarding();
+
+  useEffect(() => {
+    configure({
+      initialHints,
+      hasCompletedSession,
+      initialSetupSnoozed,
+      allowSetupPrompt,
+    });
+  }, [allowSetupPrompt, configure, hasCompletedSession, initialHints, initialSetupSnoozed]);
+
+  return null;
+}
+
+export default function ProgressiveOnboarding({ children }: Props) {
+  const [hints, setHints] = useState(() => new Set<string>());
+  const [configReady, setConfigReady] = useState(false);
+  const [hasCompletedSession, setHasCompletedSession] = useState(false);
+  const [allowSetupPrompt, setAllowSetupPrompt] = useState(false);
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showInstallHelp, setShowInstallHelp] = useState(false);
   const [busy, setBusy] = useState<SetupStep | "dismiss" | null>(null);
@@ -216,10 +237,23 @@ export default function ProgressiveOnboarding({
   const [studyActive, setStudyActive] = useState(false);
   const [studyStateKnown, setStudyStateKnown] = useState(false);
   const [setupSuppressed, setSetupSuppressed] = useState(false);
-  const [setupSnoozed, setSetupSnoozed] = useState(initialSetupSnoozed);
+  const [setupSnoozed, setSetupSnoozed] = useState(true);
   const [setupHandledThisVisit, setSetupHandledThisVisit] = useState(false);
 
-  const hasHint = useCallback((hint: OnboardingHint) => hints.has(hint), [hints]);
+  // تا رسیدن تنظیمات شخصی، راهنماها را نمایش‌داده‌شده فرض می‌کنیم تا پوستهٔ
+  // استاتیک باعث چشمک‌زدن یا ثبت اشتباه onboarding نشود.
+  const hasHint = useCallback(
+    (hint: OnboardingHint) => !configReady || hints.has(hint),
+    [configReady, hints],
+  );
+
+  const configure = useCallback((config: OnboardingConfig) => {
+    setHints(new Set(config.initialHints));
+    setHasCompletedSession(config.hasCompletedSession);
+    setSetupSnoozed(config.initialSetupSnoozed);
+    setAllowSetupPrompt(config.allowSetupPrompt);
+    setConfigReady(true);
+  }, []);
 
   const markHints = useCallback(async (...nextHints: OnboardingHint[]) => {
     const unique = [...new Set(nextHints)].filter((hint) => !hints.has(hint));
@@ -277,8 +311,8 @@ export default function ProgressiveOnboarding({
   }, [hasHint, markHints]);
 
   const value = useMemo(
-    () => ({ hasHint, markHints, reportStudyState, suppressSetup, resumeSetup }),
-    [hasHint, markHints, reportStudyState, resumeSetup, suppressSetup],
+    () => ({ hasHint, markHints, reportStudyState, suppressSetup, resumeSetup, configure }),
+    [configure, hasHint, markHints, reportStudyState, resumeSetup, suppressSetup],
   );
   const rewardsExplained = hasHint(ONBOARDING_HINTS.REWARDS_EXPLAINED);
   const pushHandled = hasHint(ONBOARDING_HINTS.PUSH_PROMPTED);

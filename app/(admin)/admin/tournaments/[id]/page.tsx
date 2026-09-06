@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import TournamentForm from "@/components/admin/TournamentForm";
 
-export const dynamic = "force-dynamic";
 
 /** تبدیل Date به رشته‌ی datetime-local (در منطقه‌ی زمانی محلی سرور). */
 function toLocalInput(d: Date): string {

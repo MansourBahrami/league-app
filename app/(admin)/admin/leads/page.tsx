@@ -2,7 +2,6 @@ import { prisma } from "@/lib/db";
 import ExportLeadsButton from "@/components/admin/ExportLeadsButton";
 import { HOT_LEAD_STUDY_MINUTES, isHotLead } from "@/lib/leads";
 
-export const dynamic = "force-dynamic";
 
 export default async function AdminLeadsPage() {
   const users = await prisma.user.findMany({

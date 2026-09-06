@@ -1,11 +1,11 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import NotificationForm from "@/components/admin/NotificationForm";
 import type { Condition } from "@/lib/notification-rules";
 
-export const dynamic = "force-dynamic";
 
-export default async function EditNotificationPage({ params }: { params: Promise<{ id: string }> }) {
+async function EditNotificationContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const rule = await prisma.notificationRule.findUnique({ where: { id } });
   if (!rule) notFound();
@@ -29,4 +29,12 @@ export default async function EditNotificationPage({ params }: { params: Promise
   };
 
   return <NotificationForm initial={initial} />;
+}
+
+export default function EditNotificationPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<div className="h-96 rounded-2xl bg-surface-container-low" role="status" aria-label="در حال دریافت قانون اعلان" />}>
+      <EditNotificationContent params={params} />
+    </Suspense>
+  );
 }

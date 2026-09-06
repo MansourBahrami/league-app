@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { Suspense } from "react";
 import { getAdminSession } from "@/lib/auth";
 import PushRegister from "@/components/push/PushRegister";
 
-export const dynamic = "force-dynamic";
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+async function AuthenticatedAdminLayout({ children }: { children: React.ReactNode }) {
   const admin = await getAdminSession();
   if (!admin) redirect("/dashboard"); // غیرادمین‌ها به اپ برمی‌گردند
 
@@ -36,5 +36,25 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       <main className="flex-1 w-full max-w-[900px] mx-auto p-5">{children}</main>
     </div>
+  );
+}
+
+function AdminLoading() {
+  return (
+    <div className="min-h-screen bg-surface" dir="rtl" role="status" aria-label="در حال بررسی دسترسی مدیریت">
+      <header className="h-14 bg-inverse-surface shadow-lg" />
+      <main className="mx-auto w-full max-w-[900px] space-y-4 p-5">
+        <div className="h-7 w-40 rounded-full bg-outline-variant/60" />
+        <div className="h-64 rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
+      </main>
+    </div>
+  );
+}
+
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <Suspense fallback={<AdminLoading />}>
+      <AuthenticatedAdminLayout>{children}</AuthenticatedAdminLayout>
+    </Suspense>
   );
 }

@@ -16,7 +16,6 @@ import LogoutButton from "@/components/profile/LogoutButton";
 import PrivacySettings from "@/components/profile/PrivacySettings";
 import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 
-export const dynamic = "force-dynamic";
 
 function ProfileSectionFallback({ label, height }: { label: string; height: string }) {
   return (

@@ -5,7 +5,6 @@ import Link from "next/link";
 import { eligibleForTournament } from "@/lib/tournament";
 import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 
-export const dynamic = "force-dynamic";
 
 function fmtDate(d: Date): string {
   return new Date(d).toLocaleDateString("fa-IR", { month: "long", day: "numeric" });

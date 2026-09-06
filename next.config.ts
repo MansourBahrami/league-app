@@ -31,6 +31,9 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // پوستهٔ ثابت صفحه‌ها در زمان build ساخته می‌شود و داده‌های شخصی/زنده داخل
+  // Suspense در زمان درخواست استریم می‌شوند. این همان PPR در Next.js 16 است.
+  cacheComponents: true,
   deploymentId: process.env.APP_VERSION || undefined,
   poweredByHeader: false,
   experimental: {

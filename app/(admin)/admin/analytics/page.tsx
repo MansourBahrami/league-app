@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { DEFAULT_ONBOARDING_DAYS } from "@/lib/onboarding-config";
+import { Suspense } from "react";
+import { connection } from "next/server";
 
-export const dynamic = "force-dynamic";
 
 type Variant = "free" | "paid";
 
@@ -34,7 +35,8 @@ function avg(n: number, d: number, digits = 1): string {
   return (n / d).toLocaleString("fa-IR", { maximumFractionDigits: digits });
 }
 
-export default async function AnalyticsPage() {
+async function AnalyticsContent() {
+  await connection();
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
@@ -115,5 +117,22 @@ export default async function AnalyticsPage() {
         ⚠️ برای نتیجه‌گیری معنادار آماری به چند ده تا چند صد کاربر در هر گروه نیاز است. تخصیص گروه به‌صورت تصادفی ۵۰/۵۰ در اولین ورود هر کاربر انجام می‌شود.
       </p>
     </div>
+  );
+}
+
+function AnalyticsLoading() {
+  return (
+    <div className="flex flex-col gap-5" role="status" aria-label="در حال دریافت آمار">
+      <div className="h-7 w-64 rounded-full bg-outline-variant/60" />
+      <div className="h-80 rounded-2xl border border-outline-variant/30 bg-surface-container-low" />
+    </div>
+  );
+}
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={<AnalyticsLoading />}>
+      <AnalyticsContent />
+    </Suspense>
   );
 }

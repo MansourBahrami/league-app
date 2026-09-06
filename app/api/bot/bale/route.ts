@@ -3,7 +3,6 @@ import { handleBotUpdate } from "@/lib/bot-handler";
 import { isBotWebhookAuthorized } from "@/lib/bot-webhook";
 import { captureCaughtError } from "@/lib/observability";
 
-export const dynamic = "force-dynamic";
 
 /** Webhook بله؛ secret_token ثبت‌شده را از header سازگار Bot API بررسی می‌کند. */
 export async function POST(req: NextRequest) {

@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import localFont from "next/font/local";
 import PerformanceMetrics from "@/components/analytics/PerformanceMetrics";
 import "./globals.css";
@@ -129,7 +130,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-background text-on-surface font-sans antialiased">
-        <PerformanceMetrics />
+        <Suspense fallback={null}>
+          <PerformanceMetrics />
+        </Suspense>
         {children}
       </body>
     </html>

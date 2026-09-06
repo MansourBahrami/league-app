@@ -5,7 +5,6 @@ import LiveFeed from "@/components/feed/LiveFeed";
 import { getReactionsForActivities } from "@/lib/reaction";
 import { getBlockedUserIds } from "@/lib/privacy";
 
-export const dynamic = "force-dynamic";
 
 const FEED_PAGE_SIZE = 30;
 

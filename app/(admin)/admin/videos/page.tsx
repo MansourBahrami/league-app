@@ -1,12 +1,13 @@
 import Link from "next/link";
+import { connection } from "next/server";
 import { prisma } from "@/lib/db";
 import AdminVideoRow from "@/components/admin/AdminVideoRow";
 import VideoSettingsCard from "@/components/admin/VideoSettingsCard";
 import { getVideoUnlockMode } from "@/lib/settings";
 
-export const dynamic = "force-dynamic";
 
 export default async function AdminVideosPage() {
+  await connection();
   const [videos, unlockMode] = await Promise.all([
     prisma.video.findMany({
       orderBy: [{ day: "asc" }, { createdAt: "desc" }],

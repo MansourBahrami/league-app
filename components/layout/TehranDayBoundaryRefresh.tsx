@@ -10,10 +10,12 @@ import { millisecondsUntilNextTehranDay, tehranDayKey } from "@/lib/date";
  */
 export default function TehranDayBoundaryRefresh() {
   const router = useRouter();
-  const currentDayRef = useRef(tehranDayKey());
+  // زمان جاری را هنگام SSR نخوان؛ پوسته باید مستقل از ساعت درخواست prerender شود.
+  const currentDayRef = useRef<number | null>(null);
 
   useEffect(() => {
     let timeoutId: number | undefined;
+    currentDayRef.current = tehranDayKey();
 
     function scheduleNextCheck() {
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);

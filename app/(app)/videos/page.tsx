@@ -8,7 +8,6 @@ import { tehranDayDiff } from "@/lib/date";
 import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 import { getActiveVideoCatalog } from "@/lib/catalog-cache";
 
-export const dynamic = "force-dynamic";
 
 export default async function VideosPage() {
   const session = await getSession();

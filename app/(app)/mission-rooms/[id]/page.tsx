@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -9,8 +10,8 @@ import { formatJalaliLong } from "@/lib/date";
 import MissionRoomRoster from "@/components/mission-rooms/MissionRoomRoster";
 import LiveFeed from "@/components/feed/LiveFeed";
 import { getBlockedUserIds } from "@/lib/privacy";
+import MissionRoomDetailsLoading from "./loading";
 
-export const dynamic = "force-dynamic";
 
 function formatMinutes(minutes: number): string {
   const hours = Math.floor(minutes / 60);
@@ -20,7 +21,7 @@ function formatMinutes(minutes: number): string {
   return `${hours.toLocaleString("fa-IR")} ساعت و ${rest.toLocaleString("fa-IR")} دقیقه`;
 }
 
-export default async function MissionRoomPage({ params }: { params: Promise<{ id: string }> }) {
+async function MissionRoomContent({ params }: { params: Promise<{ id: string }> }) {
   const session = await getSession();
   if (!session) redirect("/login");
   const { id } = await params;
@@ -130,5 +131,13 @@ export default async function MissionRoomPage({ params }: { params: Promise<{ id
         />
       </section>
     </div>
+  );
+}
+
+export default function MissionRoomPage({ params }: { params: Promise<{ id: string }> }) {
+  return (
+    <Suspense fallback={<MissionRoomDetailsLoading />}>
+      <MissionRoomContent params={params} />
+    </Suspense>
   );
 }

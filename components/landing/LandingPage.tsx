@@ -1,11 +1,15 @@
 import Link from "next/link";
+import { cacheLife } from "next/cache";
 import FaqAccordion from "./FaqAccordion";
 
 interface LandingPageProps {
   isLoggedIn?: boolean;
 }
 
-export default function LandingPage({ isLoggedIn = false }: LandingPageProps) {
+export default async function LandingPage({ isLoggedIn = false }: LandingPageProps) {
+  "use cache";
+  cacheLife("days");
+
   const ctaUrl = isLoggedIn ? "/dashboard" : "/login";
   const headerCtaLabel = isLoggedIn ? "داشبورد من" : "ورود به جی‌کمپ";
   const primaryCtaLabel = isLoggedIn ? "برگرد به کمپ" : "بیا باهم شروع کنیم";

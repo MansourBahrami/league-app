@@ -6,7 +6,6 @@ import Image from "next/image";
 import { getTournamentLeaderboard, eligibleForTournament } from "@/lib/tournament";
 import JoinButton from "@/components/tournament/JoinButton";
 
-export const dynamic = "force-dynamic";
 
 function fmtDateTime(d: Date): string {
   return new Date(d).toLocaleString("fa-IR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });

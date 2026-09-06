@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { runScheduledJobs, type JobTask } from "@/lib/jobs";
 
-export const dynamic = "force-dynamic";
 
 const ALL_TASKS: JobTask[] = ["studySessions", "missions", "tournaments", "notifRules", "ranks", "invariants", "analytics", "retention"];
 

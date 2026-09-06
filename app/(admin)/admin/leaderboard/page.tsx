@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
+import { connection } from "next/server";
 
-export const dynamic = "force-dynamic";
 
 const LEVELS = ["تازه‌نفس", "ثابت‌قدم", "پیشرو", "سرآمد", "الگو"];
 
@@ -26,6 +26,7 @@ async function getLevelBoard(level: string, since: Date) {
 }
 
 export default async function AdminLeaderboardPage() {
+  await connection();
   const now = new Date();
   const since = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const boards = await Promise.all(LEVELS.map(async (lvl) => ({ level: lvl, ...(await getLevelBoard(lvl, since)) })));

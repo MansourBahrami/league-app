@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { connection } from "next/server";
 import { getSession } from "@/lib/auth";
 import { getOnboardingState } from "@/lib/onboarding";
 import { getActiveFocusCount } from "@/lib/focus";
@@ -8,21 +9,29 @@ import { getActiveStudySessionSnapshot } from "@/lib/study-session";
 import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
 import { getDashboardMission, type FocusMission } from "@/lib/dashboard-mission";
 import StudyTimer from "@/components/dashboard/StudyTimer";
+import StudyTimerFallback from "@/components/dashboard/StudyTimerFallback";
 import FocusPulse from "@/components/dashboard/FocusPulse";
-
-function StudyTimerFallback() {
-  return (
-    <div role="status" aria-label="در حال آماده‌سازی تایمر" className="h-[360px] rounded-[24px] border border-outline-variant/25 bg-surface-container-low/80 animate-pulse motion-reduce:animate-none" />
-  );
-}
 
 function FocusPulseFallback() {
   return (
-    <div role="status" aria-label="در حال دریافت فعالیت‌های زنده" className="h-24 rounded-[20px] border border-outline-variant/20 bg-surface-container-low/60 animate-pulse motion-reduce:animate-none" />
+    <div role="status" aria-label="در حال دریافت فعالیت‌های زنده" aria-busy="true" className="glass-card flex h-24 items-center gap-3 rounded-[20px] border border-outline-variant/20 px-4">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-secondary-container text-secondary">
+        <span className="material-symbols-outlined text-[22px]">groups</span>
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-bold text-on-surface">همین حالا در کمپ</p>
+        <p className="mt-1 text-[11.5px] text-on-surface-variant">فعالیت‌های تازه در حال دریافت است…</p>
+      </div>
+    </div>
   );
 }
 
-async function DashboardStudy({ userId }: { userId: string }) {
+async function DashboardStudy() {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const userId = session.userId;
+  preloadAppUserSnapshot(userId);
+
   const [user, initialActiveSession] = await Promise.all([
     getAppUserSnapshot(userId),
     getActiveStudySessionSnapshot(userId),
@@ -58,6 +67,7 @@ async function DashboardStudy({ userId }: { userId: string }) {
 }
 
 async function DashboardPulse() {
+  await connection();
   const [activities, activeFocusCount] = await Promise.all([
     getFocusPulseActivities(),
     getActiveFocusCount(),
@@ -66,15 +76,11 @@ async function DashboardPulse() {
   return <FocusPulse initialActivities={activities} initialActiveCount={activeFocusCount} />;
 }
 
-export default async function DashboardPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
-  preloadAppUserSnapshot(session.userId);
-
+export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-3 px-4 pb-2">
       <Suspense fallback={<StudyTimerFallback />}>
-        <DashboardStudy userId={session.userId} />
+        <DashboardStudy />
       </Suspense>
       <Suspense fallback={<FocusPulseFallback />}>
         <DashboardPulse />

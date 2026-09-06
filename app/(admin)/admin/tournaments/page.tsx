@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/db";
 import Link from "next/link";
+import { connection } from "next/server";
 
-export const dynamic = "force-dynamic";
 
 function fmt(d: Date): string {
   return new Date(d).toLocaleString("fa-IR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export default async function AdminTournamentsPage() {
+  await connection();
   const now = new Date();
   const tournaments = await prisma.tournament.findMany({
     orderBy: { startAt: "desc" },

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth";
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function RootPage() {
+async function DynamicRootPage() {
   const [session, headerStore] = await Promise.all([
     getSession(),
     headers(),
@@ -40,4 +41,12 @@ export default async function RootPage() {
 
   // در دامنه اصلی (gcamp.ir) لندینگ پیج اختصاصی نمایش داده می‌شود
   return <LandingPage isLoggedIn={!!session} />;
+}
+
+export default function RootPage() {
+  return (
+    <Suspense fallback={<LandingPage isLoggedIn={false} />}>
+      <DynamicRootPage />
+    </Suspense>
+  );
 }

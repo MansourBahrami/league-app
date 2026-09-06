@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { tehranDayStart } from "@/lib/date";
+import { connection } from "next/server";
 
-export const dynamic = "force-dynamic";
 
 async function getStats() {
   const now = Date.now();
@@ -68,6 +68,7 @@ function FunnelBar({ label, count, total, color }: { label: string; count: numbe
 }
 
 export default async function AdminDashboard() {
+  await connection();
   const s = await getStats();
   const { registered, day1Done, leadDone, week2 } = s.funnel;
 

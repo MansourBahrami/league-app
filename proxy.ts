@@ -4,7 +4,6 @@ import { verifyToken, signToken, shouldRefreshToken, setSessionCookie, COOKIE_NA
 import { isCrossSiteMutation } from "@/lib/request-security";
 
 const PUBLIC_PATHS = [
-  "/",
   "/login",
   "/sw.js",
   "/sitemap.xml",

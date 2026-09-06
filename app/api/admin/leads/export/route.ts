@@ -4,7 +4,6 @@ import { getAdminSession } from "@/lib/auth";
 import { isHotLead } from "@/lib/leads";
 import { recordAdminAudit } from "@/lib/admin-audit";
 
-export const dynamic = "force-dynamic";
 
 /** خروجی CSV از همه لیدها (کاربرانی که حداقل نام یا پروفایل دارند). فقط ادمین. */
 export async function GET(req: NextRequest) {

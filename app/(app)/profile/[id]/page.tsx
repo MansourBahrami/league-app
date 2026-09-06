@@ -15,7 +15,6 @@ import StarBadge from "@/components/ui/StarBadge";
 import { isBlockedBetween } from "@/lib/privacy";
 import PublicProfileSafetyActions from "@/components/profile/PublicProfileSafetyActions";
 
-export const dynamic = "force-dynamic";
 
 interface Props {
   params: Promise<{ id: string }>;

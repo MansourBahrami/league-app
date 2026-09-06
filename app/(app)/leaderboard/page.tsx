@@ -18,7 +18,6 @@ import {
   getCachedMainLeaderboard,
 } from "@/lib/leaderboard-cache";
 
-export const dynamic = "force-dynamic";
 
 const MIN_LEAGUE_SIZE = 5; // زیر این تعداد هم‌سطح فعال → لیگ آزاد (حل cold start)
 

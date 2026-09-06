@@ -1,7 +1,6 @@
 import { prisma } from "@/lib/db";
 import UserReportsList from "@/components/admin/UserReportsList";
 
-export const dynamic = "force-dynamic";
 
 export default async function AdminReportsPage() {
   const reports = await prisma.userReport.findMany({
