@@ -69,6 +69,7 @@ npm run test:stale-sessions # تست ایزولهٔ تسویه running/paused ر
 npm run test:invariants     # read-only؛ روی violation با exit code 1 تمام می‌شود
 npm run maintenance:stale-sessions # پیش‌نمایش read-only سشن‌های قابل تسویه
 npm run test:load:500 # فقط development/staging و همراه production build محلی
+npm run test:load:production-visible # فقط اجرای کنترل‌شدهٔ عملیاتی؛ نیازمند env production
 ```
 
 `test:gamification` یک تست صرفاً واحد نیست؛ روی دیتابیس تنظیم‌شده رکورد آزمایشی ایجاد و در پایان پاک می‌کند. فقط روی دیتابیس توسعه اجرا شود.
@@ -82,6 +83,13 @@ npm run build
 GCAMP_LOAD_TEST_MODE=1 npm run start
 npm run test:load:500
 ```
+
+برای تست کنترل‌شده روی production که فعالیت کاربران آزمایشی در بورد زنده دیده
+شود، هر دو replica باید موقتاً با `docker-compose.load-test.yml` بالا بیایند.
+این حالت فقط رویداد درخواست‌هایی را که header داخلی تست دارند از ارسال به
+analytics خارجی مستثنا می‌کند. اسکریپت تأیید جداگانهٔ production، تعداد کاربر،
+زمان فعال‌ماندن سشن‌ها و زمان مشاهده پیش از پاک‌سازی را نیز الزامی/قابل تنظیم
+نگه می‌دارد. پس از تست، replicaها فقط با فایل اصلی Compose دوباره ساخته شوند.
 
 تسویهٔ سشن‌های تاریخی به‌صورت پیش‌فرض فقط پیش‌نمایش است. اعمال تغییر فقط روی
 دیتابیس localhost و با دو تأیید صریح ممکن است:

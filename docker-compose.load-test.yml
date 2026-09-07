@@ -1,0 +1,8 @@
+services:
+  app:
+    environment:
+      GCAMP_LOAD_TEST_MODE: "1"
+
+  app-replica:
+    environment:
+      GCAMP_LOAD_TEST_MODE: "1"

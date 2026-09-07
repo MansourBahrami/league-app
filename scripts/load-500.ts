@@ -8,6 +8,10 @@ const USERS = Number(process.env.LOAD_USERS ?? 500);
 const BASE_URL = (process.env.LOAD_BASE_URL ?? "http://127.0.0.1:3000").replace(/\/$/, "");
 const SSE_TIMEOUT_MS = Number(process.env.LOAD_SSE_TIMEOUT_MS ?? 15_000);
 const REQUEST_TIMEOUT_MS = Number(process.env.LOAD_REQUEST_TIMEOUT_MS ?? 120_000);
+const ACTIVE_HOLD_MS = Number(process.env.LOAD_ACTIVE_HOLD_SECONDS ?? 0) * 1_000;
+const OBSERVATION_HOLD_MS = Number(process.env.LOAD_OBSERVATION_HOLD_SECONDS ?? 0) * 1_000;
+const VISIBLE_ACTIVITY = process.env.LOAD_VISIBLE_ACTIVITY === "1";
+const USER_LABEL = process.env.LOAD_USER_LABEL?.trim() || "کاربر بار";
 
 interface PhaseMetrics {
   requests: number;
@@ -130,6 +134,14 @@ async function main() {
   if (!Number.isInteger(USERS) || USERS < 1 || USERS > 2_000) {
     throw new Error("LOAD_USERS باید بین ۱ و ۲۰۰۰ باشد.");
   }
+  if (![ACTIVE_HOLD_MS, OBSERVATION_HOLD_MS].every((value) => Number.isFinite(value) && value >= 0)) {
+    throw new Error("زمان‌های انتظار تست باید عدد نامنفی باشند.");
+  }
+  const target = new URL(BASE_URL);
+  const isLocalTarget = ["127.0.0.1", "localhost", "::1"].includes(target.hostname);
+  if (!isLocalTarget && process.env.PRODUCTION_LOAD_TEST_CONFIRM !== "1") {
+    throw new Error("برای اجرای تست روی مقصد غیرمحلی، PRODUCTION_LOAD_TEST_CONFIRM=1 لازم است.");
+  }
 
   const health = await fetch(`${BASE_URL}/api/health`);
   if (!health.ok) throw new Error(`health_${health.status}`);
@@ -155,15 +167,15 @@ async function main() {
     await prisma.user.createMany({
       data: phones.map((phone, index) => ({
         phone,
-        name: `کاربر بار ${index.toLocaleString("fa-IR")}`,
+        name: `${USER_LABEL} ${String(index + 1).padStart(2, "0")}`,
         grade: "دوازدهم",
         field: "ریاضی",
         onboardingDay: 1,
         isLeadComplete: true,
         hasSeenIntro: true,
         videoAccess: "free",
-        profilePublic: false,
-        activityPublic: false,
+        profilePublic: VISIBLE_ACTIVITY,
+        activityPublic: VISIBLE_ACTIVITY,
       })),
     });
     const users = await prisma.user.findMany({
@@ -217,6 +229,15 @@ async function main() {
       return true;
     });
 
+    if (ACTIVE_HOLD_MS > 0) {
+      console.log(JSON.stringify({
+        stage: "active_sessions_visible",
+        users: USERS,
+        holdSeconds: Math.round(ACTIVE_HOLD_MS / 1_000),
+      }));
+      await new Promise((resolve) => setTimeout(resolve, ACTIVE_HOLD_MS));
+    }
+
     const pauses = await runPhase("pause", starts.outputs, async (started) => {
       const { response, data } = await requestJson<{ state?: string }>(started.token, "/api/study/pause", {
         method: "POST",
@@ -244,7 +265,14 @@ async function main() {
         method: "POST",
         body: JSON.stringify({ sessionId: started.sessionId }),
       });
-      if (!response.ok || data.durationMin !== 0 || data.xpEarned !== 0 || data.coinsEarned !== 0) {
+      if (
+        !response.ok
+        || typeof data.durationMin !== "number"
+        || data.durationMin < 0
+        || data.durationMin >= 15
+        || data.xpEarned !== 0
+        || data.coinsEarned !== 0
+      ) {
         throw new Error(`end_${response.status}`);
       }
       return true;
@@ -312,7 +340,20 @@ async function main() {
         connectTotalMs: Math.round(sseConnectElapsed),
         broadcastReceived: streams.length,
       },
+      visibility: {
+        publicActivity: VISIBLE_ACTIVITY,
+        activeHoldMs: ACTIVE_HOLD_MS,
+        observationHoldMs: OBSERVATION_HOLD_MS,
+      },
     };
+    if (OBSERVATION_HOLD_MS > 0) {
+      console.log(JSON.stringify({
+        stage: "results_visible_before_cleanup",
+        users: USERS,
+        holdSeconds: Math.round(OBSERVATION_HOLD_MS / 1_000),
+      }));
+      await new Promise((resolve) => setTimeout(resolve, OBSERVATION_HOLD_MS));
+    }
   } finally {
     for (const stream of streams) {
       stream.abort.abort();
