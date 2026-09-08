@@ -23,6 +23,7 @@
     "test:load-balancer": "node --import tsx scripts/load-test-balancer.ts",
     "test:load:500": "DEV_LOAD_TEST_CONFIRM=1 node --env-file=.env.local --import tsx scripts/load-500.ts",
     "test:load:production-visible": "DEV_LOAD_TEST_CONFIRM=1 PRODUCTION_LOAD_TEST_CONFIRM=1 LOAD_VISIBLE_ACTIVITY=1 node --import tsx scripts/load-500.ts",
+    "scenario:production": "PRODUCTION_SCENARIO_CONFIRM=1 node --import tsx scripts/seed-production-scenario.ts",
     "test:mission-rooms": "npx tsx scripts/test-mission-rooms.ts",
     "test:auth": "npx tsx scripts/test-auth.ts",
     "bot:bale": "npx tsx scripts/poll-bale.ts"

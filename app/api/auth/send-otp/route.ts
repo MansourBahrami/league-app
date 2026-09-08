@@ -5,6 +5,7 @@ import { normalizePhone } from "@/lib/phone";
 import { deleteOtp, generateOtp, rateLimitIdentity, storeOtp, takeRateLimit } from "@/lib/otp";
 import { recordAuthAttempt } from "@/lib/auth-attempt";
 import { captureCaughtError } from "@/lib/observability";
+import { getConfiguredProductionTestOtp } from "@/lib/production-test-login";
 
 function isValidIranPhone(phone: string): boolean {
   return /^09[0-9]{9}$/.test(phone);
@@ -43,9 +44,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "تعداد درخواست زیاد است؛ یک ساعت دیگر تلاش کن" }, { status: 429 });
     }
 
-    const otp = generateOtp();
+    const productionTestOtp = getConfiguredProductionTestOtp(normalized);
+    const otp = productionTestOtp ?? generateOtp();
     const expirySeconds = parseInt(process.env.OTP_EXPIRY_SECONDS ?? "300");
     await storeOtp(normalized, otp, Number.isFinite(expirySeconds) ? expirySeconds : 300);
+
+    // مسیر عملیاتی موقت: فرم و verify عادی باقی می‌مانند، فقط SMS برای شمارهٔ
+    // allowlistشده ارسال نمی‌شود. کد در پاسخ API افشا نمی‌شود.
+    if (productionTestOtp) {
+      await recordAuthAttempt({ identityHash, action: "otp_request", status: "succeeded", durationMs: Date.now() - startedAt, requestId: req.headers.get("x-request-id") });
+      return NextResponse.json({ message: "کد تأیید به شماره موبایل شما ارسال شد" });
+    }
 
     // در محیط dev کد را مستقیم برمی‌گردانیم (بدون مصرف پیامک)
     if (process.env.NODE_ENV !== "production") {

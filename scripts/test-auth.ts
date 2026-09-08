@@ -7,11 +7,30 @@ import { redis } from "../lib/redis";
 import { NextRequest } from "next/server";
 import { isBotWebhookAuthorized } from "../lib/bot-webhook";
 import { isCrossSiteMutation } from "../lib/request-security";
+import { getConfiguredProductionTestOtp } from "../lib/production-test-login";
 
 async function main() {
   assert.equal(normalizePhone("۰۹۱۲ ۳۴۵ ۶۷۸۹"), "09123456789");
   assert.equal(normalizePhone("+98 912 345 6789"), "09123456789");
   for (let i = 0; i < 100; i++) assert.match(generateOtp(), /^\d{6}$/);
+
+  const now = Date.parse("2026-09-08T10:00:00.000Z");
+  const testLoginEnv = {
+    NODE_ENV: "production",
+    GCAMP_TEST_LOGIN_ENABLED: "1",
+    GCAMP_TEST_LOGIN_PHONE: "09999999001",
+    GCAMP_TEST_LOGIN_OTP: "731942",
+    GCAMP_TEST_LOGIN_EXPIRES_AT: "2026-09-08T12:00:00.000Z",
+  };
+  assert.equal(getConfiguredProductionTestOtp("09999999001", now, testLoginEnv), "731942");
+  assert.equal(getConfiguredProductionTestOtp("09999999002", now, testLoginEnv), null);
+  assert.equal(getConfiguredProductionTestOtp("09999999001", Date.parse("2026-09-08T12:00:01.000Z"), testLoginEnv), null);
+  assert.equal(getConfiguredProductionTestOtp("09999999001", now, { ...testLoginEnv, GCAMP_TEST_LOGIN_ENABLED: "0" }), null);
+  assert.equal(getConfiguredProductionTestOtp("09999999001", now, { ...testLoginEnv, GCAMP_TEST_LOGIN_OTP: "123" }), null);
+  assert.equal(getConfiguredProductionTestOtp("09999999001", now, {
+    ...testLoginEnv,
+    GCAMP_TEST_LOGIN_EXPIRES_AT: "2026-09-08T20:00:00.000Z",
+  }), null);
 
   process.env.TELEGRAM_BOT_USERNAME = "gcamp_test_bot";
   process.env.BALE_BOT_USERNAME = "gcamp_test_bale";

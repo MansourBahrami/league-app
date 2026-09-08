@@ -7,6 +7,10 @@ x-app: &app
   environment:
     - TZ=Asia/Tehran
     - NODE_OPTIONS=--max-old-space-size=640
+    - GCAMP_TEST_LOGIN_ENABLED
+    - GCAMP_TEST_LOGIN_PHONE
+    - GCAMP_TEST_LOGIN_OTP
+    - GCAMP_TEST_LOGIN_EXPIRES_AT
   env_file: .env.production
   depends_on:
     postgres:
