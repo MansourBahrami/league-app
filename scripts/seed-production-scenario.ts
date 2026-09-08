@@ -2,9 +2,12 @@ import { prisma } from "../lib/db";
 import { redis } from "../lib/redis";
 import { broadcastActivity } from "../lib/feed-broadcast";
 import { calcLevel, type MedalCount } from "../lib/gamification";
-import { tehranDayStart } from "../lib/date";
+import { getNextTehranMissionWeek, tehranDayStart } from "../lib/date";
 
 const USER_COUNT = 50;
+const CAMP_MEMBER_START_INDEX = 20;
+const DAILY_CAMP_TARGETS = [3, 5, 7] as const;
+const WEEKLY_CAMP_TARGETS = [20, 25, 30] as const;
 const ID_PREFIX = "prod-scenario-";
 const NAME_PREFIX = "آزمایش production";
 const ACTION = process.argv[2] ?? "seed";
@@ -46,6 +49,111 @@ function profileFor(index: number) {
     return { stage: "ثابت‌قدم حرفه‌ای", xp: 850 + (index - 40) * 30, coins: 150 + index, onboardingDay: 1, step: 0, medals: [20, 25, 30, 35] };
   }
   return { stage: "پیشرو", xp: 1250 + (index - 45) * 80, coins: 240 + index, onboardingDay: 1, step: 0, medals: [20, 25, 30, 35, 35, 40] };
+}
+
+async function seedMissionCamps() {
+  const members = Array.from(
+    { length: USER_COUNT - CAMP_MEMBER_START_INDEX },
+    (_, offset) => ({ index: CAMP_MEMBER_START_INDEX + offset, id: idFor(CAMP_MEMBER_START_INDEX + offset) }),
+  );
+  const memberIds = members.map((member) => member.id);
+  const existingUsers = await prisma.user.count({ where: { id: { in: memberIds } } });
+  if (existingUsers !== members.length) {
+    throw new Error(`scenario_camp_users_${existingUsers}_of_${members.length}`);
+  }
+
+  const missionTargets = [
+    ...DAILY_CAMP_TARGETS.map((targetHours) => ({ kind: "daily", targetHours })),
+    ...WEEKLY_CAMP_TARGETS.map((targetHours) => ({ kind: "weekly", targetHours })),
+  ];
+  const missions = await prisma.mission.findMany({
+    where: {
+      isActive: true,
+      OR: missionTargets,
+    },
+    select: { id: true, kind: true, targetHours: true },
+  });
+  const missionByKey = new Map(missions.map((mission) => [`${mission.kind}:${mission.targetHours}`, mission]));
+  const missingMissions = missionTargets.filter(({ kind, targetHours }) => !missionByKey.has(`${kind}:${targetHours}`));
+  if (missingMissions.length > 0) {
+    throw new Error(`missing_missions:${missingMissions.map(({ kind, targetHours }) => `${kind}:${targetHours}`).join(",")}`);
+  }
+
+  const dailyStartsAt = tehranDayStart();
+  const dailyEndsAt = new Date(dailyStartsAt.getTime() + 86_400_000);
+  const weeklyWindow = getNextTehranMissionWeek();
+  const campDefinitions = missionTargets.map(({ kind, targetHours }) => ({
+    kind,
+    targetHours,
+    mission: missionByKey.get(`${kind}:${targetHours}`)!,
+    startsAt: kind === "daily" ? dailyStartsAt : weeklyWindow.startsAt,
+    endsAt: kind === "daily" ? dailyEndsAt : weeklyWindow.endsAt,
+    status: kind === "daily" ? "active" : "pending",
+  }));
+
+  const result = await prisma.$transaction(async (tx) => {
+    await tx.userMission.deleteMany({ where: { userId: { in: memberIds } } });
+
+    const rooms = new Map<string, string>();
+    for (const camp of campDefinitions) {
+      const room = await tx.missionRoom.upsert({
+        where: { missionId_startsAt: { missionId: camp.mission.id, startsAt: camp.startsAt } },
+        create: {
+          missionId: camp.mission.id,
+          kind: camp.kind,
+          targetHours: camp.targetHours,
+          startsAt: camp.startsAt,
+          endsAt: camp.endsAt,
+        },
+        update: { endsAt: camp.endsAt },
+        select: { id: true },
+      });
+      rooms.set(`${camp.kind}:${camp.targetHours}`, room.id);
+    }
+
+    const userMissions = campDefinitions.flatMap((camp) => {
+      const targets = camp.kind === "daily" ? DAILY_CAMP_TARGETS : WEEKLY_CAMP_TARGETS;
+      return members
+        .filter((_, memberIndex) => {
+          const targetOffset = camp.kind === "daily" ? memberIndex : memberIndex + 1;
+          return targets[targetOffset % targets.length] === camp.targetHours;
+        })
+        .map((member) => ({
+          id: `${ID_PREFIX}mission-${camp.kind}-${member.index + 1}`,
+          userId: member.id,
+          missionId: camp.mission.id,
+          roomId: rooms.get(`${camp.kind}:${camp.targetHours}`)!,
+          activatesAt: camp.startsAt,
+          expiresAt: camp.endsAt,
+          status: camp.status,
+        }));
+    });
+    await tx.userMission.createMany({
+      data: userMissions.map(({ roomId: _roomId, ...userMission }) => userMission),
+    });
+    await tx.missionRoomMember.createMany({
+      data: userMissions.map((userMission) => ({
+        id: `${ID_PREFIX}member-${userMission.id.slice(ID_PREFIX.length)}`,
+        roomId: userMission.roomId,
+        userId: userMission.userId,
+        userMissionId: userMission.id,
+      })),
+    });
+
+    return Promise.all(campDefinitions.map(async (camp) => ({
+      kind: camp.kind,
+      targetHours: camp.targetHours,
+      roomId: rooms.get(`${camp.kind}:${camp.targetHours}`)!,
+      members: await tx.missionRoomMember.count({
+        where: { roomId: rooms.get(`${camp.kind}:${camp.targetHours}`)! },
+      }),
+    })));
+  }, { timeout: 15_000 });
+
+  return {
+    eligibleUsers: members.length,
+    camps: result,
+  };
 }
 
 async function cleanup() {
@@ -158,6 +266,7 @@ async function seed() {
       include: { user: { select: { name: true, avatarUrl: true } } },
     });
   }));
+  const missionCamps = await seedMissionCamps();
 
   return {
     previous,
@@ -165,6 +274,7 @@ async function seed() {
     activeSessions: activeIndexes.length,
     completedSessions: completedSessions.length,
     feedActivities: activityRows.length,
+    missionCamps,
     stages: profiles.reduce<Record<string, number>>((result, profile) => {
       result[profile.stage] = (result[profile.stage] ?? 0) + 1;
       return result;
@@ -201,6 +311,7 @@ async function main() {
   assertConfirmed();
   if (ACTION === "cleanup") return cleanup();
   if (ACTION === "seed") return seed();
+  if (ACTION === "camps") return seedMissionCamps();
   if (ACTION === "live") return live();
   throw new Error(`unknown_action:${ACTION}`);
 }
