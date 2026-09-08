@@ -7,6 +7,7 @@ import { captureClientError, captureProductEvent } from "@/lib/analytics-client"
 interface Props {
   videoId: string;
   hlsUrl: string;
+  posterUrl: string | null;
   title: string;
   durationMin: number;
   initialWatchedSeconds: number;
@@ -14,10 +15,20 @@ interface Props {
 }
 
 const PROGRESS_HEARTBEAT_SECONDS = 30;
+const HLS_MIME_TYPE = "application/vnd.apple.mpegurl";
+
+function isHlsSource(value: string): boolean {
+  try {
+    return new URL(value, "https://app.gcamp.ir").pathname.toLowerCase().endsWith(".m3u8");
+  } catch {
+    return value.split(/[?#]/, 1)[0].toLowerCase().endsWith(".m3u8");
+  }
+}
 
 export default function VideoPlayerClient({
   videoId,
   hlsUrl,
+  posterUrl,
   title,
   durationMin,
   initialWatchedSeconds,
@@ -26,6 +37,7 @@ export default function VideoPlayerClient({
   const videoRef = useRef<HTMLVideoElement>(null);
   const maxSeekRef = useRef(initialWatchedSeconds);
   const lastSaveRef = useRef(initialWatchedSeconds);
+  const lastAttemptRef = useRef(initialWatchedSeconds);
   const savingRef = useRef(false);
   const pendingSaveRef = useRef<number | null>(null);
   const mediaFailureReportedRef = useRef(false);
@@ -33,6 +45,7 @@ export default function VideoPlayerClient({
   const [completed, setCompleted] = useState(isCompleted);
   const unavailableMessage = "فایل این ویدیو در حال حاضر در دسترس نیست. کمی بعد دوباره بررسی کن.";
   const [mediaError, setMediaError] = useState(hlsUrl ? "" : unavailableMessage);
+  const [isBuffering, setIsBuffering] = useState(Boolean(hlsUrl));
   const [progressError, setProgressError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
   const totalSeconds = durationMin * 60;
@@ -46,35 +59,100 @@ export default function VideoPlayerClient({
     if (!video || !hlsUrl) return;
     let cancelled = false;
     let destroyHls: (() => void) | undefined;
+    let networkRecoveryAttempts = 0;
+    let mediaRecoveryAttempts = 0;
 
     mediaFailureReportedRef.current = false;
     setMediaError("");
-    const handleMediaError = () => {
+    setIsBuffering(true);
+    const handleMediaError = (
+      message = "پخش ویدیو انجام نشد. اتصال اینترنت یا فایل ویدیو را بررسی کن.",
+      reason = "media_element_error",
+      context: Record<string, string | number | boolean | null | undefined> = {},
+    ) => {
       if (!cancelled && !mediaFailureReportedRef.current) {
         mediaFailureReportedRef.current = true;
-        setMediaError("پخش ویدیو انجام نشد. اتصال اینترنت یا فایل ویدیو را بررسی کن.");
-        captureProductEvent("video_playback_failed", { video_id: videoId, has_source: true });
-        captureClientError("video.playback", new Error("video_playback_failed"), { video_id: videoId });
+        setIsBuffering(false);
+        setMediaError(message);
+        captureProductEvent("video_playback_failed", { video_id: videoId, has_source: true, reason });
+        captureClientError("video.playback", new Error(`video_playback_failed:${reason}`), {
+          video_id: videoId,
+          ...context,
+        });
       }
     };
-    video.addEventListener("error", handleMediaError);
+    const handleNativeMediaError = () => {
+      handleMediaError(
+        "مرورگر نتوانست فایل ویدیو را پخش کند. اتصال اینترنت یا فرمت فایل را بررسی کن.",
+        "native_media_error",
+        { media_error_code: video.error?.code },
+      );
+    };
+    const handleLoadStart = () => setIsBuffering(true);
+    const handleWaiting = () => {
+      if (!video.paused && !video.ended) setIsBuffering(true);
+    };
+    const handleReady = () => setIsBuffering(false);
+    video.addEventListener("error", handleNativeMediaError);
+    video.addEventListener("loadstart", handleLoadStart);
+    video.addEventListener("waiting", handleWaiting);
+    video.addEventListener("stalled", handleWaiting);
+    video.addEventListener("loadedmetadata", handleReady);
+    video.addEventListener("canplay", handleReady);
+    video.addEventListener("playing", handleReady);
 
-    if (hlsUrl.endsWith(".m3u8")) {
-      void import("hls.js").then(({ default: Hls }) => {
-        if (cancelled) return;
-        if (Hls.isSupported()) {
-          const hls = new Hls();
-          destroyHls = () => hls.destroy();
-          hls.on(Hls.Events.ERROR, (_event, data) => {
-            if (data.fatal) handleMediaError();
-          });
-          hls.loadSource(hlsUrl);
-          hls.attachMedia(video);
-        } else {
-          // Safari و iOS پخش HLS را به‌صورت native انجام می‌دهند.
-          video.src = hlsUrl;
-        }
-      }).catch(handleMediaError);
+    if (isHlsSource(hlsUrl)) {
+      const nativeHlsSupport = video.canPlayType(HLS_MIME_TYPE)
+        || video.canPlayType("application/x-mpegURL");
+      if (nativeHlsSupport) {
+        // Safari و iOS با مسیر native پایدارترند و به MediaSource نیاز ندارند.
+        video.src = hlsUrl;
+      } else {
+        void import("hls.js").then(({ default: Hls }) => {
+          if (cancelled) return;
+          if (Hls.isSupported()) {
+            const hls = new Hls();
+            destroyHls = () => hls.destroy();
+            hls.on(Hls.Events.ERROR, (_event, data) => {
+              if (!data.fatal) return;
+              if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRecoveryAttempts < 1) {
+                networkRecoveryAttempts += 1;
+                hls.startLoad();
+                return;
+              }
+              if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRecoveryAttempts < 1) {
+                mediaRecoveryAttempts += 1;
+                hls.recoverMediaError();
+                return;
+              }
+              handleMediaError(
+                data.type === Hls.ErrorTypes.NETWORK_ERROR
+                  ? "ارتباط با سرور ویدیو برقرار نشد. اینترنت را بررسی و دوباره تلاش کن."
+                  : "این ویدیو در مرورگر قابل پخش نبود. دوباره تلاش کن.",
+                `hls_${data.type}`,
+                {
+                  hls_detail: data.details,
+                  response_code: data.response?.code,
+                  recovery_attempted: networkRecoveryAttempts > 0 || mediaRecoveryAttempts > 0,
+                },
+              );
+            });
+            hls.loadSource(hlsUrl);
+            hls.attachMedia(video);
+          } else {
+            handleMediaError(
+              "این مرورگر از پخش HLS پشتیبانی نمی‌کند.",
+              "hls_unsupported",
+            );
+          }
+        }).catch((caught) => {
+          handleMediaError(
+            "آماده‌سازی پخش‌کننده انجام نشد. دوباره تلاش کن.",
+            "hls_loader_failed",
+            { error_name: caught instanceof Error ? caught.name : "unknown" },
+          );
+        });
+      }
     } else {
       video.src = hlsUrl;
     }
@@ -91,7 +169,13 @@ export default function VideoPlayerClient({
 
     return () => {
       cancelled = true;
-      video.removeEventListener("error", handleMediaError);
+      video.removeEventListener("error", handleNativeMediaError);
+      video.removeEventListener("loadstart", handleLoadStart);
+      video.removeEventListener("waiting", handleWaiting);
+      video.removeEventListener("stalled", handleWaiting);
+      video.removeEventListener("loadedmetadata", handleReady);
+      video.removeEventListener("canplay", handleReady);
+      video.removeEventListener("playing", handleReady);
       video.removeEventListener("loadedmetadata", restorePosition);
       destroyHls?.();
       video.removeAttribute("src");
@@ -118,7 +202,8 @@ export default function VideoPlayerClient({
 
     const saveProgress = async (current: number, force = false) => {
       const normalizedCurrent = Math.max(0, Math.floor(current));
-      if (!force && normalizedCurrent - lastSaveRef.current < PROGRESS_HEARTBEAT_SECONDS) return;
+      if (!force && normalizedCurrent - lastAttemptRef.current < PROGRESS_HEARTBEAT_SECONDS) return;
+      lastAttemptRef.current = Math.max(lastAttemptRef.current, normalizedCurrent);
       if (savingRef.current) {
         pendingSaveRef.current = Math.max(pendingSaveRef.current ?? 0, normalizedCurrent);
         return;
@@ -225,7 +310,7 @@ export default function VideoPlayerClient({
   }, [initialWatchedSeconds, videoId]);
 
   const watchPct = totalSeconds > 0
-    ? Math.round((watchedSeconds / totalSeconds) * 100)
+    ? Math.min(100, Math.max(0, Math.round((watchedSeconds / totalSeconds) * 100)))
     : 0;
 
   return (
@@ -238,7 +323,10 @@ export default function VideoPlayerClient({
             controls
             controlsList="nodownload noplaybackrate"
             disablePictureInPicture
+            poster={posterUrl ?? undefined}
+            preload="metadata"
             playsInline
+            aria-busy={isBuffering}
             aria-label={title}
           />
         ) : (
@@ -249,6 +337,14 @@ export default function VideoPlayerClient({
             <div className="bg-secondary text-on-secondary px-4 py-2 rounded-full flex items-center gap-2">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
               تکمیل شده
+            </div>
+          </div>
+        )}
+        {isBuffering && !mediaError && (
+          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/35 text-white">
+            <div className="flex items-center gap-2 rounded-full bg-black/60 px-3 py-2 text-[12px] font-semibold">
+              <span className="material-symbols-outlined animate-spin text-[18px]" aria-hidden="true">progress_activity</span>
+              در حال آماده‌سازی ویدیو
             </div>
           </div>
         )}

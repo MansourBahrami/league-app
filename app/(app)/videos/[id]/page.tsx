@@ -132,8 +132,10 @@ export default async function VideoPlayerPage({ params }: Props) {
 
       {/* Video Player */}
       <VideoPlayerClient
+        key={video.id}
         videoId={video.id}
         hlsUrl={video.hlsUrl}
+        posterUrl={video.thumbnailUrl}
         title={video.title}
         durationMin={video.durationMin}
         initialWatchedSeconds={progress?.watchedSeconds ?? 0}

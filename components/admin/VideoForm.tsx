@@ -138,6 +138,7 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
       <div className="flex flex-col gap-1.5">
         <label className={labelCls}>آدرس ویدیو (HLS .m3u8 یا mp4) *</label>
         <input dir="ltr" className={inputCls} value={form.hlsUrl} onChange={(e) => set("hlsUrl", e.target.value)} placeholder="https://...m3u8" required />
+        <p className="text-[12px] text-outline">پسوند صحیح HLS برابر ‎.m3u8 است؛ لینک‌های دارای پارامتر امنیتی هم پشتیبانی می‌شوند.</p>
       </div>
 
       <div className="flex flex-col gap-1.5">

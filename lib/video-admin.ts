@@ -27,6 +27,8 @@ export function parseVideoBody(body: Record<string, unknown>) {
 export function validateVideoBody(data: ReturnType<typeof parseVideoBody>): string | null {
   if (!data.title || !data.hlsUrl) return "عنوان و آدرس ویدیو الزامی است";
   if (!isSafeWebUrl(data.hlsUrl)) return "آدرس ویدیو باید مسیر داخلی یا HTTPS معتبر باشد";
+  const videoPathname = new URL(data.hlsUrl, "https://app.gcamp.ir").pathname.toLowerCase();
+  if (videoPathname.endsWith(".m3u3")) return "پسوند لینک HLS باید ‎.m3u8 باشد، نه ‎.m3u3";
   if (data.thumbnailUrl && !isSafeWebUrl(data.thumbnailUrl)) return "آدرس تصویر معتبر نیست";
   if (data.ctaUrl && !isSafeWebUrl(data.ctaUrl)) return "آدرس دکمه باید مسیر داخلی یا HTTPS معتبر باشد";
   if (!Number.isInteger(data.durationMin) || data.durationMin < 1 || data.durationMin > 600) return "مدت ویدیو نامعتبر است";

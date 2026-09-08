@@ -12,7 +12,7 @@ const contentSecurityPolicy = [
   "font-src 'self' data:",
   "img-src 'self' data: blob: https:",
   "media-src 'self' blob: https:",
-  "connect-src 'self' https://us.i.posthog.com https://*.ingest.de.sentry.io https://*.ingest.sentry.io wss:",
+  "connect-src 'self' https://*.arvanvod.ir https://us.i.posthog.com https://*.ingest.de.sentry.io https://*.ingest.sentry.io wss:",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   "upgrade-insecure-requests",
