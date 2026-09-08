@@ -98,7 +98,7 @@ export async function getActiveMissionCatalog(): Promise<{
   };
 }
 
-export async function getActiveVideoCatalog(grade: string | null): Promise<VideoCatalogItem[]> {
+export async function getActiveVideoCatalogSnapshot(): Promise<VideoCatalogItem[]> {
   const now = Date.now();
   const local = memory.videos;
   let value = local && local.expiresAt > now ? local.value : null;
@@ -121,6 +121,11 @@ export async function getActiveVideoCatalog(grade: string | null): Promise<Video
   }
   memory.videos = { value, expiresAt: now + VIDEO_TTL_SECONDS * 1000 };
 
+  return value;
+}
+
+export async function getActiveVideoCatalog(grade: string | null): Promise<VideoCatalogItem[]> {
+  const value = await getActiveVideoCatalogSnapshot();
   return value.filter((video) => video.grades.length === 0 || (!!grade && video.grades.includes(grade)));
 }
 

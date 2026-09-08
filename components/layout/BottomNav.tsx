@@ -67,6 +67,7 @@ export default function BottomNav() {
           <Link
             key={item.href}
             href={item.href}
+            prefetch={true}
             data-tour={item.tour}
             aria-current={isActive ? "page" : undefined}
             className="group min-w-0 flex-1 rounded-[20px] active:scale-[0.96] transition-transform duration-100"

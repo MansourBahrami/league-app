@@ -2,11 +2,11 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
+import { cacheLife } from "next/cache";
 import StatsGrid from "@/components/profile/StatsGrid";
 import MedalsSection from "@/components/profile/MedalsSection";
 import ProfileActions from "@/components/profile/ProfileActions";
 import { getNextLevelRequirement, effectiveStreak, formatStudyMinutes, xpToStudyMinutes, LEVEL_TABLE } from "@/lib/gamification";
-import { getUserMedalCounts } from "@/lib/mission";
 import NotificationToggle from "@/components/push/NotificationToggle";
 import AvatarPicker from "@/components/profile/AvatarPicker";
 import LevelInfoButton from "@/components/profile/LevelInfoButton";
@@ -15,7 +15,17 @@ import StudyReportCard from "@/components/dashboard/StudyReportCard";
 import LogoutButton from "@/components/profile/LogoutButton";
 import PrivacySettings from "@/components/profile/PrivacySettings";
 import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
+import RouteLoading from "@/components/layout/RouteLoading";
 
+const LEVEL_ROWS = LEVEL_TABLE.map((row) => ({
+  level: row.level,
+  stars: row.stars,
+  minXp: row.minXp,
+  maxXp: row.maxXp,
+  requiredMedals: row.requiredMedals.map((group) =>
+    group.map((medal) => ({ hours: medal.hours, count: medal.count }))
+  ),
+}));
 
 function ProfileSectionFallback({ label, height }: { label: string; height: string }) {
   return (
@@ -27,13 +37,52 @@ function ProfileSectionFallback({ label, height }: { label: string; height: stri
   );
 }
 
-async function ProfileMedals({ userId }: { userId: string }) {
-  const userMedals = await prisma.userMedal.findMany({
-    where: { userId },
-    include: { medal: true },
-    orderBy: { earnedAt: "desc" },
-  });
+async function getCachedTotalUsers(): Promise<number> {
+  "use cache";
+  cacheLife({ stale: 3600, revalidate: 3600, expire: 86400 });
+  return prisma.user.count();
+}
 
+async function getCachedUsersAhead(xp: number): Promise<number> {
+  "use cache";
+  cacheLife({ stale: 300, revalidate: 300, expire: 3600 });
+  return prisma.user.count({ where: { xp: { gt: xp } } });
+}
+
+async function ProfileStats({
+  userId,
+  xp,
+  streakValue,
+  lastStudyDate,
+}: {
+  userId: string;
+  xp: number;
+  streakValue: number;
+  lastStudyDate: Date | null;
+}) {
+  const [totalStudyAgg, totalUsers, userRank] = await Promise.all([
+    prisma.studySession.aggregate({
+      where: { userId },
+      _sum: { durationMin: true },
+    }),
+    getCachedTotalUsers(),
+    getCachedUsersAhead(xp),
+  ]);
+  const totalHours = Math.floor((totalStudyAgg._sum.durationMin ?? 0) / 60);
+  const streak = effectiveStreak(streakValue, lastStudyDate);
+
+  return <StatsGrid totalHours={totalHours} streak={streak} rank={userRank + 1} totalUsers={totalUsers} />;
+}
+
+function ProfileMedals({
+  userMedals,
+}: {
+  userMedals: Array<{
+    id: string;
+    earnedAt: Date;
+    medal: { name: string; targetHours: number };
+  }>;
+}) {
   return (
     <MedalsSection
       medals={userMedals.map((userMedal) => ({
@@ -46,28 +95,30 @@ async function ProfileMedals({ userId }: { userId: string }) {
   );
 }
 
-export default async function ProfilePage() {
+async function ProfileContent() {
   const session = await getSession();
   if (!session) redirect("/login");
   preloadAppUserSnapshot(session.userId);
 
-  const [user, totalStudyAgg, totalUsers] = await Promise.all([
+  // مدال‌ها هم برای شرط سطح و هم برای نمایش لازم‌اند؛ یک‌بار خوانده و در هر دو
+  // بخش استفاده می‌شوند.
+  const [user, userMedals] = await Promise.all([
     getAppUserSnapshot(session.userId),
-    prisma.studySession.aggregate({
+    prisma.userMedal.findMany({
       where: { userId: session.userId },
-      _sum: { durationMin: true },
+      include: { medal: true },
+      orderBy: { earnedAt: "desc" },
     }),
-    prisma.user.count(),
   ]);
 
   if (!user) redirect("/login");
 
-  const [userRank, medalCounts] = await Promise.all([
-    prisma.user.count({ where: { xp: { gt: user.xp } } }),
-    getUserMedalCounts(session.userId),
-  ]);
-  const totalHours = Math.floor((totalStudyAgg._sum.durationMin ?? 0) / 60);
-  const streak = effectiveStreak(user.streak, user.lastStudyDate);
+  const medalCountMap = new Map<number, number>();
+  for (const userMedal of userMedals) {
+    const hours = userMedal.medal.targetHours;
+    medalCountMap.set(hours, (medalCountMap.get(hours) ?? 0) + 1);
+  }
+  const medalCounts = Array.from(medalCountMap, ([targetHours, count]) => ({ targetHours, count }));
 
   // پیشرفت تا سطح بعدی بر اساس جدول مرکزی (XP + شرط مدال)
   const nextReq = getNextLevelRequirement(user.xp, medalCounts);
@@ -75,15 +126,6 @@ export default async function ProfilePage() {
   const levelProgress = nextReq && nextReq.xpNeeded > 0
     ? Math.min(100, Math.round((user.xp / (user.xp + nextReq.xpNeeded)) * 100))
     : 100;
-
-  // جدول سطح‌ها برای پاپ‌آپ راهنما (به آبجکت ساده‌ی قابل‌سریال تبدیل می‌شود)
-  const levelRows = LEVEL_TABLE.map((r) => ({
-    level: r.level,
-    stars: r.stars,
-    minXp: r.minXp,
-    maxXp: r.maxXp,
-    requiredMedals: r.requiredMedals.map((g) => g.map((m) => ({ hours: m.hours, count: m.count }))),
-  }));
 
   return (
     <div className="flex flex-col gap-4 px-5 pb-6">
@@ -101,7 +143,7 @@ export default async function ProfilePage() {
           </p>
           <div className="mb-1 flex items-center">
             <LevelInfoButton
-              levels={levelRows}
+              levels={LEVEL_ROWS}
               currentLevel={user.level}
               currentStars={user.stars}
               nextLevel={nextReq ? {
@@ -144,7 +186,14 @@ export default async function ProfilePage() {
       </section>
 
       {/* خلاصه‌ی سریع پیش از جزئیات نمودار */}
-      <StatsGrid totalHours={totalHours} streak={streak} rank={userRank + 1} totalUsers={totalUsers} />
+      <Suspense fallback={<ProfileSectionFallback label="در حال دریافت آمار پروفایل" height="h-28" />}>
+        <ProfileStats
+          userId={session.userId}
+          xp={user.xp}
+          streakValue={user.streak}
+          lastStudyDate={user.lastStudyDate}
+        />
+      </Suspense>
 
       {/* روند مطالعه، مهم‌ترین داده‌ی عملکردی پروفایل */}
       <Suspense fallback={<ProfileSectionFallback label="در حال آماده‌سازی گزارش مطالعه" height="h-64" />}>
@@ -152,9 +201,7 @@ export default async function ProfilePage() {
       </Suspense>
 
       {/* دستاوردها پیش از تنظیمات */}
-      <Suspense fallback={<ProfileSectionFallback label="در حال دریافت مدال‌ها" height="h-32" />}>
-        <ProfileMedals userId={session.userId} />
-      </Suspense>
+      <ProfileMedals userMedals={userMedals} />
 
       {/* تنظیمات و اتصال‌های حساب در انتهای صفحه */}
       <section className="flex flex-col gap-3" aria-labelledby="account-settings-title">
@@ -190,5 +237,13 @@ export default async function ProfilePage() {
         <LogoutButton />
       </section>
     </div>
+  );
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={<RouteLoading titleWidth="w-28" primaryHeight="h-52" rows={3} />}>
+      <ProfileContent />
+    </Suspense>
   );
 }

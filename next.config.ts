@@ -37,13 +37,13 @@ const nextConfig: NextConfig = {
   deploymentId: process.env.APP_VERSION || undefined,
   poweredByHeader: false,
   experimental: {
-    // صفحه‌های شخصی همچنان روی سرور dynamic می‌مانند؛ این مقدار فقط payload
-    // اخیر را در Router Cache مرورگر نگه می‌دارد تا رفت‌وبرگشت سریع بین تب‌های
-    // پایین دوباره همان RSC را از شبکه نگیرد. mutationها طبق الگوی موجود
-    // router.refresh() می‌کنند.
+    // صفحه‌های شخصی همچنان روی سرور dynamic می‌مانند؛ Router Cache فقط از
+    // درخواست دوباره هنگام رفت‌وبرگشت بین تب‌ها جلوگیری می‌کند. داده‌های قابل
+    // تغییر بعد از mutation با router.refresh() تازه می‌شوند، بنابراین انقضای
+    // پانزده‌ثانیه‌ای صرفاً بار شبکه/دیتابیس اضافه ایجاد می‌کرد.
     staleTimes: {
-      dynamic: 15,
-      static: 180,
+      dynamic: 300,
+      static: 300,
     },
   },
   allowedDevOrigins: [

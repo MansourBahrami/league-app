@@ -1,22 +1,27 @@
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import VideoCard from "@/components/videos/VideoCard";
+import RouteLoading from "@/components/layout/RouteLoading";
 import { getVideoPrice } from "@/lib/ab";
 import { getVideoUnlockMode } from "@/lib/settings";
 import { tehranDayDiff } from "@/lib/date";
 import { getAppUserSnapshot, preloadAppUserSnapshot } from "@/lib/app-user";
-import { getActiveVideoCatalog } from "@/lib/catalog-cache";
+import { getActiveVideoCatalogSnapshot } from "@/lib/catalog-cache";
 
-
-export default async function VideosPage() {
+async function VideosContent() {
   const session = await getSession();
   if (!session) redirect("/login");
   preloadAppUserSnapshot(session.userId);
 
-  const [user, unlockMode] = await Promise.all([
+  // همهٔ داده‌های مستقل را در یک موج می‌خوانیم. progress هر کاربر حداکثر یک
+  // ردیف به‌ازای هر ویدیو دارد، پس لازم نیست برای ساخت IN منتظر کاتالوگ بمانیم.
+  const [user, unlockMode, catalog, progresses] = await Promise.all([
     getAppUserSnapshot(session.userId),
     getVideoUnlockMode(),
+    getActiveVideoCatalogSnapshot(),
+    prisma.videoProgress.findMany({ where: { userId: session.userId } }),
   ]);
   if (!user) redirect("/login");
 
@@ -24,11 +29,9 @@ export default async function VideosPage() {
   const daysSinceReg = Math.max(1, tehranDayDiff(new Date(), user.createdAt) + 1);
 
   // ویدیوهای متناسب با پایه؛ وضعیت قفل بر اساس تنظیم ادمین (همه باز یا روزبه‌روز).
-  const videos = await getActiveVideoCatalog(user.grade);
-
-  const progresses = await prisma.videoProgress.findMany({
-    where: { userId: session.userId, videoId: { in: videos.map((v) => v.id) } },
-  });
+  const videos = catalog.filter((video) =>
+    video.grades.length === 0 || (!!user.grade && video.grades.includes(user.grade))
+  );
   const progressMap = new Map(progresses.map((p) => [p.videoId, p]));
 
   return (
@@ -91,5 +94,13 @@ export default async function VideosPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VideosPage() {
+  return (
+    <Suspense fallback={<RouteLoading titleWidth="w-32" primaryHeight="h-44" rows={3} />}>
+      <VideosContent />
+    </Suspense>
   );
 }
