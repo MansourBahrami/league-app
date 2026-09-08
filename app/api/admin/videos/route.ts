@@ -13,7 +13,15 @@ export async function POST(req: NextRequest) {
   const validationError = validateVideoBody(data);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
 
-  const video = await prisma.video.create({ data });
+  const video = await prisma.$transaction(async (tx) => {
+    const lastVideo = await tx.video.aggregate({ _max: { sortOrder: true } });
+    return tx.video.create({
+      data: {
+        ...data,
+        sortOrder: (lastVideo._max.sortOrder ?? 0) + 1,
+      },
+    });
+  });
   await invalidateVideoCatalog();
   await recordAdminAudit({ adminUserId: admin.userId, action: "video.create", request: req, targetType: "video", targetId: video.id });
   return NextResponse.json(video, { status: 201 });

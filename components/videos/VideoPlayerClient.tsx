@@ -13,6 +13,8 @@ interface Props {
   isCompleted: boolean;
 }
 
+const PROGRESS_HEARTBEAT_SECONDS = 30;
+
 export default function VideoPlayerClient({
   videoId,
   hlsUrl,
@@ -25,6 +27,7 @@ export default function VideoPlayerClient({
   const maxSeekRef = useRef(initialWatchedSeconds);
   const lastSaveRef = useRef(initialWatchedSeconds);
   const savingRef = useRef(false);
+  const pendingSaveRef = useRef<number | null>(null);
   const mediaFailureReportedRef = useRef(false);
   const [watchedSeconds, setWatchedSeconds] = useState(initialWatchedSeconds);
   const [completed, setCompleted] = useState(isCompleted);
@@ -107,20 +110,25 @@ export default function VideoPlayerClient({
     if (!video) return;
 
     const handleSeeking = () => {
-      if (video.currentTime > maxSeekRef.current + 2) {
+      // جلو زدن محتوای دیده‌نشده از کنترل native، کیبورد یا اسکریپت مجاز نیست.
+      if (video.currentTime > maxSeekRef.current) {
         video.currentTime = maxSeekRef.current;
       }
     };
 
-    const saveProgress = async (current: number) => {
-      if (savingRef.current || current - lastSaveRef.current < 10) return;
+    const saveProgress = async (current: number, force = false) => {
+      const normalizedCurrent = Math.max(0, Math.floor(current));
+      if (!force && normalizedCurrent - lastSaveRef.current < PROGRESS_HEARTBEAT_SECONDS) return;
+      if (savingRef.current) {
+        pendingSaveRef.current = Math.max(pendingSaveRef.current ?? 0, normalizedCurrent);
+        return;
+      }
       savingRef.current = true;
-      lastSaveRef.current = current;
       try {
         const response = await fetch(`/api/videos/${videoId}/progress`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ watchedSeconds: current }),
+          body: JSON.stringify({ watchedSeconds: normalizedCurrent }),
         });
         const data = await response.json().catch((caught) => {
           captureClientError("video.progress_response", caught, { video_id: videoId });
@@ -130,6 +138,7 @@ export default function VideoPlayerClient({
 
         const verifiedSeconds = Number(data.watchedSeconds);
         if (Number.isFinite(verifiedSeconds)) {
+          lastSaveRef.current = Math.max(lastSaveRef.current, verifiedSeconds);
           maxSeekRef.current = Math.max(maxSeekRef.current, verifiedSeconds);
           setWatchedSeconds((previous) => Math.max(previous, verifiedSeconds));
         }
@@ -139,33 +148,79 @@ export default function VideoPlayerClient({
         // heartbeat بعدی دوباره تلاش می‌کند؛ پیشرفت محلی حذف نمی‌شود.
         captureProductEvent("video_progress_failed", { video_id: videoId });
         captureClientError("video.progress", caught, { video_id: videoId });
-        lastSaveRef.current = Math.max(initialWatchedSeconds, current - 10);
         setProgressError("ذخیره پیشرفت ویدیو انجام نشد؛ خودکار دوباره تلاش می‌کنیم.");
       } finally {
         savingRef.current = false;
+        const pending = pendingSaveRef.current;
+        pendingSaveRef.current = null;
+        if (pending !== null && pending > lastSaveRef.current) {
+          void saveProgress(pending, true);
+        }
       }
     };
 
+    const saveBeforeLeaving = () => {
+      const current = Math.max(maxSeekRef.current, video.currentTime || 0);
+      void fetch(`/api/videos/${videoId}/progress`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ watchedSeconds: Math.max(0, Math.floor(current)) }),
+        keepalive: true,
+      }).catch(() => undefined);
+    };
+
     const handleTimeUpdate = () => {
-      const current = Math.floor(video.currentTime);
-      maxSeekRef.current = Math.max(maxSeekRef.current, current);
+      if (video.seeking) return;
+      // این ref محلی با دقت خود پلیر جلو می‌رود و منتظر heartbeat دیتابیس نیست.
+      const currentTime = video.currentTime;
+      const current = Math.floor(currentTime);
+      maxSeekRef.current = Math.max(maxSeekRef.current, currentTime);
       setWatchedSeconds((previous) => Math.max(previous, current));
       void saveProgress(current);
     };
 
+    const handlePlay = () => {
+      // حتی شروع تماشای کوتاه نیز یک VideoProgress برای همین کاربر/ویدیو می‌سازد.
+      void saveProgress(maxSeekRef.current, true);
+    };
+
+    const handlePause = () => {
+      void saveProgress(maxSeekRef.current, true);
+    };
+
     const handleEnded = () => {
-      const current = Math.floor(video.currentTime);
-      lastSaveRef.current = Math.min(lastSaveRef.current, current - 10);
-      void saveProgress(current);
+      const currentTime = video.currentTime;
+      const current = Math.floor(currentTime);
+      maxSeekRef.current = Math.max(maxSeekRef.current, currentTime);
+      void saveProgress(current, true);
+    };
+
+    const handleRateChange = () => {
+      if (video.playbackRate !== 1) video.playbackRate = 1;
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") saveBeforeLeaving();
     };
 
     video.addEventListener("seeking", handleSeeking);
     video.addEventListener("timeupdate", handleTimeUpdate);
+    video.addEventListener("play", handlePlay);
+    video.addEventListener("pause", handlePause);
     video.addEventListener("ended", handleEnded);
+    video.addEventListener("ratechange", handleRateChange);
+    window.addEventListener("pagehide", saveBeforeLeaving);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
+      saveBeforeLeaving();
       video.removeEventListener("seeking", handleSeeking);
       video.removeEventListener("timeupdate", handleTimeUpdate);
+      video.removeEventListener("play", handlePlay);
+      video.removeEventListener("pause", handlePause);
       video.removeEventListener("ended", handleEnded);
+      video.removeEventListener("ratechange", handleRateChange);
+      window.removeEventListener("pagehide", saveBeforeLeaving);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [initialWatchedSeconds, videoId]);
 
@@ -177,7 +232,15 @@ export default function VideoPlayerClient({
     <section className="flex flex-col gap-3">
       <div className="relative w-full rounded-2xl overflow-hidden shadow-lg border border-outline-variant/20 bg-black aspect-video">
         {hlsUrl ? (
-          <video ref={videoRef} className="h-full w-full" controls playsInline aria-label={title} />
+          <video
+            ref={videoRef}
+            className="h-full w-full"
+            controls
+            controlsList="nodownload noplaybackrate"
+            disablePictureInPicture
+            playsInline
+            aria-label={title}
+          />
         ) : (
           <div className="h-full w-full bg-black" aria-hidden="true" />
         )}
@@ -222,9 +285,10 @@ export default function VideoPlayerClient({
       </div>
 
       {watchPct < 90 && (
-        <p className="text-[12px] text-outline text-center">
-          ۹۰٪ ویدیو را تماشا کن تا جایزه بگیری ({(90 - watchPct).toLocaleString("fa-IR")}٪ مانده)
-        </p>
+        <div className="text-[12px] text-outline text-center space-y-1">
+          <p>۹۰٪ ویدیو را تماشا کن تا جایزه بگیری ({(90 - watchPct).toLocaleString("fa-IR")}٪ مانده)</p>
+          <p>جلو زدن و تغییر سرعت پخش غیرفعال است.</p>
+        </div>
       )}
       {progressError && (
         <p role="status" className="text-center text-[12px] text-error">{progressError}</p>

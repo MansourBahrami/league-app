@@ -304,6 +304,7 @@ model Video {
   title        String
   description  String?
   day          Int      @default(0) // روز آنبوردینگ (۱ به بالا؛ طول مسیر = بیشترین day فعال)
+  sortOrder    Int      @default(0) // ترتیب نمایش؛ مستقل از روز بازشدن
   durationMin  Int
   hlsUrl       String
   thumbnailUrl String?
@@ -316,6 +317,7 @@ model Video {
   progresses VideoProgress[]
 
   @@index([day])
+  @@index([isActive, sortOrder])
 }
 
 model VideoProgress {
@@ -335,6 +337,7 @@ model VideoProgress {
   video Video @relation(fields: [videoId], references: [id])
 
   @@unique([userId, videoId])
+  @@index([videoId, completed])
 }
 
 model ActivityLog {

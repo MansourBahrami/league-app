@@ -130,7 +130,7 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 
 #### `Video` / `VideoProgress` — ویدیوهای آنبوردینگ
 - `Video`: `title`, `day` (روز مسیر؛ طول مسیر = بیشترین `day` فعال)، `durationMin`, `hlsUrl`, `thumbnailUrl`, `grades String[]` (پایه‌های هدف؛ خالی = همه)، `ctaLabel`/`ctaUrl` (دکمه CTA زیر ویدیو)، `isActive`.
-- `VideoProgress`: `watchedSeconds`, `completed`, `rewardGiven`, `unlockedAt` (مبنای جایزه ۲× تماشای سریع در ۲۴ ساعت). یکتا بر `[userId, videoId]`.
+- `VideoProgress`: پیشرفت یکتای هر کاربر برای هر ویدیو با `watchedSeconds`، `completed`، `rewardGiven`، `lastProgressAt` و `unlockedAt` (مبنای جایزه ۲× تماشای سریع در ۲۴ ساعت). شروع پخش، heartbeat سی‌ثانیه‌ای، pause و خروج از صفحه ثبت می‌شوند؛ موقعیت anti-seek بین heartbeatها داخل خود پلیر دقیق نگه داشته می‌شود.
 
 #### `ProfileUnlock` — باز کردن لاگ مطالعه دیگران
 `viewerId`, `targetUserId`, `expiresAt` (۱ ساعت). یکتا بر `[viewerId, targetUserId]`. هزینه ۲۰ سکه (`PROFILE_UNLOCK_COST`).
@@ -310,7 +310,7 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 - **حلقه ماموریت**: انتخاب هدف → عضویت در کمپ هم‌هدف‌ها → پیشرفت فردی با زمان تأییدشده → تکمیل (`completed` + XP/سکه/مدال) یا انقضا (`failed`). مأموریت هفتگی جمعه انتخاب و شنبه شروع می‌شود؛ منطق پاداش فردی در `lib/mission.ts` باقی مانده است.
 - **بورد زنده با SSE**: `broadcastActivity()` در `app/api/feed/stream/route.ts` به subscriberها push می‌کند. هنگام جلسه، خرید ماموریت، مدال، و ارتقای سطح فراخوانی می‌شود.
 - **لیدربورد هم‌سطح**: هرکس فقط با کاربران هم‌`level` خودش رقابت می‌کند (شامل تازه‌نفس).
-- **Anti-seek ویدیو**: کاربر نمی‌تواند جلوتر از بیشترین نقطه دیده‌شده برود. جایزه ۱۵ سکه در ۹۰٪ تماشا.
+- **Anti-seek ویدیو**: کاربر نمی‌تواند جلوتر از بیشترین نقطه دیده‌شده برود و سرعت پخش روی ۱× نگه داشته می‌شود. شروع پخش و پیشرفت هر کاربر/ویدیو ثبت می‌شود؛ جایزه ۱۵ سکه در ۹۰٪ تماشا.
 - **پنل ادمین**: route group `(admin)` با محافظت دو لایه (`proxy.ts` احراز هویت + `getAdminSession()` بررسی نقش از DB). CRUD ویدیو با انتخاب پایه چندگانه (`grades String[]`).
 
 ---

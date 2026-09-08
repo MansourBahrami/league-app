@@ -38,7 +38,7 @@ const memory = globalForCatalogs.gcampCatalogs ?? {};
 globalForCatalogs.gcampCatalogs = memory;
 
 const MISSION_KEY = "gcamp:catalog:missions:v1";
-const VIDEO_KEY = "gcamp:catalog:videos:v1";
+const VIDEO_KEY = "gcamp:catalog:videos:v2";
 const MISSION_TTL_SECONDS = 300;
 const VIDEO_TTL_SECONDS = 60;
 
@@ -107,7 +107,7 @@ export async function getActiveVideoCatalogSnapshot(): Promise<VideoCatalogItem[
   if (!Array.isArray(value)) {
     value = await prisma.video.findMany({
       where: { isActive: true, day: { gte: 1 } },
-      orderBy: { day: "asc" },
+      orderBy: [{ sortOrder: "asc" }, { day: "asc" }, { id: "asc" }],
       select: {
         id: true,
         title: true,

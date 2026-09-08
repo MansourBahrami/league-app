@@ -76,7 +76,7 @@ async function main() {
     const existing = await prisma.video.findFirst({ where: { day: v.day } });
     if (!existing) {
       // grades خالی = برای همه پایه‌ها نمایش داده می‌شود
-      await prisma.video.create({ data: { ...v, grades: [], isActive: true } });
+      await prisma.video.create({ data: { ...v, sortOrder: v.day, grades: [], isActive: true } });
     }
   }
   console.log("✅ Onboarding videos seeded");

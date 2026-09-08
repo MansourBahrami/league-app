@@ -93,9 +93,9 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label className={labelCls}>روز مسیر آنبوردینگ</label>
+        <label className={labelCls}>روز بازشدن ویدیو</label>
         <input type="number" min={1} className={inputCls} value={form.day} onChange={(e) => set("day", parseInt(e.target.value) || 1)} />
-        <p className="text-[12px] text-outline">طول مسیر آنبوردینگ = بزرگ‌ترین شماره روزی که ویدیوی فعال دارد. برای بلندتر کردن مسیر، ویدیوی روزِ بالاتر اضافه کنید.</p>
+        <p className="text-[12px] text-outline">این عدد فقط زمان دسترسی روزانه و قیمت گروه پولی را تعیین می‌کند؛ ترتیب نمایش را با فلش‌های صفحهٔ لیست تغییر دهید.</p>
       </div>
 
       {/* پایه تحصیلی — چندانتخابی */}

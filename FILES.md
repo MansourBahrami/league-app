@@ -128,7 +128,7 @@
 | `app/(app)/profile/page.tsx` 🟢 | پروفایل خود: آمار، مدال، ویرایش، خروج، دعوت دوستان. |
 | `app/(app)/profile/[id]/page.tsx` 🟢 | پروفایل عمومی دیگران + باز کردن لاگ مطالعه با سکه. |
 | `app/(app)/videos/page.tsx` 🟢 | فهرست ویدیوهای آموزشی (باز شدن تدریجی). |
-| `app/(app)/videos/[id]/page.tsx` 🟢 | پخش‌کنندهٔ ویدیو (anti-seek + پاداش ۹۰٪). |
+| `app/(app)/videos/[id]/page.tsx` 🟢 | پخش‌کنندهٔ ویدیو (anti-seek محلی دقیق، ترکینگ per-user، heartbeat سی‌ثانیه‌ای و پاداش ۹۰٪). |
 | `app/(app)/tournaments/page.tsx` 🟢 | فهرست تورنومنت‌های فعال/آینده. |
 | `app/(app)/tournaments/[id]/page.tsx` 🟢 | اتاق تورنومنت + لیدربورد اختصاصی + دکمهٔ شرکت. |
 | `app/(app)/inbox/page.tsx` 🟢 | صندوق اعلان، واکنش و جایزه‌های کاربر. |
