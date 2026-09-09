@@ -12,9 +12,16 @@ export async function POST(req: NextRequest) {
   const data = parseVideoBody(await req.json());
   const validationError = validateVideoBody(data);
   if (validationError) return NextResponse.json({ error: validationError }, { status: 400 });
+  if (data.categoryId) {
+    const category = await prisma.videoCategory.findUnique({ where: { id: data.categoryId }, select: { id: true } });
+    if (!category) return NextResponse.json({ error: "دسته‌بندی انتخاب‌شده یافت نشد" }, { status: 400 });
+  }
 
   const video = await prisma.$transaction(async (tx) => {
-    const lastVideo = await tx.video.aggregate({ _max: { sortOrder: true } });
+    const lastVideo = await tx.video.aggregate({
+      where: { categoryId: data.categoryId },
+      _max: { sortOrder: true },
+    });
     return tx.video.create({
       data: {
         ...data,

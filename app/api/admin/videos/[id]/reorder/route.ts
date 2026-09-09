@@ -20,7 +20,13 @@ export async function PATCH(req: NextRequest, { params }: Params) {
   }
 
   const result = await prisma.$transaction(async (tx) => {
+    const current = await tx.video.findUnique({
+      where: { id },
+      select: { categoryId: true },
+    });
+    if (!current) return { status: "not_found" } as const;
     const videos = await tx.video.findMany({
+      where: { categoryId: current.categoryId },
       orderBy: [{ sortOrder: "asc" }, { day: "asc" }, { createdAt: "desc" }, { id: "asc" }],
       select: { id: true },
     });

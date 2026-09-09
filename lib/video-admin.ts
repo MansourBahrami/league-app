@@ -10,6 +10,7 @@ export function parseVideoBody(body: Record<string, unknown>) {
   const ctaLabel = body.ctaLabel ? String(body.ctaLabel).trim() : "";
   const ctaUrl = body.ctaUrl ? String(body.ctaUrl).trim() : "";
   return {
+    categoryId: body.categoryId ? String(body.categoryId).trim() : null,
     title: String(body.title ?? "").trim(),
     description: body.description ? String(body.description) : null,
     day: Number(body.day) || 0,

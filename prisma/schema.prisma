@@ -299,8 +299,22 @@ model UserMedal {
   @@index([userId])
 }
 
+model VideoCategory {
+  id                String   @id @default(cuid())
+  title             String   @unique
+  sortOrder         Int      @default(0)
+  requireSequential Boolean  @default(false) // ویدیو بعدی پس از تکمیل حداقل ۹۰٪ قبلی باز می‌شود
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  videos Video[]
+
+  @@index([sortOrder])
+}
+
 model Video {
   id           String   @id @default(cuid())
+  categoryId   String?
   title        String
   description  String?
   day          Int      @default(0) // روز آنبوردینگ (۱ به بالا؛ طول مسیر = بیشترین day فعال)
@@ -314,10 +328,12 @@ model Video {
   isActive     Boolean  @default(true)
   createdAt    DateTime @default(now())
 
+  category   VideoCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   progresses VideoProgress[]
 
   @@index([day])
   @@index([isActive, sortOrder])
+  @@index([categoryId, sortOrder])
 }
 
 model VideoProgress {

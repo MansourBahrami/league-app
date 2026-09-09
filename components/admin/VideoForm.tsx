@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 interface VideoData {
   id?: string;
+  categoryId: string | null;
   title: string;
   description: string | null;
   day: number;
@@ -17,13 +18,25 @@ interface VideoData {
   isActive: boolean;
 }
 
+interface VideoCategoryOption {
+  id: string;
+  title: string;
+}
+
 const GRADES = ["دهم", "یازدهم", "دوازدهم", "فارغ‌التحصیل"];
 
-export default function VideoForm({ initial }: { initial?: VideoData }) {
+export default function VideoForm({
+  initial,
+  categories,
+}: {
+  initial?: VideoData;
+  categories: VideoCategoryOption[];
+}) {
   const router = useRouter();
   const isEdit = !!initial?.id;
   const [form, setForm] = useState<VideoData>(
     initial ?? {
+      categoryId: null,
       title: "",
       description: "",
       day: 1,
@@ -93,9 +106,24 @@ export default function VideoForm({ initial }: { initial?: VideoData }) {
       </div>
 
       <div className="flex flex-col gap-1.5">
+        <label className={labelCls}>دسته‌بندی</label>
+        <select
+          className={inputCls}
+          value={form.categoryId ?? ""}
+          onChange={(e) => set("categoryId", e.target.value || null)}
+        >
+          <option value="">بدون دسته‌بندی (ویدیوی تکی)</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>{category.title}</option>
+          ))}
+        </select>
+        <p className="text-[12px] text-outline">دسته‌ها و اجبار مشاهده به‌ترتیب از صفحهٔ مدیریت ویدیوها تنظیم می‌شوند.</p>
+      </div>
+
+      <div className="flex flex-col gap-1.5">
         <label className={labelCls}>روز بازشدن ویدیو</label>
-        <input type="number" min={1} className={inputCls} value={form.day} onChange={(e) => set("day", parseInt(e.target.value) || 1)} />
-        <p className="text-[12px] text-outline">این عدد فقط زمان دسترسی روزانه و قیمت گروه پولی را تعیین می‌کند؛ ترتیب نمایش را با فلش‌های صفحهٔ لیست تغییر دهید.</p>
+        <input type="number" min={0} className={inputCls} value={form.day} onChange={(e) => set("day", Math.max(0, parseInt(e.target.value) || 0))} />
+        <p className="text-[12px] text-outline">برای ویدیوهای بدون محدودیت روزانه عدد ۰ را وارد کنید؛ در این حالت لیبل روز هم به کاربر نشان داده نمی‌شود.</p>
       </div>
 
       {/* پایه تحصیلی — چندانتخابی */}

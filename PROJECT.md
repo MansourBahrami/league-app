@@ -128,9 +128,11 @@ npx prisma migrate dev --name <name>  # ساخت migration جدید
 #### `Medal` / `UserMedal` — مدال‌ها
 `Medal` بر اساس `targetHours` (۲۰ تا ۷۰ ساعت، یکتا). `UserMedal` رکورد کسب مدال (تکرارپذیر — هر تکمیل ماموریت یک رکورد جدید).
 
-#### `Video` / `VideoProgress` — ویدیوهای آنبوردینگ
-- `Video`: `title`, `day` (روز مسیر؛ طول مسیر = بیشترین `day` فعال)، `durationMin`, `hlsUrl`, `thumbnailUrl`, `grades String[]` (پایه‌های هدف؛ خالی = همه)، `ctaLabel`/`ctaUrl` (دکمه CTA زیر ویدیو)، `isActive`.
+#### `VideoCategory` / `Video` / `VideoProgress` — دوره‌ها و ویدیوهای آموزشی
+- `VideoCategory`: دستهٔ عنوان‌دار ویدیو با `sortOrder` و تاگل `requireSequential`. در حالت ترتیبی، هر ویدیو فقط بعد از تکمیل حداقل ۹۰٪ تمام ویدیوهای قبلیِ قابل‌نمایش برای پایهٔ همان کاربر باز می‌شود.
+- `Video`: `categoryId?`, `title`, `day` (`0` = بدون محدودیت و بدون لیبل روز؛ مقادیر مثبت = روز مسیر)، `sortOrder` (ترتیب داخل دسته)، `durationMin`, `hlsUrl`, `thumbnailUrl`, `grades String[]` (پایه‌های هدف؛ خالی = همه)، `ctaLabel`/`ctaUrl` (دکمه CTA زیر ویدیو)، `isActive`.
 - `VideoProgress`: پیشرفت یکتای هر کاربر برای هر ویدیو با `watchedSeconds`، `completed`، `rewardGiven`، `lastProgressAt` و `unlockedAt` (مبنای جایزه ۲× تماشای سریع در ۲۴ ساعت). شروع پخش، heartbeat سی‌ثانیه‌ای، pause و خروج از صفحه ثبت می‌شوند؛ موقعیت anti-seek بین heartbeatها داخل خود پلیر دقیق نگه داشته می‌شود.
+- پلیر اختصاصی هماهنگ با تم اپ، کنترل پخش، زمان، صدا، تمام‌صفحه، نوار پیشرفت و سرعت‌های ۰٫۷۵× تا ۳× دارد. برای HLS در مرورگرهای مبتنی بر MediaSource کیفیت خودکار یا دستی ارائه می‌شود؛ در fallback بومی iOS انتخاب کیفیت به سیستم‌عامل سپرده می‌شود. سقف ضدتقلب سرور با سرعت‌های مجاز هماهنگ است.
 
 #### `ProfileUnlock` — باز کردن لاگ مطالعه دیگران
 `viewerId`, `targetUserId`, `expiresAt` (۱ ساعت). یکتا بر `[viewerId, targetUserId]`. هزینه ۲۰ سکه (`PROFILE_UNLOCK_COST`).
@@ -310,8 +312,8 @@ POST /api/auth/send-otp ──► کد ۶ رقمی در Redis (TTL 300s)
 - **حلقه ماموریت**: انتخاب هدف → عضویت در کمپ هم‌هدف‌ها → پیشرفت فردی با زمان تأییدشده → تکمیل (`completed` + XP/سکه/مدال) یا انقضا (`failed`). مأموریت هفتگی جمعه انتخاب و شنبه شروع می‌شود؛ منطق پاداش فردی در `lib/mission.ts` باقی مانده است.
 - **بورد زنده با SSE**: `broadcastActivity()` در `app/api/feed/stream/route.ts` به subscriberها push می‌کند. هنگام جلسه، خرید ماموریت، مدال، و ارتقای سطح فراخوانی می‌شود.
 - **لیدربورد هم‌سطح**: هرکس فقط با کاربران هم‌`level` خودش رقابت می‌کند (شامل تازه‌نفس).
-- **Anti-seek ویدیو**: کاربر نمی‌تواند جلوتر از بیشترین نقطه دیده‌شده برود و سرعت پخش روی ۱× نگه داشته می‌شود. شروع پخش و پیشرفت هر کاربر/ویدیو ثبت می‌شود؛ جایزه ۱۵ سکه در ۹۰٪ تماشا.
-- **پنل ادمین**: route group `(admin)` با محافظت دو لایه (`proxy.ts` احراز هویت + `getAdminSession()` بررسی نقش از DB). CRUD ویدیو با انتخاب پایه چندگانه (`grades String[]`).
+- **Anti-seek ویدیو**: کاربر نمی‌تواند جلوتر از بیشترین نقطه دیده‌شده برود؛ سرعت‌های رسمی ۰٫۷۵× تا ۳× مجازند و سقف پیشرفت سرور با آن‌ها هماهنگ است. شروع پخش و پیشرفت هر کاربر/ویدیو ثبت می‌شود؛ جایزه ۱۵ سکه در ۹۰٪ تماشا.
+- **پنل ادمین**: route group `(admin)` با محافظت دو لایه (`proxy.ts` احراز هویت + `getAdminSession()` بررسی نقش از DB). CRUD ویدیو با انتخاب پایه چندگانه (`grades String[]`)، دسته‌بندی عنوان‌دار و تاگل مشاهدهٔ اجباری به‌ترتیب.
 
 ---
 
@@ -388,7 +390,7 @@ league_proj_new/
 | POST | `/api/mission-rooms/[id]/cheer` | `{ targetUserId, cheer }` | تشویق از پیش‌تعریف‌شده با محدودیت یک‌ساعته |
 | POST | `/api/streak/freeze` | — | خرید مرخصی استریک با ۵۰ سکه |
 | POST | `/api/videos/[id]/buy` | — | خرید ویدیوی روز برای گروه `paid` |
-| POST | `/api/videos/[id]/progress` | `{ watchedSeconds, totalSeconds }` | ثبت پیشرفت + جایزه ۹۰٪ (۲× اگر در ۲۴ ساعت اول) + احتمال تکمیل روز آنبوردینگ |
+| POST | `/api/videos/[id]/progress` | `{ watchedSeconds, playbackRate }` | ثبت پیشرفت + جایزه ۹۰٪ (۲× اگر در ۲۴ ساعت اول) + احتمال تکمیل روز آنبوردینگ |
 | GET | `/api/feed/stream` | — | SSE stream فعالیت‌ها |
 | POST | `/api/feed/[id]/react` | `{ emoji }` | افزودن/تغییر/برداشتن واکنش روی آیتم فید → `{ action, myEmoji, counts, rewardGranted }` |
 | GET | `/api/inbox` | — | فهرست صندوق + تعداد نخوانده‌ها |
@@ -400,6 +402,8 @@ league_proj_new/
 | POST | `/api/tournaments/[id]/join` | — | عضویت در تورنومنت |
 | POST | `/api/admin/videos` | فیلدهای ویدیو + `grades[]` + `ctaLabel`/`ctaUrl` | ساخت ویدیو (فقط ادمین → ۴۰۳) |
 | PATCH/DELETE | `/api/admin/videos/[id]` | — | ویرایش/حذف ویدیو (فقط ادمین) |
+| POST | `/api/admin/video-categories` | `title`, `requireSequential?` | ساخت دستهٔ ویدیو (فقط ادمین) |
+| PATCH/DELETE | `/api/admin/video-categories/[id]` | `title?`, `requireSequential?` | ویرایش/حذف دسته؛ حذف، ویدیوها را به حالت تکی منتقل می‌کند |
 
 ### اسکریپت‌ها (`package.json`)
 - `npm run db:seed` — مدال‌ها، ماموریت‌ها، ویدیوهای آنبوردینگ

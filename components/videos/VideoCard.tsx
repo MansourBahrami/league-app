@@ -18,10 +18,12 @@ interface Props {
   purchasable?: boolean;
   /** قیمت خرید (سکه) برای حالت purchasable */
   price?: number;
+  /** قفل ترتیبی قابل بازکردن است تا صفحه علت و لینک ویدیوی لازم را نشان دهد. */
+  sequenceLocked?: boolean;
 }
 
-export default function VideoCard({ video, watchPct, isCompleted, isLocked = false, lockNote, purchasable = false, price = 0 }: Props) {
-  const badge = `روز ${video.day.toLocaleString("fa-IR")}`;
+export default function VideoCard({ video, watchPct, isCompleted, isLocked = false, lockNote, purchasable = false, price = 0, sequenceLocked = false }: Props) {
+  const badge = video.day > 0 ? `روز ${video.day.toLocaleString("fa-IR")}` : null;
 
   const inner = (
     <div className={`relative bg-surface-container-lowest/80 rounded-xl p-1 shadow-[0_10px_25px_color-mix(in_oklab,var(--color-primary)_10%,transparent)] border border-primary/20 backdrop-blur-xl group overflow-hidden transition-all duration-300 ${isLocked ? "opacity-80" : "hover:shadow-[0_15px_30px_color-mix(in_oklab,var(--color-primary)_15%,transparent)] cursor-pointer"}`}>
@@ -49,7 +51,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
           )}
         </div>
         <div className="flex-1 flex flex-col items-start text-right">
-          <div className="bg-primary-fixed/40 text-primary px-2 py-0.5 rounded text-[10px] font-bold mb-1">{badge}</div>
+          {badge && <div className="bg-primary-fixed/40 text-primary px-2 py-0.5 rounded text-[10px] font-bold mb-1">{badge}</div>}
           <h3 className="text-[15px] font-bold text-on-surface leading-tight mb-2">{video.title}</h3>
           {isLocked ? (
             <span className="text-[12px] text-outline flex items-center gap-1">
@@ -76,7 +78,7 @@ export default function VideoCard({ video, watchPct, isCompleted, isLocked = fal
     </div>
   );
 
-  if (isLocked) {
+  if (isLocked && !sequenceLocked) {
     return inner;
   }
 

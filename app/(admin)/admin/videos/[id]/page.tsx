@@ -9,13 +9,21 @@ interface Props {
 
 export default async function EditVideoPage({ params }: Props) {
   const { id } = await params;
-  const video = await prisma.video.findUnique({ where: { id } });
+  const [video, categories] = await Promise.all([
+    prisma.video.findUnique({ where: { id } }),
+    prisma.videoCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+      select: { id: true, title: true },
+    }),
+  ]);
   if (!video) notFound();
 
   return (
     <VideoForm
+      categories={categories}
       initial={{
         id: video.id,
+        categoryId: video.categoryId,
         title: video.title,
         description: video.description,
         day: video.day,

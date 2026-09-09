@@ -12,6 +12,7 @@ interface Video {
   grades: string[];
   durationMin: number;
   isActive: boolean;
+  category: { title: string } | null;
 }
 
 interface Props {
@@ -71,7 +72,10 @@ export default function AdminVideoRow({ video, position, watchedCount, completed
         <p className="text-[14px] font-bold text-on-surface truncate">{video.title}</p>
         <div className="flex items-center gap-2 text-[11px] text-outline mt-0.5 flex-wrap">
           <span className="bg-tertiary-fixed text-on-tertiary-fixed px-1.5 py-0.5 rounded">ترتیب {position.toLocaleString("fa-IR")}</span>
-          <span className="bg-primary-fixed text-primary px-1.5 py-0.5 rounded">روز {video.day.toLocaleString("fa-IR")}</span>
+          <span>{video.category?.title ?? "ویدیوی تکی"}</span>
+          <span className="bg-primary-fixed text-primary px-1.5 py-0.5 rounded">
+            {video.day > 0 ? `روز ${video.day.toLocaleString("fa-IR")}` : "بدون محدودیت روزانه"}
+          </span>
           <span>{video.grades.length === 0 ? "همه پایه‌ها" : video.grades.join("، ")}</span>
           <span>· {video.durationMin.toLocaleString("fa-IR")} دقیقه</span>
           <span>· شروع تماشا: {watchedCount.toLocaleString("fa-IR")}</span>

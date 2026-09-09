@@ -13,6 +13,7 @@ import {
 } from "@/lib/gamification";
 import Link from "next/link";
 import ProductViewEvent from "@/components/analytics/ProductViewEvent";
+import { findVideoSequenceBlocker } from "@/lib/video-sequence";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -61,22 +62,79 @@ export default async function VideoPlayerPage({ params }: Props) {
   const session = await getSession();
   if (!session) redirect("/login");
 
-  const video = await prisma.video.findUnique({ where: { id } });
-  if (!video) notFound();
+  const video = await prisma.video.findUnique({
+    where: { id },
+    include: {
+      category: {
+        select: {
+          id: true,
+          title: true,
+          requireSequential: true,
+          videos: {
+            where: { isActive: true, day: { gte: 0 } },
+            orderBy: [{ sortOrder: "asc" }, { day: "asc" }, { id: "asc" }],
+            select: { id: true, title: true, grades: true },
+          },
+        },
+      },
+    },
+  });
+  if (!video || !video.isActive || video.day < 0) notFound();
 
-  const [progress, viewer, unlockMode] = await Promise.all([
+  const [progress, viewer, unlockMode, completedProgresses] = await Promise.all([
     prisma.videoProgress.findUnique({
       where: { userId_videoId: { userId: session.userId, videoId: id } },
     }),
     prisma.user.findUnique({
       where: { id: session.userId },
-      select: { videoAccess: true, coins: true, onboardingDay: true, createdAt: true },
+      select: { videoAccess: true, coins: true, onboardingDay: true, createdAt: true, grade: true },
     }),
     getVideoUnlockMode(),
+    prisma.videoProgress.findMany({
+      where: { userId: session.userId, completed: true },
+      select: { videoId: true },
+    }),
   ]);
+  if (!viewer) redirect("/login");
+  if (video.grades.length > 0 && (!viewer.grade || !video.grades.includes(viewer.grade))) notFound();
 
-  const daysSinceReg = Math.max(1, tehranDayDiff(new Date(), viewer?.createdAt ?? new Date()) + 1);
-  const isFuture = unlockMode === "all" ? false : video.day > daysSinceReg;
+  const daysSinceReg = Math.max(1, tehranDayDiff(new Date(), viewer.createdAt) + 1);
+  const isFuture = video.day > 0 && unlockMode !== "all" && video.day > daysSinceReg;
+  const completedIds = new Set(completedProgresses.map((item) => item.videoId));
+  const sequenceBlocker = video.category?.requireSequential
+    ? findVideoSequenceBlocker(video.category.videos, video.id, completedIds, viewer.grade)
+    : null;
+  const backHref = video.category ? `/videos/categories/${video.category.id}` : "/videos";
+
+  if (isFuture || sequenceBlocker) {
+    return (
+      <div className="flex flex-col gap-6 px-5 pb-6">
+        <ProductViewEvent event="video_opened" properties={{ video_id: id, access: sequenceBlocker ? "sequence_locked" : "locked" }} />
+        <Link href={backHref} className="mt-2 flex items-center gap-2 text-on-surface-variant transition-colors hover:text-primary">
+          <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_back</span>
+          <span className="text-[14px] font-semibold">بازگشت به {video.category ? video.category.title : "لیست ویدیوها"}</span>
+        </Link>
+        <div className="glass-card flex flex-col items-center gap-3 rounded-2xl p-6 text-center">
+          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary-fixed">
+            <span className="material-symbols-outlined text-[32px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>lock</span>
+          </div>
+          <h1 className="text-[18px] font-extrabold text-on-surface">{video.title}</h1>
+          {sequenceBlocker ? (
+            <>
+              <p className="text-[14px] leading-6 text-on-surface-variant">
+                برای دیدن این ویدیو، اول باید حداقل ۹۰٪ ویدیوی «{sequenceBlocker.title}» را ببینی.
+              </p>
+              <Link href={`/videos/${sequenceBlocker.id}`} className="gamified-btn mt-2 w-full max-w-[360px] rounded-xl bg-primary py-3 text-[14px] font-bold text-on-primary">
+                رفتن به ویدیوی قبلی
+              </Link>
+            </>
+          ) : (
+            <p className="text-[14px] text-on-surface-variant">این ویدیو هنوز در دسترس قرار نگرفته است.</p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // گروه paid: ویدیوهای مسیر فقط بعد از خرید قابل تماشا هستند.
   const needsPurchase = viewer?.videoAccess === "paid" && video.day >= 1 && !progress?.purchasedAt;
@@ -85,9 +143,9 @@ export default async function VideoPlayerPage({ params }: Props) {
     return (
       <div className="flex flex-col gap-6 px-5 pb-6">
         <ProductViewEvent event="video_opened" properties={{ video_id: id, access: "locked" }} />
-        <Link href="/videos" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mt-2">
+        <Link href={backHref} className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mt-2">
           <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_back</span>
-          <span className="text-[14px] font-semibold">بازگشت به لیست ویدیوها</span>
+          <span className="text-[14px] font-semibold">بازگشت به {video.category ? video.category.title : "لیست ویدیوها"}</span>
         </Link>
 
         <div className="glass-card rounded-2xl p-6 flex flex-col items-center text-center gap-3">
@@ -97,23 +155,15 @@ export default async function VideoPlayerPage({ params }: Props) {
             </span>
           </div>
           <h1 className="text-[18px] font-extrabold text-on-surface">{video.title}</h1>
-          {isFuture ? (
-            <p className="text-[14px] text-on-surface-variant">
-              این ویدیو هنوز در دسترس قرار نگرفته است.
-            </p>
-          ) : (
-            <p className="text-[14px] text-on-surface-variant">
-              برای تماشای این ویدیو و گرفتن سکه‌ی جایزه، اول آن را با سکه بخر.
-            </p>
-          )}
+          <p className="text-[14px] text-on-surface-variant">
+            برای تماشای این ویدیو و گرفتن سکه‌ی جایزه، اول آن را با سکه بخر.
+          </p>
           <div className="mt-2 w-full max-w-[360px]">
             <VideoRewardCard rewardGiven={false} fastRewardActive={false} startsAfterPurchase />
           </div>
-          {!isFuture && (
-            <div className="w-full max-w-[360px] mt-2">
-              <BuyVideoButton videoId={video.id} price={price} userCoins={viewer?.coins ?? 0} />
-            </div>
-          )}
+          <div className="w-full max-w-[360px] mt-2">
+            <BuyVideoButton videoId={video.id} price={price} userCoins={viewer.coins} />
+          </div>
         </div>
       </div>
     );
@@ -125,9 +175,9 @@ export default async function VideoPlayerPage({ params }: Props) {
   return (
     <div className="flex flex-col gap-6 px-5 pb-6">
       {/* Back button */}
-      <Link href="/videos" className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mt-2">
+      <Link href={backHref} className="flex items-center gap-2 text-on-surface-variant hover:text-primary transition-colors mt-2">
         <span className="material-symbols-outlined" style={{ transform: "scaleX(-1)" }}>arrow_back</span>
-        <span className="text-[14px] font-semibold">بازگشت به لیست ویدیوها</span>
+        <span className="text-[14px] font-semibold">بازگشت به {video.category ? video.category.title : "لیست ویدیوها"}</span>
       </Link>
 
       {/* Video Player */}
@@ -146,9 +196,16 @@ export default async function VideoPlayerPage({ params }: Props) {
       <section className="flex flex-col gap-4">
         <h1 className="text-[20px] font-bold text-on-surface">{video.title}</h1>
         <div className="flex gap-2 items-center">
-          <span className="bg-surface-container-high text-primary px-3 py-1 rounded-full text-[14px] font-semibold flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">calendar_today</span>روز {video.day.toLocaleString("fa-IR")}
-          </span>
+          {video.category && (
+            <span className="bg-primary-fixed text-primary px-3 py-1 rounded-full text-[14px] font-semibold flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">folder</span>{video.category.title}
+            </span>
+          )}
+          {video.day > 0 && (
+            <span className="bg-surface-container-high text-primary px-3 py-1 rounded-full text-[14px] font-semibold flex items-center gap-1">
+              <span className="material-symbols-outlined text-sm">calendar_today</span>روز {video.day.toLocaleString("fa-IR")}
+            </span>
+          )}
           <span className="text-on-surface-variant text-[16px] flex items-center gap-1">
             <span className="material-symbols-outlined text-sm">schedule</span>{video.durationMin.toLocaleString("fa-IR")} دقیقه
           </span>

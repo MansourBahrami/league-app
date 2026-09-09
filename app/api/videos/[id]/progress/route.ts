@@ -12,6 +12,11 @@ import { getVideoUnlockMode } from "@/lib/settings";
 import { tehranDayDiff } from "@/lib/date";
 import { after } from "next/server";
 import { captureServerEvent } from "@/lib/analytics-server";
+import {
+  getAllowedVideoProgressAdvance,
+  normalizeVideoPlaybackRate,
+} from "@/lib/video-playback";
+import { findVideoSequenceBlocker } from "@/lib/video-sequence";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -22,6 +27,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const reportedSeconds = Number.isFinite(body.watchedSeconds)
     ? Math.max(0, Math.floor(body.watchedSeconds))
     : 0;
+  const playbackRate = normalizeVideoPlaybackRate(body.playbackRate);
   const unlockMode = await getVideoUnlockMode();
   const now = new Date();
 
@@ -33,16 +39,38 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         createdAt: true,
         name: true,
         avatarUrl: true,
+        grade: true,
       },
     });
     const video = await tx.video.findUnique({
       where: { id },
-      select: { day: true, durationMin: true, isActive: true },
+      select: {
+        day: true,
+        durationMin: true,
+        isActive: true,
+        grades: true,
+        category: {
+          select: {
+            requireSequential: true,
+            videos: {
+              where: { isActive: true, day: { gte: 0 } },
+              orderBy: [{ sortOrder: "asc" }, { day: "asc" }, { id: "asc" }],
+              select: { id: true, title: true, grades: true },
+            },
+          },
+        },
+      },
     });
     const existing = await tx.videoProgress.findUnique({
       where: { userId_videoId: { userId: session.userId, videoId: id } },
     });
-    if (!viewer || !video || !video.isActive) {
+    if (
+      !viewer
+      || !video
+      || !video.isActive
+      || video.day < 0
+      || (video.grades.length > 0 && (!viewer.grade || !video.grades.includes(viewer.grade)))
+    ) {
       return { status: "not_found" } as const;
     }
 
@@ -50,8 +78,23 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       1,
       tehranDayDiff(now, viewer.createdAt) + 1,
     );
-    if (unlockMode !== "all" && video.day > daysSinceRegistration) {
+    if (video.day > 0 && unlockMode !== "all" && video.day > daysSinceRegistration) {
       return { status: "locked" } as const;
+    }
+    if (video.category?.requireSequential) {
+      const completed = await tx.videoProgress.findMany({
+        where: { userId: session.userId, completed: true },
+        select: { videoId: true },
+      });
+      const blocker = findVideoSequenceBlocker(
+        video.category.videos,
+        id,
+        new Set(completed.map((item) => item.videoId)),
+        viewer.grade,
+      );
+      if (blocker) {
+        return { status: "sequence_locked", blocker } as const;
+      }
     }
     if (viewer.videoAccess === "paid" && video.day >= 1 && !existing?.purchasedAt) {
       return { status: "purchase_required" } as const;
@@ -62,9 +105,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const elapsedSinceHeartbeat = existing?.lastProgressAt
       ? Math.max(0, Math.floor((now.getTime() - existing.lastProgressAt.getTime()) / 1000))
       : 10;
-    // هر heartbeat حداکثر به‌اندازه زمان واقعی گذشته (+۵ ثانیه tolerance) و
-    // حداکثر ۳۰ ثانیه پیشرفت می‌دهد؛ بنابراین پرش مستقیم به ۹۰٪ ممکن نیست.
-    const allowedAdvance = Math.min(30, elapsedSinceHeartbeat + 5);
+    // پیشرفت مجاز با سرعت‌های رسمی پلیر متناسب است. سقف هر heartbeat همچنان
+    // جلوی پرش مستقیم را می‌گیرد: در ۳× حداکثر ۹۰ ثانیه محتوای ویدیو ثبت می‌شود.
+    const allowedAdvance = getAllowedVideoProgressAdvance(elapsedSinceHeartbeat, playbackRate);
     const watchedSeconds = Math.min(
       totalSeconds,
       Math.max(previousSeconds, Math.min(reportedSeconds, previousSeconds + allowedAdvance)),
@@ -137,6 +180,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
   if (result.status === "locked") {
     return NextResponse.json({ error: "این ویدیو هنوز در دسترس نیست" }, { status: 403 });
+  }
+  if (result.status === "sequence_locked") {
+    return NextResponse.json(
+      {
+        error: `اول ویدیوی «${result.blocker.title}» را حداقل تا ۹۰٪ ببین`,
+        prerequisiteVideoId: result.blocker.id,
+      },
+      { status: 403 },
+    );
   }
   if (result.status === "purchase_required") {
     return NextResponse.json(

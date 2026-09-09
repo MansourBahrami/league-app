@@ -19,6 +19,13 @@ export interface MissionCatalogItem {
 
 export interface VideoCatalogItem {
   id: string;
+  categoryId: string | null;
+  category: {
+    id: string;
+    title: string;
+    sortOrder: number;
+    requireSequential: boolean;
+  } | null;
   title: string;
   day: number;
   durationMin: number;
@@ -32,13 +39,13 @@ interface Catalogs {
 }
 
 const globalForCatalogs = globalThis as typeof globalThis & {
-  gcampCatalogs?: Catalogs;
+  gcampCatalogsV3?: Catalogs;
 };
-const memory = globalForCatalogs.gcampCatalogs ?? {};
-globalForCatalogs.gcampCatalogs = memory;
+const memory = globalForCatalogs.gcampCatalogsV3 ?? {};
+globalForCatalogs.gcampCatalogsV3 = memory;
 
 const MISSION_KEY = "gcamp:catalog:missions:v1";
-const VIDEO_KEY = "gcamp:catalog:videos:v2";
+const VIDEO_KEY = "gcamp:catalog:videos:v3";
 const MISSION_TTL_SECONDS = 300;
 const VIDEO_TTL_SECONDS = 60;
 
@@ -106,10 +113,19 @@ export async function getActiveVideoCatalogSnapshot(): Promise<VideoCatalogItem[
   if (!value) value = await readShared<VideoCatalogItem[]>(VIDEO_KEY);
   if (!Array.isArray(value)) {
     value = await prisma.video.findMany({
-      where: { isActive: true, day: { gte: 1 } },
+      where: { isActive: true, day: { gte: 0 } },
       orderBy: [{ sortOrder: "asc" }, { day: "asc" }, { id: "asc" }],
       select: {
         id: true,
+        categoryId: true,
+        category: {
+          select: {
+            id: true,
+            title: true,
+            sortOrder: true,
+            requireSequential: true,
+          },
+        },
         title: true,
         day: true,
         durationMin: true,
