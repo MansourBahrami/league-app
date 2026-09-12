@@ -22,7 +22,7 @@ const TRIGGER_LABELS: Record<string, string> = {
   relative: "نسبت به هدف",
   event: "رویدادی",
 };
-const CHANNEL_LABELS: Record<string, string> = { bale: "بله", push: "مرورگر" };
+const CHANNEL_LABELS: Record<string, string> = { bale: "بله", telegram: "تلگرام", push: "مرورگر" };
 
 function triggerSummary(item: RuleListItem): string {
   const cfg = (item.triggerConfig ?? {}) as Record<string, unknown>;

@@ -54,8 +54,11 @@ export default function ActiveStudents({ initialSnapshot, currentUserId }: Props
       timeoutId = setTimeout(() => void refresh(), 800);
     };
 
+    // The route may have been prefetched, so its server snapshot can be older
+    // than the moment the user actually opens this page.
+    const initialRefreshId = window.setTimeout(() => void refresh(), 0);
+
     const clock = window.setInterval(() => setNowMs(Date.now()), 1000);
-    const poll = window.setInterval(() => void refresh(), 45_000);
     const onVisibility = () => {
       if (document.visibilityState === "visible") debouncedRefresh();
     };
@@ -78,8 +81,8 @@ export default function ActiveStudents({ initialSnapshot, currentUserId }: Props
 
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
+      window.clearTimeout(initialRefreshId);
       window.clearInterval(clock);
-      window.clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus-session-changed", onSessionChange);
       events.close();

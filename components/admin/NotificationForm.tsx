@@ -38,6 +38,11 @@ interface RuleFormData {
   maxPerDay: number | null;
 }
 
+interface VideoCategoryOption {
+  id: string;
+  title: string;
+}
+
 const CHANNEL_LABELS: Record<string, string> = {
   bale: "ربات بله",
   telegram: "ربات تلگرام",
@@ -72,11 +77,24 @@ function previewText(tpl: string): string {
     dailyGoalMin: "۹۰",
     overtakenBy: "۲",
     durationMin: "۶۰",
+    videosStarted: "۴",
+    videosCompleted: "۳",
+    videoWatchedMinutes: "۸۷",
+    videoTitle: "دوره روش مطالعه - جلسه ۳",
+    videoProgressPercent: "۵۰",
+    categoryTitle: "دوره روش مطالعه",
+    categoryVideosCompleted: "۳",
   };
   return tpl.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, k) => sample[k] ?? `{{${k}}}`);
 }
 
-export default function NotificationForm({ initial }: { initial?: RuleFormData }) {
+export default function NotificationForm({
+  initial,
+  videoCategories = [],
+}: {
+  initial?: RuleFormData;
+  videoCategories?: VideoCategoryOption[];
+}) {
   const router = useRouter();
   const isEdit = !!initial?.id;
 
@@ -334,6 +352,22 @@ export default function NotificationForm({ initial }: { initial?: RuleFormData }
                   <option key={k} value={k}>{lbl}</option>
                 ))}
               </select>
+              {String(cfg.event ?? "").startsWith("video_") && (
+                <>
+                  <label className={`${labelCls} mt-2`}>دورهٔ ویدیو (اختیاری)</label>
+                  <select
+                    className={inputCls}
+                    value={String(cfg.categoryId ?? "")}
+                    onChange={(e) => setCfg("categoryId", e.target.value || undefined)}
+                  >
+                    <option value="">همهٔ ویدیوها</option>
+                    {videoCategories.map((category) => (
+                      <option key={category.id} value={category.id}>{category.title}</option>
+                    ))}
+                  </select>
+                  <p className="text-[12px] text-outline">اگر دوره انتخاب شود، رویداد ویدیوهای تکی یا دوره‌های دیگر این قانون را اجرا نمی‌کند.</p>
+                </>
+              )}
               <p className="text-[12px] text-outline">به‌محض وقوع این رویداد برای کاربر، اگر شرط‌ها برقرار باشد ارسال می‌شود.</p>
             </div>
           )}

@@ -11,6 +11,7 @@
     "db:studio": "npx prisma studio",
     "test:gamification": "npx tsx scripts/test-gamification.ts",
     "test:onboarding": "npx tsx scripts/test-onboarding.ts",
+    "test:video-reporting": "npx tsx scripts/test-video-reporting.ts",
     "test:levels": "npx tsx scripts/test-levels.ts",
     "test:timer": "npx tsx scripts/test-study-timer.ts",
     "test:study-concurrency": "node --env-file=.env.local --import tsx scripts/test-study-concurrency.ts",

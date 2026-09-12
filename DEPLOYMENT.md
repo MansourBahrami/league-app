@@ -1,7 +1,71 @@
 # راهنمای استقرار (Production Deployment)
 
 > وضعیت زنده، معماری، نحوه اتصال و کارهای انجام‌شده برای استقرار اپ روی سرور آروان‌کلاد.
-> **آخرین به‌روزرسانی:** شهریور ۱۴۰۵ — انتقال به سرور آروان‌کلاد، فعال‌سازی ورود با پیامک کاوه‌نگار، اتصال ربات بله، گواهی SSL فوری، زمان‌بند کران و Caddy Reverse Proxy.
+> **آخرین به‌روزرسانی:** ۱۷ شهریور ۱۴۰۵ — runbook انتشار SHAدار، rollout مرحله‌ای دو replica، health guard و rollback خودکار.
+
+## ۰. مسیر استاندارد deploy (منبع حقیقت)
+
+برای deploy عادی اپ فقط همین بخش را اجرا کنید. انتشار production دو مرحله دارد:
+
+1. push به `main`، که workflow فایل `.github/workflows/deploy.yml` را اجرا و
+   ایمیج `mansourbahrami/league-app:sha-<FULL_SHA>` را در Docker Hub منتشر می‌کند.
+2. اجرای `scripts/deploy-production.sh`، که همان SHA را با بکاپ و rollout
+   مرحله‌ای روی سرور فعال می‌کند.
+
+### پیش‌نیازهای سیستم محلی
+
+- فایل `ar-gcamp-agent-privatekey.pem` در ریشه پروژه و با دسترسی `600`؛
+- دسترسی push به GitHub و login بودن `gh`؛
+- دسترسی SSH کاربر `ubuntu` به production؛
+- تمیز بودن **index مربوط به commit**؛ وجود تغییرات محلی دیگر مانع deploy یک
+  SHA قبلاً commit‌شده نیست، اما نباید ناخواسته داخل commit قرار بگیرند.
+
+### دستورهای انتشار
+
+```bash
+cd /path/to/league_proj_new
+
+# ۱) اعتبارسنجی محلی
+npm run lint
+npm run build
+
+# ۲) فقط فایل‌های همین تغییر را stage و بازبینی کنید
+git status --short
+git add -- path/to/changed-file another/changed-file
+git diff --cached --check
+git diff --cached --stat
+git commit -m "شرح کوتاه تغییر"
+git push origin main
+
+# ۳) همیشه FULL SHA را deploy کنید؛ نه latest و نه SHA کوتاه
+TARGET_SHA="$(git rev-parse HEAD)"
+
+# اختیاری: فقط preflight، بدون هیچ تغییر production
+./scripts/deploy-production.sh --check "$TARGET_SHA"
+
+# deploy واقعی
+./scripts/deploy-production.sh "$TARGET_SHA"
+```
+
+اسکریپت deploy قبل از هر mutation این موارد را کنترل می‌کند:
+
+- SHA هدف دقیقاً `origin/main` باشد؛
+- GitHub Actions همان SHA موفق شده باشد؛
+- هر دو replica قبل از شروع healthy و روی یک نسخه باشند؛
+- بکاپ PostgreSQL ساخته و catalog آن با `pg_restore` اعتبارسنجی شود؛
+- ابتدا `app` و فقط بعد از healthy شدن آن `app-replica` تعویض شود؛
+- health هر سرویس علاوه بر `status=ok`، دقیقاً SHA هدف را برگرداند؛
+- در شکست health، سرویس تغییرکرده به نسخه قبلی rollback شود؛
+- در پایان، health عمومی از مسیر CDN نیز همان SHA را گزارش کند.
+
+موفقیت deploy فقط وقتی قطعی است که آخرین خط این باشد:
+
+```text
+Deployment complete: <FULL_SHA>
+```
+
+> `git push` به‌تنهایی deploy را کامل نمی‌کند؛ فقط ایمیج را می‌سازد. همچنین
+> `latest` هرگز مبنای انتشار یا rollback نیست.
 
 ---
 
@@ -35,21 +99,31 @@
 
 ### دستور اتصال به سرور از سیستم محلی:
 ```bash
-ssh -i ar-gcamp-agent-privatekey.pem ubuntu@194.5.206.14
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new ubuntu@194.5.206.14
 ```
 
-### همگام‌سازی فایل‌های پروژه با سرور (rsync):
+### همگام‌سازی فایل‌های زیرساختی با سرور (deploy عادی نیست)
+
+کد اپ از داخل ایمیج Docker می‌آید و برای deploy عادی نباید کل repository را
+با `rsync` کپی کرد. به‌خصوص `rsync --delete ./` می‌تواند فایل‌های production یا
+تغییرات محلی ناخواسته را وارد سرور کند.
+
+فقط وقتی خود فایل‌های زیرساختی تغییر کرده‌اند، همان فایل‌های بازبینی‌شده را
+صریحاً همگام کنید:
+
 ```bash
-rsync -avz --delete \
-  -e "ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=no" \
-  --exclude 'node_modules' \
-  --exclude '.next' \
-  --exclude '.git' \
-  --exclude '*.pem' \
-  --exclude '*.key' \
-  --exclude '.env*' \
-  ./ ubuntu@194.5.206.14:/app/league/
+rsync -avz \
+  -e "ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new" \
+  docker-compose.yml run-cron.sh backup-production.sh gcamp.crontab \
+  ubuntu@194.5.206.14:/app/league/
+
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new \
+  ubuntu@194.5.206.14 \
+  'chmod 0755 /app/league/run-cron.sh /app/league/backup-production.sh && crontab /app/league/gcamp.crontab'
 ```
+
+فایل `.env.production` و secretها هیچ‌وقت با rsync بازنویسی نمی‌شوند. تغییر
+`Dockerfile` فقط از مسیر GitHub Actions و ایمیج جدید منتشر می‌شود.
 
 ---
 
@@ -69,7 +143,8 @@ CDN ابر آروان  (لبهٔ داخل ایران)
 Caddy Reverse Proxy + least-connection load balancing  (پورت 80 و 443)
    │
    ▼
-کانتینر app:3000  (Next.js — تفکیک خودکار لندینگ و اپلیکیشن بر اساس Host Header)
+کانتینرهای app:3000 و app-replica:3000
+(روی host به‌ترتیب 127.0.0.1:3000 و 127.0.0.1:3001)
 ```
 
 ### تنظیمات DNS در ابر آروان:
@@ -173,7 +248,8 @@ chmod 0755 /app/league/run-cron.sh
 35  3 * * * /app/league/backup-production.sh                         >> /var/log/league-backup.log 2>&1
 ```
 
-فایل نسخه‌شدهٔ `gcamp.crontab` منبع حقیقت زمان‌بندی production است. پس از deploy:
+فایل نسخه‌شدهٔ `gcamp.crontab` منبع حقیقت زمان‌بندی production است. فقط پس از
+تغییر فایل‌های cron یا همگام‌سازی زیرساخت:
 
 ```bash
 chmod 0755 /app/league/run-cron.sh /app/league/backup-production.sh
@@ -182,20 +258,27 @@ crontab /app/league/gcamp.crontab
 
 ---
 
-## ۷. دستورهای کاربردی مدیریت سرور
+## ۷. دستورهای کاربردی
+
+روی **سیستم محلی**:
 
 ```bash
-# اتصال به سرور
-ssh -i ar-gcamp-agent-privatekey.pem ubuntu@194.5.206.14
+# deploy نسخه‌ای که commit و push شده است
+./scripts/deploy-production.sh "$(git rev-parse HEAD)"
 
+# اتصال تعاملی به سرور
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new ubuntu@194.5.206.14
+```
+
+پس از اتصال، روی **سرور production**:
+
+```bash
 # مشاهده وضعیت کانتینرها
-cd /app/league && sudo docker compose ps
+cd /app/league
+sudo docker compose ps
 
 # مشاهده لاگ زنده برنامه
 sudo docker compose logs -f app
-
-# اجرای مجدد و ساخت مجدد کانتینر
-sudo docker compose up -d --force-recreate app app-replica
 
 # بررسی لاگ‌های کران
 tail -f /var/log/league-cron.log
@@ -211,18 +294,61 @@ sudo systemctl status caddy --no-pager
 - readiness: `GET /api/health` اتصال PostgreSQL و Redis را بررسی می‌کند و در خرابی `503` می‌دهد.
 - liveness: `GET /api/health?mode=live` فقط زنده‌بودن process را بررسی می‌کند.
 - هر build علاوه بر `latest` با `sha-<git-sha>` منتشر می‌شود و همان SHA در پاسخ health دیده می‌شود.
+- دستور اصلی و توصیه‌شده برای rollout همان `scripts/deploy-production.sh` در
+  بخش صفر است. دستورهای زیر fallback دستی برای عیب‌یابی‌اند.
 
-انتشار و rollback باید با tag ثابت انجام شود، نه با حدس‌زدن محتوای `latest`:
+### بررسی نسخه فعال
 
 ```bash
-cd /app/league
-export APP_IMAGE="DOCKERHUB_USER/league-app:sha-COMMIT_SHA"
-sudo -E docker compose pull app app-replica
-sudo -E docker compose up -d --no-deps app app-replica
-curl --fail http://127.0.0.1:3000/api/health
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new \
+  ubuntu@194.5.206.14 \
+  'curl --fail --silent --show-error http://127.0.0.1:3000/api/health && echo && curl --fail --silent --show-error http://127.0.0.1:3001/api/health'
 ```
 
-برای rollback مقدار `APP_IMAGE` را به SHA سالم قبلی برگردانید و همان سه دستور را تکرار کنید. مایگریشن‌ها forward-only هستند؛ rollback کد نباید migration را خودکار پایین بیاورد.
+هر دو پاسخ باید `status: ok` و `version` یکسان داشته باشند.
+
+### rollback دستی
+
+فقط از SHA کامل نسخه سالم قبلی استفاده کنید. replicaها را هم‌زمان recreate
+نکنید؛ بعد از هر سرویس health همان پورت را تأیید کنید:
+
+```bash
+PREVIOUS_SHA="FULL_40_CHARACTER_SHA"
+PREVIOUS_IMAGE="mansourbahrami/league-app:sha-$PREVIOUS_SHA"
+
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new \
+  ubuntu@194.5.206.14 "
+    cd /app/league
+    export APP_IMAGE='$PREVIOUS_IMAGE'
+    sudo -E docker compose pull app app-replica
+    sudo -E docker compose up -d --no-deps --force-recreate app
+  "
+
+# این command باید هم موفق شود و هم نسخه دقیق PREVIOUS_SHA را پیدا کند؛
+# در غیر این صورت replica دوم را تغییر ندهید.
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new \
+  ubuntu@194.5.206.14 "
+    health=\$(curl --fail --silent --show-error http://127.0.0.1:3000/api/health) &&
+    printf '%s\n' \"\$health\" &&
+    printf '%s' \"\$health\" | grep -Fq '\"version\":\"$PREVIOUS_SHA\"'
+  "
+
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new \
+  ubuntu@194.5.206.14 "
+    cd /app/league
+    export APP_IMAGE='$PREVIOUS_IMAGE'
+    sudo -E docker compose up -d --no-deps --force-recreate app-replica
+  "
+
+# پایان rollback: هر دو پورت باید status=ok و version=PREVIOUS_SHA داشته باشند.
+ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new \
+  ubuntu@194.5.206.14 \
+  'curl --fail --silent --show-error http://127.0.0.1:3000/api/health && echo && curl --fail --silent --show-error http://127.0.0.1:3001/api/health'
+```
+
+مایگریشن‌ها forward-only هستند؛ rollback کد نباید و نمی‌تواند migration را
+خودکار پایین بیاورد. هر migration جدید باید با نسخه قبلی اپ backward-compatible
+باشد تا rollout مرحله‌ای امن بماند.
 
 ## ۹. بکاپ و تمرین بازیابی
 

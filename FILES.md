@@ -26,7 +26,7 @@
 | نوتیفیکیشن (Push + ربات) | `lib/push.ts`, `lib/notifications.ts`, `public/sw.js`, `components/push/*` |
 | کارهای زمان‌بندی‌شده | `lib/jobs.ts`, `app/api/cron/run` |
 | پنل ادمین | `app/(admin)/*`, `app/api/admin/*`, `components/admin/*` |
-| زیرساخت/استقرار | `Dockerfile`, `docker-compose.yml`, `.github/workflows/deploy.yml`, `scripts/vps-setup.sh` |
+| زیرساخت/استقرار | `DEPLOYMENT.md`, `scripts/deploy-production.sh`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/deploy.yml` |
 | تحلیل رفتار و پایش خطا | `instrumentation*.ts`, `sentry.*.config.ts`, `lib/analytics-*`, `components/analytics/*`, `app/{error,global-error}.tsx` |
 
 ---
@@ -43,7 +43,7 @@
 | `eslint.config.mjs`, `postcss.config.mjs` | لینت و PostCSS (Tailwind v4). |
 | `prisma.config.ts` | پیکربندی Prisma 7 (مسیر schema و seed). |
 | `Dockerfile` 🟢 | بیلد دو مرحله‌ای ایمیج production (Node 22-slim، خروجی `.next`). |
-| `docker-compose.yml` 🟢 | استک داخل repo: `app` + `postgres` + `redis`. Caddy در پیکربندی production سرور نگهداری می‌شود. |
+| `docker-compose.yml` 🟢 | استک داخل repo: `app` + `app-replica` + `postgres` + `redis`. Caddy در پیکربندی production سرور نگهداری می‌شود. |
 | `.dockerignore`, `.gitignore` | استثناهای build/git (شامل `.next`, `node_modules`, `.env*`). |
 | `.env.example`, `.env.local`, `.env.production.example` | الگو و مقادیر متغیرهای محیطی (local و production). |
 
@@ -52,7 +52,7 @@
 |------|-------|
 | `PROJECT.md` | سند جامع فنی/محصولی (استک، دیتابیس، یوزرفلو، فیچرها). |
 | `FILES.md` | همین فایل — نقشهٔ کدبیس. |
-| `DEPLOYMENT.md` | راهنمای استقرار production (CDN/HTTPS، بله، کاوه‌نگار، redeploy). |
+| `DEPLOYMENT.md` | منبع حقیقت استقرار production: مسیر استاندارد، rollout مرحله‌ای، health check، بکاپ و rollback. |
 | `OBSERVABILITY.md` | راهنمای PostHog، Sentry، Docker logs، حریم خصوصی و چک‌لیست انتشار. |
 | `ROADMAP.md` | فازها و کارهای آینده. |
 | `AGENTS.md` / `CLAUDE.md` | راهنمای ایجنت‌ها (`CLAUDE.md` فقط به `AGENTS.md` اشاره می‌کند). |
@@ -259,7 +259,8 @@
 | `scripts/make-admin.ts` 🟢 | ادمین‌کردن یک کاربر با شماره موبایل. |
 | `scripts/setup-webhooks.ts` 🟢 | ثبت webhook تلگرام و بله از روی env (`APP_PUBLIC_URL`, `BOT_WEBHOOK_SECRET`). |
 | `scripts/test-gamification.ts`, `test-levels.ts`, `test-onboarding.ts`, `test-study-timer.ts` 🟢 | تست‌های منطق گیمیفیکیشن و ماندگاری تایمر (بدون فریم‌ورک تست، اجرای مستقیم با tsx). |
-| `scripts/vps-setup.sh` 🟢 | اسکریپت آماده‌سازی سرور VPS (نصب Docker و وابستگی‌ها). |
+| `scripts/deploy-production.sh` 🟢 | deploy امن یک SHA ساخته‌شده: preflight، بکاپ، rollout مرحله‌ای، health guard و rollback. |
+| `scripts/vps-setup.sh` 🟢 | یادآور سبک وضعیت و مسیر سرور؛ ابزار deploy نیست. |
 | `scripts/seed-notifications.ts` 🟢 | درج idempotent قانون‌های پیش‌فرض اعلان. |
 | `scripts/prod-db-studio.sh` 🟢 | تونل SSH و Prisma Studio روی دیتابیس production. |
 | `prisma/seed-testdata.ts` 🟢 | بازسازی کاربران و داده‌های نمایشی محلی؛ دیتابیس را تغییر می‌دهد. |
@@ -272,6 +273,7 @@
 |------|-------|
 | `.github/workflows/deploy.yml` 🟢 | GitHub Actions: build ایمیج `linux/amd64` و push به Docker Hub روی هر push به `main`. (build-arg: `NEXT_PUBLIC_APP_URL`). |
 | `Dockerfile` 🟢 | بیلد production. |
-| `docker-compose.yml` 🟢 | استک repo (app + postgres + redis)؛ reverse proxy production جداگانه مدیریت می‌شود. |
+| `docker-compose.yml` 🟢 | استک repo (`app` + `app-replica` + PostgreSQL + Redis)؛ reverse proxy production جداگانه مدیریت می‌شود. |
+| `scripts/deploy-production.sh` 🟢 | فرمان استاندارد فعال‌سازی ایمیج SHAدار روی production. |
 
 > جزئیات کامل معماری production، HTTPS از طریق CDN، اتصال بله و کاوه‌نگار، و فرایند redeploy در [DEPLOYMENT.md](DEPLOYMENT.md).

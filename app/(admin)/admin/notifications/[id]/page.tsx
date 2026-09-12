@@ -7,7 +7,13 @@ import type { Condition } from "@/lib/notification-rules";
 
 async function EditNotificationContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const rule = await prisma.notificationRule.findUnique({ where: { id } });
+  const [rule, videoCategories] = await Promise.all([
+    prisma.notificationRule.findUnique({ where: { id } }),
+    prisma.videoCategory.findMany({
+      orderBy: [{ sortOrder: "asc" }, { title: "asc" }],
+      select: { id: true, title: true },
+    }),
+  ]);
   if (!rule) notFound();
 
   const initial = {
@@ -28,7 +34,7 @@ async function EditNotificationContent({ params }: { params: Promise<{ id: strin
     maxPerDay: rule.maxPerDay,
   };
 
-  return <NotificationForm initial={initial} />;
+  return <NotificationForm initial={initial} videoCategories={videoCategories} />;
 }
 
 export default function EditNotificationPage({ params }: { params: Promise<{ id: string }> }) {

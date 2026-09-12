@@ -60,7 +60,13 @@ export interface EnrichedUser {
   dailyGoalMin: number;
   // محاسبه‌شده
   hasPush: boolean;
+  videosStarted: number;
+  videosCompleted: number;
+  videoWatchedMinutes: number;
+  lastVideoProgressAt: Date | null;
 }
+
+export type NotificationContext = Record<string, string | number>;
 
 // ---------------------------------------------------------------------------
 // کاتالوگ فیلدهای قابل‌شرط
@@ -73,7 +79,7 @@ export interface FieldDef {
   type: FieldType;
   ops: Op[];
   options?: readonly string[]; // برای enum
-  resolve: (u: EnrichedUser) => number | string | boolean | null;
+  resolve: (u: EnrichedUser, ctx: NotificationContext) => number | string | boolean | null;
 }
 
 const NUM_OPS: Op[] = ["eq", "ne", "gt", "lt", "gte", "lte", "between"];
@@ -113,6 +119,24 @@ export const FIELDS: FieldDef[] = [
   { key: "hasBale", label: "ربات بله را استارت کرده", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.baleId != null },
   { key: "hasTelegram", label: "ربات تلگرام را استارت کرده", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.telegramId != null },
   { key: "hasPush", label: "اعلان مرورگر فعال دارد", type: "boolean", ops: BOOL_OPS, resolve: (u) => u.hasPush },
+  { key: "videosStarted", label: "تعداد ویدیوی شروع‌شده", type: "number", ops: NUM_OPS, resolve: (u) => u.videosStarted },
+  { key: "videosCompleted", label: "تعداد ویدیوی تکمیل‌شده", type: "number", ops: NUM_OPS, resolve: (u) => u.videosCompleted },
+  { key: "videoWatchedMinutes", label: "مجموع دقایق تماشای ویدیو", type: "number", ops: NUM_OPS, resolve: (u) => u.videoWatchedMinutes },
+  { key: "daysSinceVideoProgress", label: "روز از آخرین تماشای ویدیو", type: "number", ops: NUM_OPS, resolve: (u) => daysSince(u.lastVideoProgressAt) },
+  {
+    key: "currentVideoProgressPercent",
+    label: "درصد مرحلهٔ فعلی ویدیو (رویدادی)",
+    type: "number",
+    ops: NUM_OPS,
+    resolve: (_u, ctx) => Number(ctx.videoProgressPercent ?? 0),
+  },
+  {
+    key: "categoryVideosCompleted",
+    label: "جلسات کامل‌شدهٔ دوره (رویدادی)",
+    type: "number",
+    ops: NUM_OPS,
+    resolve: (_u, ctx) => Number(ctx.categoryVideosCompleted ?? 0),
+  },
 ];
 
 export const FIELD_MAP: Record<string, FieldDef> = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
@@ -136,6 +160,11 @@ export const SEGMENTS: SegmentDef[] = [
   { key: "incompleteProfile", label: "پروفایل ناقص", conditions: [{ field: "isLeadComplete", op: "eq", value: false }] },
   { key: "noBale", label: "ربات بله را استارت نکرده‌اند", conditions: [{ field: "hasBale", op: "eq", value: false }] },
   { key: "noTelegram", label: "ربات تلگرام را استارت نکرده‌اند", conditions: [{ field: "hasTelegram", op: "eq", value: false }] },
+  { key: "videoWarm", label: "لید گرم ویدیویی (۳+ جلسه کامل)", conditions: [{ field: "videosCompleted", op: "gte", value: 3 }] },
+  { key: "videoStartedNotCompleted", label: "ویدیو شروع کرده ولی کامل نکرده", conditions: [
+    { field: "videosStarted", op: "gte", value: 1 },
+    { field: "videosCompleted", op: "eq", value: 0 },
+  ] },
 ];
 
 export const SEGMENT_MAP: Record<string, SegmentDef> = Object.fromEntries(SEGMENTS.map((s) => [s.key, s]));
@@ -149,16 +178,19 @@ export const EVENTS = {
   level_up: "ارتقای سطح",
   medal_earn: "کسب مدال",
   rank_drop: "افت رتبه هفتگی",
+  video_started: "شروع تماشای ویدیو",
+  video_progress_milestone: "رسیدن ویدیو به مرحلهٔ ۲۵، ۵۰ یا ۷۵٪",
+  video_completed: "تکمیل ویدیو (حداقل ۹۰٪)",
 } as const;
 export type NotifEvent = keyof typeof EVENTS;
 
 // ---------------------------------------------------------------------------
 // ارزیابی یک شرط روی یک کاربر
 // ---------------------------------------------------------------------------
-function evalCondition(cond: Condition, u: EnrichedUser): boolean {
+function evalCondition(cond: Condition, u: EnrichedUser, ctx: NotificationContext): boolean {
   const def = FIELD_MAP[cond.field];
   if (!def) return true; // فیلد ناشناخته = نادیده (محافظه‌کارانه)
-  const actual = def.resolve(u);
+  const actual = def.resolve(u, ctx);
   const v = cond.value;
 
   switch (cond.op) {
@@ -192,11 +224,12 @@ function evalCondition(cond: Condition, u: EnrichedUser): boolean {
 export function userMatches(
   u: EnrichedUser,
   segment: string | null,
-  custom: Condition[]
+  custom: Condition[],
+  ctx: NotificationContext = {},
 ): boolean {
   const segConds = segment && SEGMENT_MAP[segment] ? SEGMENT_MAP[segment].conditions : [];
   const all = [...segConds, ...custom];
-  return all.every((c) => evalCondition(c, u));
+  return all.every((c) => evalCondition(c, u, ctx));
 }
 
 // ---------------------------------------------------------------------------
@@ -214,6 +247,9 @@ export function renderTemplate(
     coins: u.coins.toLocaleString("fa-IR"),
     level: u.level,
     dailyGoalMin: u.dailyGoalMin.toLocaleString("fa-IR"),
+    videosStarted: u.videosStarted.toLocaleString("fa-IR"),
+    videosCompleted: u.videosCompleted.toLocaleString("fa-IR"),
+    videoWatchedMinutes: u.videoWatchedMinutes.toLocaleString("fa-IR"),
     rank: u.lastWeeklyRank ? u.lastWeeklyRank.toLocaleString("fa-IR") : "—",
     ...Object.fromEntries(Object.entries(ctx).map(([k, val]) => [k, String(val)])),
   };
@@ -228,4 +264,11 @@ export const TEMPLATE_VARS = [
   { key: "level", label: "سطح" },
   { key: "rank", label: "رتبه هفتگی" },
   { key: "dailyGoalMin", label: "هدف روزانه (دقیقه)" },
+  { key: "videosStarted", label: "ویدیوهای شروع‌شده" },
+  { key: "videosCompleted", label: "ویدیوهای تکمیل‌شده" },
+  { key: "videoWatchedMinutes", label: "دقایق تماشای ویدیو" },
+  { key: "videoTitle", label: "عنوان ویدیوی رویداد" },
+  { key: "videoProgressPercent", label: "درصد مرحلهٔ ویدیو" },
+  { key: "categoryTitle", label: "عنوان دوره" },
+  { key: "categoryVideosCompleted", label: "جلسات کامل‌شدهٔ دوره" },
 ] as const;

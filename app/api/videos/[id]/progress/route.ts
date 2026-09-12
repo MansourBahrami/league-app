@@ -14,9 +14,12 @@ import { after } from "next/server";
 import { captureServerEvent } from "@/lib/analytics-server";
 import {
   getAllowedVideoProgressAdvance,
+  getCrossedVideoProgressMilestones,
   normalizeVideoPlaybackRate,
 } from "@/lib/video-playback";
 import { findVideoSequenceBlocker } from "@/lib/video-sequence";
+import { fireEvent } from "@/lib/notification-engine";
+import type { NotifEvent, NotificationContext } from "@/lib/notification-rules";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -45,12 +48,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     const video = await tx.video.findUnique({
       where: { id },
       select: {
+        title: true,
         day: true,
         durationMin: true,
         isActive: true,
         grades: true,
         category: {
           select: {
+            id: true,
+            title: true,
             requireSequential: true,
             videos: {
               where: { isActive: true, day: { gte: 0 } },
@@ -113,6 +119,15 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       Math.max(previousSeconds, Math.min(reportedSeconds, previousSeconds + allowedAdvance)),
     );
     const completed = totalSeconds > 0 && watchedSeconds / totalSeconds >= 0.9;
+    const currentPercent = totalSeconds > 0
+      ? Math.min(100, Math.floor((watchedSeconds / totalSeconds) * 100))
+      : 0;
+    const crossedMilestones = getCrossedVideoProgressMilestones(
+      previousSeconds,
+      watchedSeconds,
+      totalSeconds,
+    );
+    const startedWatching = previousSeconds === 0 && watchedSeconds > 0;
     const unlockedAt = existing?.unlockedAt ?? now;
 
     const progress = await tx.videoProgress.upsert({
@@ -137,6 +152,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     let reward = 0;
     let completionLog = null;
+    const becameCompleted = !existing?.completed && progress.completed;
     if (completed && !progress.rewardGiven) {
       const fast =
         now.getTime() - unlockedAt.getTime() <=
@@ -164,6 +180,44 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       }
     }
 
+    const notificationEvents: { event: NotifEvent; ctx: NotificationContext }[] = [];
+    if (startedWatching || crossedMilestones.length > 0 || becameCompleted) {
+      const categoryVideosCompleted = await tx.videoProgress.count({
+        where: {
+          userId: session.userId,
+          completed: true,
+          video: video.category?.id
+            ? { categoryId: video.category.id }
+            : { categoryId: null },
+        },
+      });
+      const baseContext: NotificationContext = {
+        videoId: id,
+        videoTitle: video.title,
+        categoryId: video.category?.id ?? "standalone",
+        categoryTitle: video.category?.title ?? "ویدیوهای تکی",
+        categoryVideosCompleted,
+      };
+      if (startedWatching) {
+        notificationEvents.push({
+          event: "video_started",
+          ctx: { ...baseContext, videoProgressPercent: currentPercent },
+        });
+      }
+      for (const milestone of crossedMilestones) {
+        notificationEvents.push({
+          event: "video_progress_milestone",
+          ctx: { ...baseContext, videoProgressPercent: milestone },
+        });
+      }
+      if (becameCompleted) {
+        notificationEvents.push({
+          event: "video_completed",
+          ctx: { ...baseContext, videoProgressPercent: currentPercent },
+        });
+      }
+    }
+
     return {
       status: "saved",
       completed: progress.completed || completed,
@@ -172,6 +226,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       reward,
       completionLog,
       user: { name: viewer.name, avatarUrl: viewer.avatarUrl },
+      notificationEvents,
     } as const;
   });
 
@@ -212,6 +267,13 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       },
       insertId: `video-completed:${session.userId}:${id}`,
     }));
+  }
+  if (result.notificationEvents.length > 0) {
+    after(async () => {
+      await Promise.all(result.notificationEvents.map(({ event, ctx }) => (
+        fireEvent(event, session.userId, ctx)
+      )));
+    });
   }
 
   return NextResponse.json({

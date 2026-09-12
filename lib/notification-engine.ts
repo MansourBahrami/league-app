@@ -24,6 +24,7 @@ import {
   type Condition,
   type NotifEvent,
   type NotifChannel,
+  type NotificationContext,
   userMatches,
   renderTemplate,
 } from "@/lib/notification-rules";
@@ -77,7 +78,24 @@ type RawUser = {
   pastAvgStudyHours: number | null; day1GoalMinutes: number | null;
 };
 
-function toEnriched(u: RawUser, pushSet: Set<string>): EnrichedUser {
+interface VideoNotificationStats {
+  started: number;
+  completed: number;
+  watchedSeconds: number;
+  lastProgressAt: Date | null;
+}
+
+function toEnriched(
+  u: RawUser,
+  pushSet: Set<string>,
+  videoStats: Map<string, VideoNotificationStats>,
+): EnrichedUser {
+  const video = videoStats.get(u.id) ?? {
+    started: 0,
+    completed: 0,
+    watchedSeconds: 0,
+    lastProgressAt: null,
+  };
   return {
     id: u.id,
     name: u.name,
@@ -96,6 +114,10 @@ function toEnriched(u: RawUser, pushSet: Set<string>): EnrichedUser {
     lastWeeklyRank: u.lastWeeklyRank,
     dailyGoalMin: getOnboardingDailyGoalMinutes(u.onboardingDay, u.pastAvgStudyHours, u.day1GoalMinutes),
     hasPush: pushSet.has(u.id),
+    videosStarted: video.started,
+    videosCompleted: video.completed,
+    videoWatchedMinutes: Math.round(video.watchedSeconds / 60),
+    lastVideoProgressAt: video.lastProgressAt,
   };
 }
 
@@ -107,6 +129,46 @@ async function getPushUserSet(userIds?: string[]): Promise<Set<string>> {
     distinct: ["userId"],
   });
   return new Set(subs.map((s) => s.userId));
+}
+
+async function getVideoStatsMap(userIds?: string[]): Promise<Map<string, VideoNotificationStats>> {
+  if (userIds?.length === 0) return new Map();
+  const where = {
+    watchedSeconds: { gt: 0 },
+    ...(userIds ? { userId: { in: userIds } } : {}),
+  };
+  const [allRows, completedRows] = await Promise.all([
+    prisma.videoProgress.groupBy({
+      by: ["userId"],
+      where,
+      _count: { _all: true },
+      _sum: { watchedSeconds: true },
+      _max: { updatedAt: true },
+    }),
+    prisma.videoProgress.groupBy({
+      by: ["userId"],
+      where: { ...where, completed: true },
+      _count: { _all: true },
+    }),
+  ]);
+  const completedMap = new Map(
+    completedRows.map((row) => [row.userId, row._count._all]),
+  );
+  return new Map(allRows.map((row) => [row.userId, {
+    started: row._count._all,
+    completed: completedMap.get(row.userId) ?? 0,
+    watchedSeconds: row._sum.watchedSeconds ?? 0,
+    lastProgressAt: row._max.updatedAt ?? null,
+  }]));
+}
+
+async function enrichUsers(raw: RawUser[]): Promise<EnrichedUser[]> {
+  const userIds = raw.map((user) => user.id);
+  const [pushSet, videoStats] = await Promise.all([
+    getPushUserSet(userIds),
+    getVideoStatsMap(userIds),
+  ]);
+  return raw.map((user) => toEnriched(user, pushSet, videoStats));
 }
 
 // ---------------------------------------------------------------------------
@@ -154,7 +216,7 @@ async function canSend(rule: RuleRow, userId: string, now = new Date()): Promise
 async function sendToUserLocked(
   rule: RuleRow,
   u: EnrichedUser,
-  ctx: Record<string, string | number>,
+  ctx: NotificationContext,
   opts: { skipSafety?: boolean } = {}
 ): Promise<NotifChannel[]> {
   const now = new Date();
@@ -237,7 +299,7 @@ async function sendToUserLocked(
 async function sendToUser(
   rule: RuleRow,
   user: EnrichedUser,
-  ctx: Record<string, string | number>,
+  ctx: NotificationContext,
   opts: { skipSafety?: boolean } = {},
 ): Promise<NotifChannel[]> {
   const locked = await withDistributedLock(
@@ -254,18 +316,18 @@ async function sendToUser(
 async function runRuleOnUsers(
   rule: RuleRow,
   users: EnrichedUser[],
-  ctxFor: (u: EnrichedUser) => Record<string, string | number> = () => ({}),
+  ctxFor: (u: EnrichedUser) => NotificationContext = () => ({}),
   opts: { skipSafety?: boolean; skipConditions?: boolean } = {}
 ): Promise<{ matched: number; sent: number }> {
   const conditions = (Array.isArray(rule.conditions) ? rule.conditions : []) as Condition[];
-  const matchingUsers = users.filter(
-    (user) => opts.skipConditions || userMatches(user, rule.segment, conditions),
-  );
+  const matchingUsers = users
+    .map((user) => ({ user, ctx: ctxFor(user) }))
+    .filter(({ user, ctx }) => opts.skipConditions || userMatches(user, rule.segment, conditions, ctx));
   const matched = matchingUsers.length;
   const outcomes = await mapWithConcurrency(
     matchingUsers,
     10,
-    async (user) => (await sendToUser(rule, user, ctxFor(user), opts)).length > 0,
+    async ({ user, ctx }) => (await sendToUser(rule, user, ctx, opts)).length > 0,
   );
   const sent = outcomes.filter(Boolean).length;
   if (sent > 0) {
@@ -318,8 +380,7 @@ export async function runScheduledRules(windowMin = 15): Promise<{ rules: number
         continue;
       }
       const raw = (await prisma.user.findMany({ select: USER_SELECT })) as RawUser[];
-      const pushSet = await getPushUserSet(raw.map((u) => u.id));
-      const users = raw.map((u) => toEnriched(u, pushSet));
+      const users = await enrichUsers(raw);
       const { sent } = await runRuleOnUsers(rule, users);
       totalSent += sent;
       firedRules++;
@@ -333,8 +394,7 @@ export async function runScheduledRules(windowMin = 15): Promise<{ rules: number
         select: USER_SELECT,
       })) as RawUser[];
       if (!raw.length) continue;
-      const pushSet = await getPushUserSet(raw.map((u) => u.id));
-      const users = raw.map((u) => toEnriched(u, pushSet));
+      const users = await enrichUsers(raw);
       const { sent } = await runRuleOnUsers(rule, users);
       totalSent += sent;
       firedRules++;
@@ -354,22 +414,22 @@ export async function runScheduledRules(windowMin = 15): Promise<{ rules: number
 export async function fireEvent(
   event: NotifEvent,
   userId: string,
-  ctx: Record<string, string | number> = {}
+  ctx: NotificationContext = {}
 ): Promise<void> {
   try {
     const rules = (await prisma.notificationRule.findMany({
       where: { enabled: true, triggerType: "event" },
     })) as unknown as RuleRow[];
     const matching = rules.filter((r) => {
-      const cfg = (r.triggerConfig ?? {}) as { event?: string };
-      return cfg.event === event;
+      const cfg = (r.triggerConfig ?? {}) as { event?: string; categoryId?: string };
+      const categoryMatches = !cfg.categoryId || cfg.categoryId === ctx.categoryId;
+      return cfg.event === event && categoryMatches;
     });
     if (!matching.length) return;
 
     const raw = (await prisma.user.findUnique({ where: { id: userId }, select: USER_SELECT })) as RawUser | null;
     if (!raw) return;
-    const pushSet = await getPushUserSet([userId]);
-    const u = toEnriched(raw, pushSet);
+    const [u] = await enrichUsers([raw]);
 
     for (const rule of matching) {
       await runRuleOnUsers(rule, [u], () => ctx);
@@ -396,8 +456,7 @@ export async function runRuleManually(
 
   const where = testUserId ? { id: testUserId } : undefined;
   const raw = (await prisma.user.findMany({ where, select: USER_SELECT })) as RawUser[];
-  const pushSet = await getPushUserSet(raw.map((u) => u.id));
-  const users = raw.map((u) => toEnriched(u, pushSet));
+  const users = await enrichUsers(raw);
 
   return runRuleOnUsers(rule, users, () => ({}), {
     skipSafety: Boolean(testUserId),

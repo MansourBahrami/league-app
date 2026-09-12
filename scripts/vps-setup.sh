@@ -1,16 +1,16 @@
-#!/bin/bash
-# راهنمای اتصال و راه‌اندازی سرور ابری آروان (Ubuntu 24.04)
-# IP سرور: 194.5.206.14
-# کلید اتصال: ar-gcamp-agent-privatekey.pem
+#!/usr/bin/env bash
+# فقط بررسی اولیه سرور ابری آروان (Ubuntu 24.04).
+# این فایل ابزار deploy نیست؛ منبع حقیقت انتشار production در DEPLOYMENT.md و
+# فرمان استاندارد ./scripts/deploy-production.sh <FULL_SHA> است.
 
-set -e
+set -Eeuo pipefail
 
 # دستور اتصال:
-# ssh -i ar-gcamp-agent-privatekey.pem ubuntu@194.5.206.14
-
-# همگام‌سازی فایل‌های پروژه با سرور:
-# rsync -avz --delete -e "ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=no" --exclude 'node_modules' --exclude '.next' --exclude '.git' --exclude '*.pem' --exclude '*.key' --exclude '.env*' ./ ubuntu@194.5.206.14:/app/league/
+# ssh -i ar-gcamp-agent-privatekey.pem -o StrictHostKeyChecking=accept-new ubuntu@194.5.206.14
+# کل repository را با rsync --delete به production نفرستید. برای تغییرات
+# زیرساختی فقط فایل‌های صریح بخش ۲ DEPLOYMENT.md را همگام کنید.
 
 echo "=== وضعیت سرور ==="
 echo "پروژه در مسیر /app/league مستقر شده است."
 echo "کانتینرها با docker compose مدیریت می‌شوند."
+echo "راهنمای deploy: DEPLOYMENT.md"
