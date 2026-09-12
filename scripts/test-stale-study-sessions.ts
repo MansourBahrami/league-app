@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { prisma } from "../lib/db";
 import { redis } from "../lib/redis";
+import { countActionableStaleStudySessions } from "../lib/invariants";
 import { settleExpiredStudySessions } from "../lib/stale-study-sessions";
 
 async function main() {
@@ -17,6 +18,7 @@ async function main() {
   });
 
   try {
+    const staleBaseline = await countActionableStaleStudySessions(now);
     const studySession = await prisma.studySession.create({
       data: {
         userId: user.id,
@@ -51,6 +53,24 @@ async function main() {
     });
     assert.equal(activityCount, 1);
 
+    const recentlyPausedSession = await prisma.studySession.create({
+      data: {
+        userId: user.id,
+        startTime: new Date(now.getTime() - 26 * 60 * 60 * 1000),
+        pausedAt: new Date(now.getTime() - 60 * 60 * 1000),
+        plannedMin: 30,
+        durationMin: 0,
+      },
+    });
+    assert.equal(await countActionableStaleStudySessions(now), staleBaseline);
+    const recentlyPausedResult = await settleExpiredStudySessions(now, { userIds: [user.id] });
+    assert.equal(recentlyPausedResult.settled, 0);
+    assert.equal(
+      (await prisma.studySession.findUniqueOrThrow({ where: { id: recentlyPausedSession.id } })).endTime,
+      null,
+    );
+    await prisma.studySession.delete({ where: { id: recentlyPausedSession.id } });
+
     const pausedSession = await prisma.studySession.create({
       data: {
         userId: user.id,
@@ -60,6 +80,7 @@ async function main() {
         durationMin: 0,
       },
     });
+    assert.equal(await countActionableStaleStudySessions(now), staleBaseline + 1);
     const pausedResults = await Promise.all(
       Array.from({ length: 20 }, () =>
         settleExpiredStudySessions(now, { userIds: [user.id] })),
@@ -82,6 +103,7 @@ async function main() {
     assert.equal(userAfterPaused.xp, 4);
     assert.equal(userAfterPaused.coins, 4);
     assert.ok(pausedActivity);
+    assert.equal(await countActionableStaleStudySessions(now), staleBaseline);
     console.log("✅ stale study session settlement concurrency test passed");
   } finally {
     await prisma.user.delete({ where: { id: user.id } }).catch(() => undefined);

@@ -37,10 +37,11 @@ ENV APP_VERSION=$APP_VERSION
 # build-only; the runtime containers remain capped separately in Compose.
 ENV NODE_OPTIONS="--max-old-space-size=1280"
 # توکن Sentry فقط هنگام build از BuildKit secret خوانده می‌شود و داخل layer نمی‌ماند.
-# خواندن از فایل با BuildKit قدیمی سرور production هم سازگار است؛ نبودن secret
-# فقط upload کردن source map را غیرفعال می‌کند و خود build را متوقف نمی‌کند.
-RUN --mount=type=secret,id=sentry_auth_token,required=false \
-    export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token 2>/dev/null || true)" \
+# Production images must not ship without debuggable stack traces. Requiring
+# the BuildKit secret prevents a green build from silently skipping uploads.
+RUN --mount=type=secret,id=sentry_auth_token,required=true \
+    export SENTRY_AUTH_TOKEN="$(cat /run/secrets/sentry_auth_token)" \
+    && test -n "$SENTRY_AUTH_TOKEN" \
     && npm run build
 
 # Stage 2: Runner

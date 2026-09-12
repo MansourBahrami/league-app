@@ -1,12 +1,34 @@
 import { prisma } from "@/lib/db";
 import { captureCaughtError, logOperationalEvent } from "@/lib/observability";
 
+export async function countActionableStaleStudySessions(now = new Date()) {
+  const candidateCutoff = new Date(now.getTime() - 30 * 60_000);
+  const staleCutoff = new Date(now.getTime() - 24 * 3_600_000);
+  // Keep this definition aligned with stale-study-sessions.ts. A long-lived
+  // paused session is only actionable after its 24-hour pause grace expires;
+  // counting it from startTime alone creates a false alarm every cron cycle.
+  const rows = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*)::bigint AS count
+    FROM "StudySession"
+    WHERE "endTime" IS NULL
+      AND "startTime" <= ${candidateCutoff}
+      AND (
+        ("pausedAt" IS NOT NULL AND "pausedAt" <= ${staleCutoff})
+        OR (
+          "pausedAt" IS NULL
+          AND "startTime"
+            + (("plannedMin" * 60 + "pausedSec") * INTERVAL '1 second') <= ${now}
+        )
+      )
+  `;
+  return Number(rows[0]?.count ?? 0);
+}
+
 export async function runBusinessInvariantAudit(now = new Date()) {
   const oneHourAgo = new Date(now.getTime() - 3_600_000);
-  const staleCutoff = new Date(now.getTime() - 24 * 3_600_000);
-  const [negativeBalances, staleSessions, duplicateOpenRows, rewardMismatches, inboxCountRows, completedStudyRows, notificationAttempts, otpAttempts] = await Promise.all([
+  const [negativeBalances, actionableStaleSessions, duplicateOpenRows, rewardMismatches, inboxCountRows, completedStudyRows, notificationAttempts, otpAttempts] = await Promise.all([
     prisma.user.count({ where: { OR: [{ coins: { lt: 0 } }, { xp: { lt: 0 } }] } }),
-    prisma.studySession.count({ where: { endTime: null, startTime: { lt: staleCutoff } } }),
+    countActionableStaleStudySessions(now),
     prisma.$queryRaw<Array<{ count: bigint }>>`
       SELECT COUNT(*)::bigint AS count FROM (
         SELECT "userId" FROM "StudySession" WHERE "endTime" IS NULL
@@ -51,7 +73,7 @@ export async function runBusinessInvariantAudit(now = new Date()) {
 
   const result = {
     negativeBalances,
-    staleSessions,
+    staleSessions: actionableStaleSessions,
     duplicateOpenSessions: Number(duplicateOpenRows[0]?.count ?? 0),
     rewardMismatches: Number(rewardMismatches[0]?.count ?? 0),
     inboxCountMismatches: Number(inboxCountRows[0]?.count ?? 0),

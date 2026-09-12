@@ -6,7 +6,10 @@ import {
   summarizeVideoProgress,
 } from "../lib/video-leads";
 import { userMatches, type EnrichedUser } from "../lib/notification-rules";
-import { getCrossedVideoProgressMilestones } from "../lib/video-playback";
+import {
+  getCrossedVideoProgressMilestones,
+  isBenignVideoPlayInterruption,
+} from "../lib/video-playback";
 
 const rows = [
   {
@@ -49,6 +52,15 @@ assert.equal(isHotVideoLead(summary, 3), false);
 assert.deepEqual(getCrossedVideoProgressMilestones(100, 460, 600), [25, 50, 75]);
 assert.deepEqual(getCrossedVideoProgressMilestones(300, 460, 600), [75]);
 assert.deepEqual(getCrossedVideoProgressMilestones(460, 540, 600), []);
+assert.equal(isBenignVideoPlayInterruption({
+  name: "AbortError",
+  message: "The play() request was interrupted by a call to pause().",
+}), true);
+assert.equal(isBenignVideoPlayInterruption({
+  name: "NotAllowedError",
+  message: "play() failed because the user did not interact with the document",
+}), false);
+assert.equal(isBenignVideoPlayInterruption(new Error("network failed")), false);
 
 const user: EnrichedUser = {
   id: "user-1",

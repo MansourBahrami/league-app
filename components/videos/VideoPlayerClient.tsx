@@ -5,9 +5,11 @@ import type Hls from "hls.js";
 import Link from "next/link";
 import { captureClientError, captureProductEvent } from "@/lib/analytics-client";
 import {
+  isBenignVideoPlayInterruption,
   normalizeVideoPlaybackRate,
   VIDEO_PLAYBACK_RATES,
   VIDEO_PROGRESS_HEARTBEAT_SECONDS,
+  VIDEO_PROGRESS_RETRY_DELAYS_MS,
   type VideoPlaybackRate,
 } from "@/lib/video-playback";
 
@@ -115,6 +117,10 @@ export default function VideoPlayerClient({
   const lastAttemptAtRef = useRef<number | null>(null);
   const savingRef = useRef(false);
   const pendingSaveRef = useRef<number | null>(null);
+  const progressRetryTimerRef = useRef<number | null>(null);
+  const progressRetrySecondsRef = useRef<number | null>(null);
+  const progressRetryAttemptRef = useRef(0);
+  const progressFailureReportedRef = useRef(false);
   const mediaFailureReportedRef = useRef(false);
   const controlsTimerRef = useRef<number | null>(null);
   const [watchedSeconds, setWatchedSeconds] = useState(initialWatchedSeconds);
@@ -345,6 +351,33 @@ export default function VideoPlayerClient({
     const video = videoRef.current;
     if (!video) return;
 
+    const clearProgressRetry = () => {
+      if (progressRetryTimerRef.current !== null) {
+        window.clearTimeout(progressRetryTimerRef.current);
+        progressRetryTimerRef.current = null;
+      }
+      progressRetrySecondsRef.current = null;
+      progressRetryAttemptRef.current = 0;
+    };
+
+    const scheduleProgressRetry = (current: number) => {
+      progressRetrySecondsRef.current = Math.max(
+        progressRetrySecondsRef.current ?? 0,
+        Math.max(0, Math.floor(current)),
+      );
+      if (progressRetryTimerRef.current !== null) return;
+
+      const delay = VIDEO_PROGRESS_RETRY_DELAYS_MS[progressRetryAttemptRef.current];
+      if (delay === undefined) return;
+      progressRetryAttemptRef.current += 1;
+      progressRetryTimerRef.current = window.setTimeout(() => {
+        progressRetryTimerRef.current = null;
+        const retrySeconds = progressRetrySecondsRef.current;
+        progressRetrySecondsRef.current = null;
+        if (retrySeconds !== null) void saveProgress(retrySeconds, true);
+      }, delay);
+    };
+
     const handleSeeking = () => {
       // جلو زدن محتوای دیده‌نشده از کنترل native، کیبورد یا اسکریپت مجاز نیست.
       if (video.currentTime > maxSeekRef.current) {
@@ -370,6 +403,8 @@ export default function VideoPlayerClient({
         return;
       }
       savingRef.current = true;
+      let saved = false;
+      let retryable = true;
       try {
         const response = await fetch(`/api/videos/${videoId}/progress`, {
           method: "POST",
@@ -379,11 +414,15 @@ export default function VideoPlayerClient({
             playbackRate: normalizeVideoPlaybackRate(video.playbackRate),
           }),
         });
+        if (!response.ok) {
+          retryable = response.status === 429 || response.status >= 500;
+          throw new Error(`progress_http_${response.status}`);
+        }
         const data = await response.json().catch((caught) => {
           captureClientError("video.progress_response", caught, { video_id: videoId });
           return null;
         });
-        if (!response.ok || !data) throw new Error("progress_failed");
+        if (!data) throw new Error("progress_invalid_response");
 
         const verifiedSeconds = Number(data.watchedSeconds);
         if (Number.isFinite(verifiedSeconds)) {
@@ -392,18 +431,26 @@ export default function VideoPlayerClient({
           setWatchedSeconds((previous) => Math.max(previous, verifiedSeconds));
         }
         if (data.completed) setCompleted(true);
+        saved = true;
+        clearProgressRetry();
+        progressFailureReportedRef.current = false;
         setProgressError("");
       } catch (caught) {
         // heartbeat بعدی دوباره تلاش می‌کند؛ پیشرفت محلی حذف نمی‌شود.
-        captureProductEvent("video_progress_failed", { video_id: videoId });
-        captureClientError("video.progress", caught, { video_id: videoId });
+        if (!progressFailureReportedRef.current) {
+          progressFailureReportedRef.current = true;
+          captureProductEvent("video_progress_failed", { video_id: videoId });
+          captureClientError("video.progress", caught, { video_id: videoId });
+        }
         setProgressError("ذخیره پیشرفت ویدیو انجام نشد؛ خودکار دوباره تلاش می‌کنیم.");
       } finally {
         savingRef.current = false;
         const pending = pendingSaveRef.current;
         pendingSaveRef.current = null;
-        if (pending !== null && pending > lastSaveRef.current) {
+        if (saved && pending !== null && pending > lastSaveRef.current) {
           void saveProgress(pending, true);
+        } else if (!saved && retryable) {
+          scheduleProgressRetry(Math.max(normalizedCurrent, pending ?? 0));
         }
       }
     };
@@ -478,6 +525,10 @@ export default function VideoPlayerClient({
     window.addEventListener("pagehide", saveBeforeLeaving);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
+      if (progressRetryTimerRef.current !== null) {
+        window.clearTimeout(progressRetryTimerRef.current);
+        progressRetryTimerRef.current = null;
+      }
       saveBeforeLeaving();
       video.removeEventListener("seeking", handleSeeking);
       video.removeEventListener("timeupdate", handleTimeUpdate);
@@ -540,6 +591,7 @@ export default function VideoPlayerClient({
     setOpenMenu(null);
     if (video.paused || video.ended) {
       void video.play().catch((caught) => {
+        if (isBenignVideoPlayInterruption(caught)) return;
         captureClientError("video.play_action", caught, { video_id: videoId });
       });
     } else {

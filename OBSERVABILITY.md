@@ -170,8 +170,8 @@ SENTRY_AUTH_TOKEN=sntrys_...
 
 این توکن محرمانه فقط هنگام build برای آپلود Source Map استفاده می‌شود. Workflow آن
 را از GitHub Actions secret به BuildKit secret می‌دهد؛ داخل build arg، repository
-یا لایه‌های image قرار نمی‌گیرد. نبودن secret باید در چک‌لیست انتشار به‌عنوان
-پیکربندی ناقص گزارش شود.
+یا لایه‌های image قرار نمی‌گیرد. Workflow و Dockerfile نبودن یا خالی‌بودن secret
+را خطای build می‌دانند تا image بدون stack trace قابل‌عیب‌یابی منتشر نشود.
 
 ## داده‌های عملیاتی و نگه‌داری
 
@@ -189,6 +189,8 @@ SENTRY_AUTH_TOKEN=sntrys_...
 ### ضروری
 
 - [ ] تغییرات فعلی commit و push شوند تا GitHub Actions ایمیج جدید را بسازد.
+- [ ] secret با نام `SENTRY_AUTH_TOKEN` در GitHub Actions تنظیم باشد؛ workflow
+      عمداً در نبود آن پیش از build متوقف می‌شود.
 - [ ] ایمیج جدید روی VPS pull و کانتینر `app` بازسازی شود.
 - [ ] یک ورود واقعی و یک جلسهٔ مطالعهٔ کوتاه روی production انجام شود.
 - [ ] در PostHog دریافت `signed_in`، `study_started` و `study_completed` بررسی شود.
@@ -202,8 +204,6 @@ SENTRY_AUTH_TOKEN=sntrys_...
 
 - [ ] پس از ۷ تا ۱۴ روز، funnel `signed_in → study_started → study_completed`
       به داشبورد اضافه شود.
-- [ ] Source Map با `SENTRY_AUTH_TOKEN` فعال شود تا stack trace فایل‌های minifyشده
-      دقیق‌تر باشد.
 - [ ] سقف مصرف و اعلان quota سرویس‌ها ماهانه بررسی شود.
 - [ ] در صورت مسدودشدن دامنه‌ها یا Ad blocker گسترده، reverse proxy هم‌دامنه برای
       endpointهای ingest بررسی شود.
